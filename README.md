@@ -11,4 +11,4 @@ Cross Domain Catalog for Imageboards
 >
 **[https://8chan.co/scriptcdc/](https://8chan.co/scriptcdc/)**
 
-Copyright (c) 2014 Dogman8. All rights reserved.
+Copyright (c) 2014 DogMan8. All rights reserved.
