@@ -20,6 +20,7 @@ This is a userscript. You need Greasemonkey (Firefox) or Tampermonkey (Chrome) b
 Then click following link to install.
 >
 **[GET USERSCRIPT STABLE](https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js)**
+>
 **[GET USERSCRIPT BETA](https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js)**
 
 ### Home page
