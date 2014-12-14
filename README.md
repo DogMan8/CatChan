@@ -10,12 +10,12 @@ Functions:<br>
 5．Reader Support for Slower Threads/Boards<br>
 This is a userscript. You need Greasemonkey (Firefox) or Tampermonkey (Chrome) beforehand.<br>
 Then click following link to install.<br>
-<h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a><br></h1>
+<h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
 <a href="https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js">[GET USERSCRIPT BETA]</a><br>
 
 
 Home page<br>
-<a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a><br>
+<h1><a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a></h1><br>
 Copyright (c) 2014 DogMan8. All rights reserved.<br>
 
 
