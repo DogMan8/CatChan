@@ -14,11 +14,11 @@ Then click following link to install.<br>
 <a href="https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js">[GET USERSCRIPT BETA]</a><br>
 
 
-Home page<br>
-<h1><a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a></h1><br>
+<h1>Home page</h1><br>
+<a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a><br>
 Copyright (c) 2014 DogMan8. All rights reserved.<br>
 
 
-History<br>
+<h1>History</h1><br>
 v2014.12.14.1: Add capability to use "http" for 8chan.<br>
 v2014.12.14.0: Initial Release.<br>
