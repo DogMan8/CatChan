@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2014.12.14.1
+// @version 2014.12.14.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1007,6 +1007,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
   site2['8chan'] = {
     nickname : '8chan',
     home : site.protocol + '//8chan.co',
+    protocol : 'https:',
     features : {page: true, graph: true, setting: true, postform: false, catalog: true, listener : true, uip_tracker: true, debug: false},
     check_func : function(){
       if (window.location.href.search(/8chan.co/)!=-1) { // 8chan
@@ -1019,7 +1020,13 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         site.max_page = site2['8chan'].max_page(site.board);
         pref.catalog.on_bt_page = window.location.href.search('8chan.co/boards.html')!=-1;
         return true;
-      } else return false;
+      } else {
+        if (!brwsr.ff) {
+          site2['8chan'].protocol = 'https:';
+          site2['8chan'].home = site2['8chan'].protocol + '//8chan.co';
+        }
+        return false;
+      }
     },
     boards_sel_from_tags : function(){
       var boards = document.getElementsByClassName('modlog')[0].getElementsByTagName('tbody')[0];
@@ -1100,8 +1107,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     postform_rules : null,
     thread_keyword : 'res',
     max_page : function(){return 15;},
-    make_url : function(board,no){return site.protocol + '//8chan.co' + board + ((no!=0)? (no+1) :'index')+'.html';},
-    make_url3: function(board,th){return site.protocol + '//8chan.co' + board + 'res/' + th + '.html';},
+    make_url : function(board,no){return site2['8chan'].protocol + '//8chan.co' + board + ((no!=0)? (no+1) :'index')+'.html';},
+    make_url3: function(board,th){return site2['8chan'].protocol + '//8chan.co' + board + 'res/' + th + '.html';},
     get_ops : function(doc){
       var op_containers = doc.getElementsByClassName('post op');
       var ops = [];
@@ -1124,8 +1131,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //        if (all[i].getAttribute('href')&& all[i].getAttribute('href').indexOf('http')!=0) all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
 //        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src','https://media.8chan.co'+all[i].getAttribute('src'));
 //        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
-        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site.protocol + '//8chan.co'+all[i].getAttribute('src'));
-        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site.protocol + '//8chan.co'+all[i].getAttribute('href'));
+        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site2['8chan'].protocol + '//8chan.co'+all[i].getAttribute('src'));
+        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site2['8chan'].protocol + '//8chan.co'+all[i].getAttribute('href'));
       }
     },
     insert_footer : function(th,page_no,bn,exe,date,nof_posts,nof_files){
@@ -1205,10 +1212,10 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       return site2.common.thread2headline(doc,'8chan');
     },
 //    get_json_url_thread: function(board,thread){
-//      return site.protocol + '//8chan.co' + board +'res/' + thread + '.json';
+//      return site2['8chan'].protocol + '//8chan.co' + board +'res/' + thread + '.json';
 //    },
     get_json_url_catalog: function(board){
-      return site.protocol + '//8chan.co' + board +'catalog.json';
+      return site2['8chan'].protocol + '//8chan.co' + board +'catalog.json';
     },
     parse_json_thread: function(txt){
       var obj = {posts: []};
