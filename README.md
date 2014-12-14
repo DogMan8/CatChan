@@ -20,5 +20,5 @@ Copyright (c) 2014 DogMan8. All rights reserved.<br>
 
 
 <h1>History</h1><br>
-v2014.12.14.1: Add capability to use "http" for 8chan.<br>
+v2014.12.14.1-v2014.12.14.2: Add capability to use "http" for 8chan.<br>
 v2014.12.14.0: Initial Release.<br>
