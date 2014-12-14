@@ -19,7 +19,8 @@ This is a userscript. You need Greasemonkey (Firefox) or Tampermonkey (Chrome) b
 >
 Then click following link to install.
 >
-**[GET USERSCRIPT](https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js)**
+**[GET USERSCRIPT STABLE](https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js)**
+**[GET USERSCRIPT BETA](https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js)**
 
 ### Home page
 
@@ -27,3 +28,8 @@ Then click following link to install.
 **[https://8chan.co/scriptcdc/](https://8chan.co/scriptcdc/)**
 
 Copyright (c) 2014 DogMan8. All rights reserved.
+
+
+### History
+v2014.12.14.1: Add capability to use "http" for 8chan.
+v2014.12.14.0: Initial Release.
