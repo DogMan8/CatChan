@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name CatChan
-// @version 2014.12.14.0
+// @version 2014.12.14.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
 // @include http://*.2chan.net/*
-// @include https://8chan.co/*
+// @include http*://8chan.co/*
 // @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
 // ==/UserScript==
 
@@ -1006,7 +1006,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
   };
   site2['8chan'] = {
     nickname : '8chan',
-    home : 'https://8chan.co',
+    home : site.protocol + '//8chan.co',
     features : {page: true, graph: true, setting: true, postform: false, catalog: true, listener : true, uip_tracker: true, debug: false},
     check_func : function(){
       if (window.location.href.search(/8chan.co/)!=-1) { // 8chan
@@ -1100,8 +1100,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     postform_rules : null,
     thread_keyword : 'res',
     max_page : function(){return 15;},
-    make_url : function(board,no){return 'https://8chan.co' + board + ((no!=0)? (no+1) :'index')+'.html';},
-    make_url3: function(board,th){return 'https://8chan.co' + board + 'res/' + th + '.html';},
+    make_url : function(board,no){return site.protocol + '//8chan.co' + board + ((no!=0)? (no+1) :'index')+'.html';},
+    make_url3: function(board,th){return site.protocol + '//8chan.co' + board + 'res/' + th + '.html';},
     get_ops : function(doc){
       var op_containers = doc.getElementsByClassName('post op');
       var ops = [];
@@ -1124,8 +1124,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //        if (all[i].getAttribute('href')&& all[i].getAttribute('href').indexOf('http')!=0) all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
 //        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src','https://media.8chan.co'+all[i].getAttribute('src'));
 //        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
-        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src','https://8chan.co'+all[i].getAttribute('src'));
-        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href','https://8chan.co'+all[i].getAttribute('href'));
+        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site.protocol + '//8chan.co'+all[i].getAttribute('src'));
+        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site.protocol + '//8chan.co'+all[i].getAttribute('href'));
       }
     },
     insert_footer : function(th,page_no,bn,exe,date,nof_posts,nof_files){
