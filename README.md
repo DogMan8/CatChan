@@ -17,6 +17,7 @@ Then click following link to install.<br>
 <h1>Home page</h1><br>
 <a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a><br>
 Copyright (c) 2014 DogMan8. All rights reserved.<br>
+I'll choose the license from MIT, apache2.0, MPL2.0 or GPLv3 by the end of this year.
 
 
 <h1>History</h1><br>
