@@ -21,6 +21,6 @@ I'll choose the license from MIT, apache2.0, MPL2.0 or GPLv3 by the end of this 
 
 
 <h1>History</h1><br>
-v2014.12.20.0: Add support for native catalog in 8chan.
+v2014.12.20.0: Add support for native catalog in 8chan.<br>
 v2014.12.14.1-v2014.12.14.2: Add capability to use "http" for 8chan.<br>
 v2014.12.14.0: Initial Release.<br>
