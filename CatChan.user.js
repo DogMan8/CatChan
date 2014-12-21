@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2014.12.20.0
+// @version 2014.12.21.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -680,7 +680,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2014.12.20.0<br>'+
+          'Version 2014.12.21.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">https://github.com/DogMan8/CatChan</a><br>'
         ],
         html_common:
@@ -857,6 +857,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     features : null,
     owners_recommendation: '',
     catalog : false,
+    nicknames : ''
   };
   site.protocol = (document.location.href.search(/https/)!=-1)? 'https:' : 'http:'; // patch for Tampermonkey.
 
@@ -1782,7 +1783,10 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //    if (site.features.post && site.postform) site.postform_submit = site.postform.childNodes[5].childNodes[0].childNodes[2].childNodes[1].childNodes[1];
 //    site.max_page = site2['8chan'].max_page(site.board);
 //  }
-  for (var i in site2) if (i!=='DEFAULT' && i!=='common') site2[i].check_func();
+  for (var i in site2) if (i!=='DEFAULT' && i!=='common') {
+    site2[i].check_func();
+    site.nicknames = site.nicknames + ((site.nicknames!=='')? '|' : '') + i;
+  }
 
   var pipe_name = pref.script_prefix + '.graph.' + site.board + '__pipe__';
   var info_raw  = site.nickname + site.board;
@@ -1807,8 +1811,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     if (pref.debug_mode) console.log(window.name + ': Waiting for connection from '+name+' ...');
     function initialize(e,name,win) {
       if (pref.debug_mode) console.log(window.name + ': Connecting from '+e.data);
-      if (e.source==win) {
+//      if (e.source==win) {
 //      if (e.source==win && site2[e.data]) { // remove "{"name":"twttr:private:requestArticleUrl"}" from someone...
+      if (e.source==win && e.data.search(site.nicknames)!=-1) { // remove "{"name":"twttr:private:requestArticleUrl"}" from someone... in Tampermonkey.
         if (pref.debug_mode) console.log(window.name + ': Connected successfully.');
         if (!brwsr.ff) init_receive_port(name,e.ports[0]);
         else init_receive_port(name,win);
@@ -2777,6 +2782,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
             pref_func.pref_overwrite(pref.catalog.filter,JSON.parse(localStorage.getItem(onchange_funcs.load_save_key())));
             pref_func.apply_prep(pn_filter,false);
             pref_func.apply_prep(pn_filter,true); // make obj2.
+            catalog_filter_changed();
           }
         },
         'save'                : function(){if (localStorage) localStorage.setItem(onchange_funcs.load_save_key(),JSON.stringify(pref.catalog.filter));},
@@ -2787,8 +2793,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //        'catalog.filter.tag'       : catalog_filter_changed,
         'catalog.filter.tag_list'  : catalog_filter_changed,
         'scan'                     : scan_tags,
-        'catalog.filter.attr_list' : catalog_attr_changed,
-        'catalog.filter.attr_list_str' : catalog_attr_changed
+        'catalog.filter.attr_list' : show_catalog, //catalog_attr_changed,
+        'catalog.filter.attr_list_str' : show_catalog, //catalog_attr_changed
       }
       pref_func.add_onchange(pn12_0_2,onchange_funcs);
       pref_func.add_onchange(pn12_0_4,onchange_funcs);
@@ -3417,10 +3423,10 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         else for (var th in threads) threads[th][9] = [true];
         show_catalog();
       }
-      function catalog_attr_changed(){
-        if (pref.catalog.filter.attr_list)
-          for (var th in threads) catalog_attr_set(th,threads[th][0]);
-      }
+//      function catalog_attr_changed(){
+//        if (pref.catalog.filter.attr_list)
+//          for (var th in threads) catalog_attr_set(th,threads[th][0]);
+//      }
 
       var pop_up_delay_id = {};
       function pop_up_delay(e,name){
@@ -5423,7 +5429,5 @@ Statistics:<br>\
 // OPTIONS TO HERE
 
 })();
-
-
 
 
