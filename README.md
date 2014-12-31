@@ -16,7 +16,7 @@ Then click following link to install.<br>
 
 <h1>Home page</h1><br>
 <a href="https://8chan.co/scriptcdc/">https://8chan.co/scriptcdc/</a><br>
-Copyright (c) 2014 DogMan8. All rights reserved.<br>
+Copyright (c) 2014 DogMan8<br>
 See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
