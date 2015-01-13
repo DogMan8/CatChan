@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.01.14.0: Supported 8ch.net.<br>
 v2015.01.12.0: Added function of exporting configuration.<br>
 v2015.01.05.0: Added merging boards function to native catalog support.<br>
 v2014.12.21.0: Fixed a bug in Tampermonkey.(degrade)<br>
