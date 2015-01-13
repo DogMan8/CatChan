@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.01.12.0
+// @version 2015.01.14.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
 // @include http://*.2chan.net/*
 // @include http*://8chan.co/*
+// @include http*://8ch.net/*
 // @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
 // ==/UserScript==
 //
@@ -110,7 +111,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         'Global/b/,8chan/b/,KC/b/,4chan/b/\n'+
         'v+gg,8chan/v/,8chan/gamergate/,4chan/v/\n'+
         'Interpol,8chan/pol/,4chan/pol/\n'+
-        'japan2,/japan2/\n'+
+        'Japan_Shopping_Mall,/jpck/,/japan2/\n'+
         'script_home,8chan/scriptcdc/,KC/jp/35003,KC/kc/41434\n',
       catalog_board_list_obj: [],
       catalog_promiscuous: false,
@@ -787,7 +788,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.01.12.0<br>'+
+          'Version 2015.01.14.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">https://github.com/DogMan8/CatChan</a><br>'
         ],
         html_common:
@@ -820,7 +821,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             pref_func.settings.onchange_funcs['tag.generate_caller']('tag.same_tag_refresh');
           },
           'tag.generate_caller' : function(src){
-            http_req.get('tag','8chan','https://8chan.co/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
+            http_req.get('tag','8chan','https://'+site2['8chan'].domain_url+'/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
             if (pref_func.settings.pn13) pref_func.apply_prep(pref_func.settings.pn13.childNodes[1],false);
           },
           'tag.generate_callback' : function(date,status,response_txt,arg){
@@ -1157,12 +1158,15 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
   };
   site2['8chan'] = {
     nickname : '8chan',
+    domain_url : '8chan.co',
     home : site.protocol + '//8chan.co',
     protocol : 'https:',
     features : {page: true, graph: true, setting: true, postform: false, catalog: true, listener : true, uip_tracker: true, debug: false},
     check_func : function(){
-      if (window.location.href.search(/8chan.co/)!=-1) { // 8chan
-        site.config('8chan.co','8chan');
+      if (window.location.href.search(/8chan.co|8ch.net/)!=-1) { // 8chan
+        site2['8chan'].domain_url = (window.location.href.search(/8ch.net/)!=-1)? '8ch.net' : '8chan.co';
+        site2['8chan'].home = site.protocol + '//' + site2['8chan'].domain_url + '/faq.html', // prevent from making twitter and IRC access.
+        site.config(site2['8chan'].domain_url,'8chan');
 //        var header = document.getElementsByClassName('boardlist')[0];
 //        if (header) site.header_height = header.offsetHeight;
         site.header_height = function(){
@@ -1174,13 +1178,13 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         site.postform_comment = document.getElementById('body');
         if (site.features.post && site.postform) site.postform_submit = site.postform.childNodes[5].childNodes[0].childNodes[2].childNodes[1].childNodes[1];
         site.max_page = site2['8chan'].max_page(site.board);
-        pref.catalog.on_bt_page = window.location.href.search('8chan.co/boards.html')!=-1;
+        pref.catalog.on_bt_page = window.location.href.search(site2['8chan'].domain_url + '/boards.html')!=-1;
         site.catalog = window.location.href.search(/catalog\.html/)!=-1;
         return true;
       } else {
         if (!brwsr.ff) {
           site2['8chan'].protocol = 'https:';
-          site2['8chan'].home = site2['8chan'].protocol + '//8chan.co';
+          site2['8chan'].home = site2['8chan'].protocol + '//' + site2['8chan'].domain_url;
         }
         return false;
       }
@@ -1231,7 +1235,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     },
     add_thread_link : function(doc,url){
       var pn = document.createElement('a');
-      pn.href = url.replace(/https*:\/\/8chan.co/,'');
+      pn.href = url.replace(new RegExp('/https*:\/\/'+site2['8chan'].domain_url+'/'),'');
       pn.innerHTML = '[Reply]';
       var th = doc.getElementsByClassName('post op')[0];
       if (th) th.insertBefore(pn,th.firstChild);
@@ -1265,11 +1269,12 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     thread_keyword : 'res',
     max_page : function(){return 15;},
     make_url : function(board,no,key){
-      if (key==='p') return site2['8chan'].protocol + '//8chan.co' + board + ((no!=0)? (no+1) :'index')+'.html';
-      else if (key==='j') return site2['8chan'].protocol + '//8chan.co' + board + 'catalog.json';  // Doesn't contain information about webm thumbnail.
-      else return site2['8chan'].protocol + '//8chan.co' + board + 'catalog.html';
+      var url_prefix = site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board;
+      if (key==='p') return url_prefix + ((no!=0)? (no+1) :'index')+'.html';
+      else if (key==='j') return url_prefix + 'catalog.json';  // Doesn't contain information about webm thumbnail.
+      else return url_prefix + 'catalog.html';
     },
-    make_url3: function(board,th){return site2['8chan'].protocol + '//8chan.co' + board + 'res/' + th + '.html';},
+    make_url3: function(board,th){return site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board + 'res/' + th + '.html';},
     get_ops : function(doc){
       var op_containers = doc.getElementsByClassName('post op');
       var ops = [];
@@ -1288,12 +1293,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     absolute_link : function(doc){
       var all = doc.getElementsByTagName('*');
       for (var i=0;i<all.length;i++) {
-//        if (all[i].getAttribute('src') && all[i].getAttribute('src').indexOf('http')!=0)  all[i].setAttribute('src','https://media.8chan.co'+all[i].getAttribute('src'));
-//        if (all[i].getAttribute('href')&& all[i].getAttribute('href').indexOf('http')!=0) all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
-//        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src','https://media.8chan.co'+all[i].getAttribute('src'));
-//        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href','https://media.8chan.co'+all[i].getAttribute('href'));
-        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site2['8chan'].protocol + '//8chan.co'+all[i].getAttribute('src'));
-        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site2['8chan'].protocol + '//8chan.co'+all[i].getAttribute('href'));
+        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('src'));
+        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('href'));
       }
     },
     insert_footer : function(th,page_no,bn,exe,date,nof_posts,nof_files){
@@ -1376,7 +1377,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //      return site2['8chan'].protocol + '//8chan.co' + board +'res/' + thread + '.json';
 //    },
     get_json_url_catalog: function(board){
-      return site2['8chan'].protocol + '//8chan.co' + board +'catalog.json';
+      return site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board +'catalog.json';
     },
     parse_json_thread: function(txt,from_http){
       var obj = {posts: []};
@@ -1543,7 +1544,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       th.setAttribute('data-time',obj.time);
       th.innerHTML = '<div class="thread grid-li grid-size-small"><a href="'
                    + site2['8chan'].make_url3(board,obj.no) + '"><img src="'
-                   + 'https://media.8chan.co' + board + 'thumb/'
+                   + 'https://media.' + site2['8chan'].domain_url + board + 'thumb/'
                    + obj.tim + obj.ext + '" id="img-'
                    + obj.no  + '" data-subject="'
                    + obj.sub + '" data-name="'
@@ -3950,6 +3951,20 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
         return tgts;
       }
+      function remove_thread(name){
+        if (name!=='url') {
+          threads[name][0].removeEventListener('mouseover', threads[name][2][0], false);
+          threads[name][0].removeEventListener('click', threads[name][5], false);
+          if (threads[name][11]) remove_open_new_thread_event(threads[name][11]);
+          if (threads[name][1]) {
+//            if (threads[name][12]) remove_open_new_thread_event(threads[name][12]);
+            if (pop_up_status[name]) pop_down_op(name);
+            triage_parent.removeChild(threads[name][0]);
+          }
+        }
+        delete threads[name];
+        threads_idx.splice(threads_idx.length-1,1);
+      }
       function catalog_clear_threads(num){
         catalog_triage_out();
 //        if (pref.catalog.embed && site.catalog) {
@@ -3962,21 +3977,22 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //            delete threads[threads_idx[i]];
 //          }
 //        } else {
-          while (threads_idx.length>num) {
-            var name = threads_idx[threads_idx.length-1];
-            if (name!=='url') {
-              threads[name][0].removeEventListener('mouseover', threads[name][2][0], false);
-              threads[name][0].removeEventListener('click', threads[name][5], false);
-              if (threads[name][11]) remove_open_new_thread_event(threads[name][11]);
-              if (threads[name][1]) {
-//                if (threads[name][12]) remove_open_new_thread_event(threads[name][12]);
-                if (pop_up_status[name]) pop_down_op(name);
-                triage_parent.removeChild(threads[name][0]);
-              }
-            }
-            delete threads[name];
-            threads_idx.splice(threads_idx.length-1,1);
-          }
+        while (threads_idx.length>num) {
+          var name = threads_idx[threads_idx.length-1];
+          remove_thread(name);
+//            if (name!=='url') {
+//              threads[name][0].removeEventListener('mouseover', threads[name][2][0], false);
+//              threads[name][0].removeEventListener('click', threads[name][5], false);
+//              if (threads[name][11]) remove_open_new_thread_event(threads[name][11]);
+//              if (threads[name][1]) {
+////                if (threads[name][12]) remove_open_new_thread_event(threads[name][12]);
+//                if (pop_up_status[name]) pop_down_op(name);
+//                triage_parent.removeChild(threads[name][0]);
+//              }
+//            }
+//            delete threads[name];
+//            threads_idx.splice(threads_idx.length-1,1);
+        }
 //        }
       }
       function catalog_refresh(refresh,embed_init) {
@@ -4081,9 +4097,12 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
                 if (dbt[0]===nickname && dbt[1]===board && dbt[2]!=='') {
                   var flag = false;
                   for (var j=0;j<ths.length;j++) if (dbt[2]==ths[j].no) {flag=true;break;}
-//                  if (!flag) console.log(name);
-                  if (!flag) triage_exe(name,'','');
-                  changed = true;
+                  if (!flag) {
+                    console.log(name);
+                    triage_exe(name,'','');
+                    changed = true;
+                    remove_thread(name);
+                  }
                 }
               }
               if (changed) {
@@ -4883,7 +4902,7 @@ Statistics:<br>\
       function page_check(){
 //        timer.stop(false);
 //        var url = site.url_prefix + page.no() + '.html';
-        var url = site.make_url(site.board,page.no());
+        var url = site.make_url(site.board, page.no(), 'p');
         if (page.no()==site.max_page) url = window.location.href;
         get_page(url);
       }
