@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.01.16.0
+// @version 2015.01.16.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -802,7 +802,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.01.16.0<br>'+
+          'Version 2015.01.16.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">https://github.com/DogMan8/CatChan</a><br>'
         ],
         html_common:
@@ -1466,6 +1466,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       var selector_native = document.getElementById('sort_by');
       selector_native.style.display = 'none';
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
+      selector_catchan.childNodes[0].textContent = 'Last Bump';
       selector_native.parentNode.insertBefore(selector_catchan,selector_native);
       return site2['8chan'].catalog_from_native(date,document);
     },
@@ -3540,7 +3541,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         var name = nickname + board + th.no;
         var date = [th.time_modified, th.time_created, th.nof_posts, th.nof_files];
         var url = site2[nickname].make_url3(board, th.no, '0');
-        if (threads[name] && threads[name][8][0]>=date[0]) return 0;
+//        if (threads[name] && threads[name][8][0]>=date[0]) return 0;
+        if (threads[name] && threads[name][8][0]>=date[0] && threads[name][8][2]==th.nof_posts && threads[name][8][3]==th.nof_files) return 0;
         return insert_thread(th.pn, nickname, th.page_no, date_load, name, th.pn.innerHTML, date, th.pn, url, true, th);
       }
 
