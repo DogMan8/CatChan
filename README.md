@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.01.24.0: Added a scan function.<br>
 v2015.01.16.1: Fixed a bug.(degrade)<br>
 v2015.01.16.0: Added health indicator.<br>
 v2015.01.14.0: Supported 8ch.net.<br>
