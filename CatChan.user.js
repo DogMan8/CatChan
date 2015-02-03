@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.01.24.0
+// @version 2015.02.04.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -234,6 +234,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       tag : {gen: false, gen_str:''}, // dummy for checkbox and textarea.
       cloudflare: {auto_reload: true, auto_reload_time: 5},
       scan: {max:10000, lifetime:20, crawler:50, max_threads:1000, crawler_adaptive:true},
+      sound: {notify: false, file:'', src:'beep', beep_freq:1000, beep_length_f:0.2, beep_volume_f:1},
     };
   }
 
@@ -269,13 +270,22 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //          }
           if (fm[i].tagName==='INPUT') {
             if (set) {
-              if      (typeof(parent[tgt])=='number' ) parent[tgt] = (isNaN(parseInt(fm[i].value,10)))? 0 : parseInt(fm[i].value,10);
-              else if (typeof(parent[tgt])=='boolean') parent[tgt] = fm[i].checked;
+              if      (typeof(parent[tgt])=='number' ) {
+                if (fm[i].name.substr(-2,2)==='_f') parent[tgt] = (isNaN(parseFloat(fm[i].value)))? 0 : parseFloat(fm[i].value);
+                else                                parent[tgt] = (isNaN(parseInt(fm[i].value,10)))? 0 : parseInt(fm[i].value,10);
+              } else if (typeof(parent[tgt])=='boolean') parent[tgt] = fm[i].checked;
               else if (typeof(parent[tgt])=='string' ) if (fm[i].checked) parent[tgt] = fm[i].value;
             } else {
               if      (typeof(parent[tgt])=='number' ) fm[i].value = parent[tgt];
               else if (typeof(parent[tgt])=='boolean') fm[i].checked = parent[tgt];
               else if (typeof(parent[tgt])=='string' ) if (parent[tgt] == fm[i].value) fm[i].checked = true;
+            }
+            if (fm[i].type==='file' && !set) {
+              if (pref_func.settings.files_pool[fm[i].name]) {
+                fm[i].parentNode.insertBefore(pref_func.settings.files_pool[fm[i].name],fm[i]);
+                delete pref_func.settings.files_pool[fm[i].name];
+                fm[i].parentNode.removeChild(fm[i]);
+              }
             }
           }
           if (fm[i].tagName==='TEXTAREA') {
@@ -321,7 +331,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         if (typeof(func_obj)!=='function') {
           func_obj.func_default = function(){
             pref_func.apply_prep(this,true);
-            if (func_obj[this.name]) func_obj[this.name]();
+            if (func_obj[this.name]) func_obj[this.name](this.name);
           };
           call_tgt = func_obj.func_default;
         }
@@ -672,7 +682,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       },
       settings: {
         pn13 : null,
-        show_hide : null,
+//        show_hide : null,
+        show_hide : function(){cnst.make_destroy(pref_func.settings,'pn13',pref_func.settings.prep_pn13,pref_func.settings.destroy_pn13);},
         prep_pn13 : function(){
           var pn13 = cnst.init('left:0px:tile:get:bottom:Show:tb',cnst.void_func,cnst.void_func,pref_func.settings.show_hide,cnst.void_func)[0];
           var pn13_0_2 = cnst.add_to_tb(pn13,
@@ -694,9 +705,16 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           cnst.bottom_top(pn13);
           return pn13;
         },
+        apply_pn13_1: function(){pref_func.apply_prep(pref_func.settings.pn13.childNodes[1],false);},
         destroy_pn13 : function(){
+          pref_func.settings.files_store();
           pref_func.settings.pn13 = cnst.div_destroy(pref_func.settings.pn13, true); // returns null
         },
+        files_store: function(){
+          var inputs = pref_func.settings.pn13.getElementsByTagName('input');
+          for (var i=0;i<inputs.length;i++) if (inputs[i].type==='file') pref_func.settings.files_pool[inputs[i].name] = inputs[i].parentNode.removeChild(inputs[i]);
+        },
+        files_pool: {},
         htmls: [
           'Catalog:<br>'+
           '&emsp;Cross domain connection:<br>'+
@@ -720,7 +738,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog.refresh.except_bt"> Except the page of selecting boards\' tag.<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.embed"> Embed to native catalog<br>'+
 //          '&emsp;Max threads in catalog: <input type="text" name="catalog.max_threads" size="4" style="text-align: right;"><br>'+
-          '&emsp;Design from<br>'+
+          '&emsp;Design from:<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="page">Page<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="auto">Auto<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="catalog">Catalog<br>'+
@@ -731,7 +749,15 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_expand_at_initial"> Expand at initial<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_no_popup_at_expanded"> Don\'t popup when the catalog is expanded<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog_open_in_new_tab"> Open the thread in new tab<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_use_named_window"> Prevent opening a thread in multiple tabs<br>',
+          '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_use_named_window"> Prevent opening a thread in multiple tabs<br>'+
+          '&emsp;<input type="checkbox" name="sound.notify"> Sound notifier'+
+          '&emsp;&emsp;<button name="sound.pause">Pause</button><br>'+
+          '&emsp;&emsp;<input type="radio" name="sound.src" value="beep">Beep '+
+          '&emsp;freq:<input type="text" name="sound.beep_freq" size="4" style="text-align: right;"> '+
+          'length:<input type="text" name="sound.beep_length_f" size="4" style="text-align: right;"> '+
+          'volume:<input type="text" name="sound.beep_volume_f" size="4" style="text-align: right;"><br>'+
+          '&emsp;&emsp;<input type="radio" name="sound.src" value="file">File '+
+          '&emsp;<input type="file" accept="audio/*" name="sound.file"><br>',
           'Catalog:<br>'+
           '&emsp;Board group configuration:<br>'+
           '&emsp;&emsp;<textarea rows="9" cols="60" name="catalog_board_list_str"></textarea><br>'+
@@ -827,7 +853,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.01.24.0<br>'+
+          'Version 2015.02.04.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">https://github.com/DogMan8/CatChan</a><br>'
         ],
         html_common:
@@ -847,6 +873,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           'settings.indexing' : function(){
             var pn13_1 = pref_func.settings.pn13.childNodes[1];
             if (pref.show_tooltip && pn13_1.innerHTML) pref_func.tooltips.remove_hier(pn13_1);
+            pref_func.settings.files_store();
             pn13_1.innerHTML = pref_func.settings.htmls[pref.settings.indexing] + pref_func.settings.html_common;
             pref_func.add_onchange(pn13_1,pref_func.settings.onchange_funcs);
             pref_func.apply_prep(pn13_1,false);
@@ -862,7 +889,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           },
           'tag.generate_caller' : function(src){
             http_req.get('tag','8chan','https://'+site2['8chan'].domain_url+'/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
-            if (pref_func.settings.pn13) pref_func.apply_prep(pref_func.settings.pn13.childNodes[1],false);
+            if (pref_func.settings.pn13) pref_func.settings.apply_pn13_1();
           },
           'tag.generate_callback' : function(date,status,response_txt,arg){
             site3['8chan'].boards = JSON.parse(response_txt);
@@ -936,8 +963,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             if (str!=='') {
               if (pref.catalog_board_list_str.search(/\n$/)==-1) pref.catalog_board_list_str = pref.catalog_board_list_str + '\n';
               pref.catalog_board_list_str = pref.catalog_board_list_str + str + '\n';
-//              pref_func.apply_prep(pref_func.settings.pn13.childNodes[1],false);
-              if (pref_func.settings.pn13) pref_func.apply_prep(pref_func.settings.pn13.childNodes[1],false);
+              if (pref_func.settings.pn13) pref_func.settings.apply_pn13_1();
 //              pref_func.str2obj('catalog_board_list_str');
 //              if (pref_func.board_sel) pref_func.apply_prep(pref_func.board_sel,false);
               pref_func.settings.onchange_funcs['board_sel_refresh']();
@@ -953,13 +979,11 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           },
           'JSON_ex' : function() {
             pref_func.site2_json_ex(false);
-            var pn13_1 = pref_func.settings.pn13.childNodes[1];
-            pref_func.apply_prep(pn13_1,false);
+            pref_func.settings.apply_pn13_1();
           },
           'JSON_ex_full' : function() {
             pref_func.site2_json_ex(true);
-            var pn13_1 = pref_func.settings.pn13.childNodes[1];
-            pref_func.apply_prep(pn13_1,false);
+            pref_func.settings.apply_pn13_1();
           },
           'EVAL' : function() {
 //            pref_func.apply_prep(pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['overwrite_site2_eval_str'],true);
@@ -968,16 +992,29 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           'close': function(){pref_func.settings.show_hide();},
           'save' : function(){if (localStorage) localStorage[pref.script_prefix+'.pref']=JSON.stringify(pref);},
           'load_default' : function(){
-            var idx = pref.settings.indexing;
-            pref = pref_default();
+            var pref_def = pref_default();
+            delete pref_def.settings.indexing;
+            delete pref_def.catalog_board_list_sel;
+            delete pref_def.catalog.filter;
+            pref_func.pref_overwrite(pref,pref_def);
+//            var idx = pref.settings.indexing;
+//            pref = pref_default();
             pref_func.obj_init();
-            pref.settings.indexing = idx;
+//            pref.settings.indexing = idx;
 //            pref_func.settings.onchange_funcs['settings.indexing']();
-            var pn13_1 = pref_func.settings.pn13.childNodes[1];
-            pref_func.apply_prep(pn13_1,false);
+            pref_func.settings.apply_pn13_1();
             pref_func.apply_prep(pn13_1,true);  // writing to sessionStrage.
           },
-          'load_samples' : function(){pref_func.pref_samples.init();}
+          'load_samples' : function(){pref_func.pref_samples.init();},
+          'sound.file' : function(src){
+            if (src==='sound.file') pref.sound.src='file';
+            sound_obj.src(pref_func.settings.pn13.getElementsByTagName('input')['sound.file'].files[0]);
+            pref_func.settings.apply_pn13_1();
+          },
+//          'sound.beep_length_f' : sound_obj.make_beep,
+//          'sound.beep_volume_f' : sound_obj.make_beep,
+//          'sound.beep_freq'     : sound_obj.make_beep,
+//          'sound.src'           : sound_obj.src,
         }
       }
     };
@@ -993,6 +1030,84 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     func0_prep: function(){},
     func0_exe : function(){}
   };
+
+  var sound_obj = (function(){
+    var wav_str;
+    var audio;
+    function make_beep(){
+      wav_str = [];
+      var dl = header_prep_monaural8(pref.sound.beep_length_f);
+      data_prep_monaural8(pref.sound.beep_freq,dl,pref.sound.beep_volume_f);
+      for (var i=0;i<wav_str.length;i++) if (wav_str[i].length==1) wav_str[i] = '0'+wav_str[i];
+      audio = new Audio('data:audio/wav,%'+wav_str.join('%'));
+    }
+    make_beep();
+
+    function header_prep_monaural8(period) {
+      var dl=Math.floor(period*44100);
+      var header_size=46;
+      header_add(0x52494646,4,1);     //riff
+      header_add(dl+header_size,4,0); //size
+      header_add(0x57415645,4,1);     //WAVE
+      header_add(0x666d7420,4,1);     //fmt
+      header_add(0x12,4,0);           //size of fmt
+      header_add(0x01,2,0);           //linearPCM
+      header_add(0x01,2,0);           //Stereo
+      header_add(44100,4,0);          //44.1kHz
+      header_add(44100,4,0);          //176400 bit/sec
+      header_add(1,2,0);              //block size, 4Byte
+      header_add(8,2,0);              //bit/sample
+      header_add(0,2,0);              //size of ext
+//      header_add(0x66616374,4,1);     //fact
+//      header_add(4,4,0);              //size of fact
+//      header_add(0xdbcd5a00,4,1);     //data of fact
+      header_add(0x64617461,4,1);     //data
+      header_add(dl,4,0);             //size of data
+      return dl;
+    }
+
+    function header_add(val,num,big_endian) {
+      if (big_endian==1) for (var i=0;i<num;i++) wav_str.push('');
+      for (i=0;i<num;i++) {
+        if (big_endian==1) wav_str[wav_str.length-1-i] = (val%0x100).toString(16);
+        else wav_str.push((val%0x100).toString(16));
+        val = Math.floor(val/0x100);
+      }
+    }
+
+    function data_prep_monaural8(freq,period,vol){
+      var pi2 = 3.141592654*2;
+      vol *=127;
+      for (var i=0;i<period;i++) {
+        var val = Math.floor(Math.sin(pi2*freq*i/44100)*vol+0x80)%0x100;
+        wav_str.push(val.toString(16));
+      }
+    }
+    function make_beep_play(){
+      make_beep();
+      if (pref.sound.notify && pref.sound.src==='beep') audio.play();
+    }
+    function change_src(file){
+      audio.pause();
+      if (pref.sound.src==='beep') make_beep();
+      else if (file) audio = new Audio(URL.createObjectURL(file));
+      if (pref.sound.notify) audio.play();
+    }
+    pref_func.settings.onchange_funcs['sound.beep_length_f'] = make_beep_play;
+    pref_func.settings.onchange_funcs['sound.beep_volume_f'] = make_beep_play;
+    pref_func.settings.onchange_funcs['sound.beep_freq'    ] = make_beep_play;
+    pref_func.settings.onchange_funcs['sound.beep_freq'    ] = make_beep_play;
+    pref_func.settings.onchange_funcs['sound.src'          ] = pref_func.settings.onchange_funcs['sound.file'];
+    pref_func.settings.onchange_funcs['sound.pause'        ] = function(){audio.pause();};
+//    pref_func.settings.onchange_funcs['sound.file'         ] = change_src;
+
+    return {
+//      make_beep : function(){make_beep();if (pref.sound.notify && pref.sound.src==='beep') audio.play();},
+      play : function(){audio.play();},
+//      src  : function(file){audio = new Audio(URL.createObjectURL(file));},
+      src  : function(file){change_src(file);},
+    }
+  })();
 
   var site = { // krautchan/int/
     max_page   : 20,
@@ -2746,7 +2861,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     }
     if (site.features.setting) {
       var pn13 = cnst.init('tile:get:left:tile:get:bottom:button:settings:Show:tile:set:left');
-      pref_func.settings.show_hide = function(){cnst.make_destroy(pref_func.settings,'pn13',pref_func.settings.prep_pn13,pref_func.settings.destroy_pn13);};
+//      pref_func.settings.show_hide = function(){cnst.make_destroy(pref_func.settings,'pn13',pref_func.settings.prep_pn13,pref_func.settings.destroy_pn13);};
       pn13.addEventListener('click', pref_func.settings.show_hide, false);
     }
     if (site.features.graph) {
@@ -3086,11 +3201,6 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         '<select name="catalog_board_list_sel"></select>');
       pref_func.apply_prep(pn12_0_2,false);
       pn12_1.style.width = pn12_0.offsetWidth + 'px';
-//      pn12_0_2.getElementsByTagName('input')['catalog.filter.show'].onchange = function(){pref_func.apply_prep(pn12_0_2,true);cnst.show_hide(pn_filter);}; // working code.
-//      pn12_0_2.getElementsByTagName('input')['catalog_show_setting'].onchange = function(){pref_func.apply_prep(pn12_0_2,true);cnst.show_hide(pn_setting);};
-//      pn12_0_2.getElementsByTagName('button')['refresh'].onclick  = function(){catalog_refresh(true);};
-//      pn12_0_2.getElementsByTagName('input')['catalog_max_page'].onchange = function(){pref_func.apply_prep(pn12_0_2,true);};
-//      pn12_0_2.getElementsByTagName('select')['catalog_board_list_sel'].onchange = function(){pref_func.apply_prep(pn12_0_2,true);catalog_refresh(false);};
       var board_sel = pn12_0_2.getElementsByTagName('select')['catalog_board_list_sel'];
       pref_func.board_sel = board_sel;
 
@@ -3192,7 +3302,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
             '&emsp;<textarea style="height:1em" cols="30" name="catalog.filter.bookmark_list_str"></textarea>'+
           '</div>'+
           '<div style="float:left">'+
-            '<button name="load">load</button><input type="checkbox" name="catalog.auto_load_filter"> Auto<br>'+
+            '<button name="load">load</button><input type="checkbox" name="catalog.auto_load_filter"> Auto'+
+            '&emsp;<button name="clear">clear</button><br>'+
             '<button name="save">save</button><input type="checkbox" name="catalog.auto_save_filter"> Auto<br>'+
           '</div>'+
         '</div>'+
@@ -3215,10 +3326,10 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       onchange_funcs = {
         'catalog.filter.show' : function(){cnst.show_hide(pn_filter,pn12_1);},
         'catalog_show_setting': function(){cnst.show_hide(pn_setting,pn12_1);},
-        'refresh'             : function(){catalog_refresh(true);},
+        'refresh'             : function(){catalog_refresh(true,null,false);},
         'catalog_board_list_sel' : function(){
           if (pref.catalog.auto_save_filter) if (localStorage) localStorage.setItem(onchange_funcs.load_save_key(catalog_board_list_sel_old),JSON.stringify(pref.catalog.filter));
-          catalog_refresh(false);
+          catalog_refresh(false,null,false);
           if (pref.catalog.auto_load_filter) onchange_funcs.load();
           catalog_board_list_sel_old = pref.catalog_board_list_sel;
         },
@@ -3241,6 +3352,13 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           }
         },
         'save'                : function(){if (localStorage) localStorage.setItem(onchange_funcs.load_save_key(pref.catalog_board_list_sel),JSON.stringify(pref.catalog.filter));},
+        'clear'               : function(){
+          var pref_def = pref_default();
+          pref_func.pref_overwrite(pref.catalog.filter,pref_def.catalog.filter);
+          pref_func.apply_prep(pn12_0_4,false);
+          pref_func.apply_prep(pn12_0_4,true); // obj init.
+          catalog_filter_changed();
+        },
         'load_save_key'       : function(num){return pref.script_prefix + '.catalog.filter.' + pref.catalog_board_list_obj[num][0].key;},
         'catalog.filter.kwd'       : catalog_filter_changed,
         'catalog.filter.kwd_str'   : catalog_filter_changed,
@@ -3325,9 +3443,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       }
       function scan_boards_keyword(sender,status){
         var obj = site3[site.nickname].boards;
-        var tgt_db = site.nickname+'/'+obj[scan_boards_idx].uri+'/';
-        var tgt    = tgt_db + ((pref.catalog.catalog_json)? 'j0' : 'c0');
         if (scan_boards_idx<scan_boards_max && scan_boards_found<pref.scan.max_threads && status<500) {
+          var tgt_db = site.nickname+'/'+obj[scan_boards_idx].uri+'/';
+          var tgt    = tgt_db + ((pref.catalog.catalog_json)? 'j0' : 'c0');
           scan_boards_idx++;
           scan_progress.innerHTML = scan_boards_found+'/'+scan_boards_scanned+', '+scan_boards_found_board+'/'+scan_boards_idx+'/'+scan_boards_max+', ' + tgt_db;
           var val = catalog_obj_merge(tgt,pref.catalog.board.ex_list_obj2,null);
@@ -3410,7 +3528,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         if (auto_update_timer) {clearTimeout(auto_update_timer);auto_update_timer=null;}
         if (pref.catalog_auto_update) {
           var period = pref.catalog_auto_update_period;
-          auto_update_timer=setTimeout(function(){auto_update_timer=null;catalog_refresh(true);},period*60000);
+          auto_update_timer=setTimeout(function(){auto_update_timer=null;catalog_refresh(true,null,true);},period*60000);
         }
       }
       set_auto_update();
@@ -3763,8 +3881,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         if (snoop && !pref.catalog_promiscuous && !threads[name]) {
           var hit = false;
           for (var i=0;i<refresh_tgts.length;i++)
-            if (refresh_tgts[i].indexOf(nickname+boardname+'p'+page_no)!=-1 ||
-                refresh_tgts[i].indexOf(nickname+boardname+op_no)!=-1) {hit=true;break;}
+            if (refresh_tgts[i][0].indexOf(nickname+boardname+'p'+page_no)!=-1 ||
+                refresh_tgts[i][0].indexOf(nickname+boardname+op_no)!=-1) {hit=true;break;}
           if (!hit) return 0;
         }
         var date = site2[nickname].get_time_of_posts(src);
@@ -3905,7 +4023,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       function show_catalog_cont(){
         if (!all_drawn) show_catalog();
       }
-      function show_catalog(tgts){
+      function show_catalog(tgts,sound){
 //        if (pref.catalog.embed && site.catalog) {show_catalog_native();return;}
         all_drawn = false;
         catalog_triage_out();
@@ -3946,6 +4064,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
                     threads[name][1] = true;
 //                    threads[name][11] = add_open_new_thread_event(name,site2[nickname].modify_thread_link(ch));
 //                    console.log(ch.offsetTop +', ' + i + ', ' + name);
+                    if (sound && pref.sound.notify) sound_obj.play();
                   }
                   drawn_y = ch.offsetTop;
                   ref_count++;
@@ -4274,36 +4393,21 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
 //        }
       }
-      function catalog_refresh(refresh,embed_init) {
+      function catalog_refresh(refresh, embed_init, from_auto) {
 //if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: start: ');
         set_auto_update();
         refresh_use_cache = !refresh;
-//        for (var i=0;i<=site.max_page;i++) page_delim_idx[i] = 0;
-//        var catalog_max_page = pref.catalog_max_page;
-//        if (catalog_max_page>site.max_page) catalog_max_page = site.max_page;
         refresh_idx = 0;
-//        refresh_num = catalog_max_page;
-//        refresh_num *= pref.catalog_board_list_obj[board_sel.selectedIndex].length-1;
-//        refresh_tgts = [];
-////        if (pref.catalog.filter.bookmark_list) refresh_tgts = pref.catalog.filter.bookmark_list_str.replace(/\n/g,',').replace(/,,+/,',').split(',');
-//        if (pref.catalog.filter.bookmark_list) refresh_tgts = pref.catalog.filter.bookmark_list_str.replace(/\/\/.*\n/,',').replace(/\n/g,',').replace(/,,+/,',').split(',');
-//        if (refresh_tgts[refresh_tgts.length-1]==='') refresh_tgts.pop();
-//        var blist = pref.catalog_board_list_obj[board_sel.selectedIndex];
-//        for (var j=0;j<pref.catalog_max_page;j++)
-//          for (var i=1;i<blist.length;i++)
-//            if (blist[i]['key'].search(/[^\/]*\/[^\/]*\/[0-9]+/)!=-1 && j==0) refresh_tgts.push(blist[i]['key']);
-//            else if (!blist[i]['num'] || j<blist[i]['num']) refresh_tgts.push(blist[i]['key']+'p'+j);
         refresh_tgts = make_refresh_list(embed_init);
         if (refresh && pref.catalog_refresh_clear && !embed_init) catalog_clear_threads(pref.catalog.max_threads_at_refresh);
+        for (var i=0;i<refresh_tgts.length;i++) refresh_tgts[i] = [refresh_tgts[i], from_auto];
         if (refresh_idx<refresh_tgts.length) {
           health_indicator.shift('limegreen','0');
           get_page();
         }
       }
-//      catalog_refresh(false);
       var flag_initial_refresh = pref.catalog.on_bt_page && pref.catalog.refresh.except_bt;
-//      if (!pref.catalog.embed || !site.catalog) catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page);
-      catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page, pref.catalog.embed && site.catalog);
+      catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page, pref.catalog.embed && site.catalog, false);
 
       function catalog_insert(key,cached_info) {
         if (pref.catalog.embed && site.catalog) return;
@@ -4315,9 +4419,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //        var page_no = key.replace(/[^\/]*\//,'').replace(/[^\/]*\//,'');
 //        var board_name = key.substr(nickname.length,key.length-nickname.length-page_no.length);
 //        catalog_insert2(nickname,board_name,page_no,value[1]);
-        catalog_insert2(key,value[0],value[1],true);
+        catalog_insert2(key,value[0],value[1],true,true);
       }
-      function catalog_insert2(key,date,doc_txt,snoop) {
+      function catalog_insert2(key,date,doc_txt,snoop,from_auto) {
         var dbt = cnst.name2domainboardthread(key,true);
         var nickname = dbt[0];
         var board = dbt[1];
@@ -4332,7 +4436,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           var name = nickname + board + thread;
           if (snoop && !pref.catalog_promiscuous && read_type==='thread' && !threads[name]) {
             var hit = false;
-            for (var i=0;i<refresh_tgts.length;i++) if (refresh_tgts[i].indexOf(name)!=-1) {hit=true;break;}
+            for (var i=0;i<refresh_tgts.length;i++) if (refresh_tgts[i][0].indexOf(name)!=-1) {hit=true;break;}
             if (!hit) return 0; // return if no interest.
           }
 //          doc_txt = site2[nickname].preprocess_html(doc_txt,read_type==='page'); // cause memory leak.
@@ -4394,7 +4498,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
 //console.log('ooo '+Object.keys(threads).length)
         if (Object.keys(tgts_show).length!=0) {
-          show_catalog(tgts_show);
+          show_catalog(tgts_show,from_auto);
           if (pref.catalog.filter.tag_scan_auto) scan_tags();
         }
         return inserted_idx;
@@ -4476,13 +4580,13 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //        }
 //      }
 
-      function req_events(date,status,response_txt) {
-//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: callback: '+refresh_tgts[refresh_idx]+', '+refresh_idx);
+      function req_events(date,status,response_txt,args) {
+//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: callback: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
         var inserted_idx = 0;
-        var key = refresh_tgts[refresh_idx].replace(/!.*/,'');
+//        var key = refresh_tgts[refresh_idx][0].replace(/!.*/,'');
+        var key = args[0].replace(/!.*/,'');
         if (status==200 && response_txt) {
-//          inserted_idx = catalog_insert2(url[0],url[1],url[2],response_txt);
-          inserted_idx = catalog_insert2(key,date,response_txt,false);
+          inserted_idx = catalog_insert2(key,date,response_txt,false,args[1]);
         } else {
           if (status==404) comment_out_bookmark(key);
           health_indicator.set('orange');
@@ -4505,30 +4609,17 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
       }
       function get_page(){
-////        var num = pref.catalog_board_list_obj[board_sel.selectedIndex].length-1;
-////        var col = refresh_idx%num;
-////        var row = parseInt(refresh_idx/num);
-////        var bn = pref.catalog_board_list_obj[board_sel.selectedIndex][col+1];
-////        url = site.make_url2(bn.key,row);
-////        if (refresh) http_req.get('catalog',url[0],url[1],url[2],url[3],req_events,false);
-//        if (refresh) http_req.get('catalog',refresh_tgts[refresh_idx],'',req_events,false);
-//        else {
-////          brwsr.sw_cache.trygetItem(url[0]+url[1]+url[2],catalog_insert);
-////          brwsr.sw_cache.trygetItem(refresh_tgts[refresh_idx],catalog_insert);
-//          http_req.get('catalog',refresh_tgts[refresh_idx],'',req_events,true);
-////          if (++refresh_idx<refresh_tgts.length) get_page(false);
-//        }
-//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: get: '+refresh_tgts[refresh_idx]+', '+refresh_idx);
+//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: get: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
         health_indicator.set(null,(refresh_idx+1)+'/'+refresh_tgts.length);
-        http_req.get('catalog',refresh_tgts[refresh_idx].replace(/!.*/,''),'',req_events,refresh_use_cache,true);
+        http_req.get('catalog',refresh_tgts[refresh_idx][0].replace(/!.*/,''),'',req_events,refresh_use_cache,true,refresh_tgts[refresh_idx]);
       }
 
       var refresh_idx_page;
       function page_check_entry(){
         while (refresh_idx_page<refresh_tgts.length) {
-          if (refresh_tgts[refresh_idx_page].search(/!page/)==-1) refresh_idx_page++;
+          if (refresh_tgts[refresh_idx_page][0].search(/!page/)==-1) refresh_idx_page++;
           else {
-            var name = refresh_tgts[refresh_idx_page++].replace(/!.*/,'');
+            var name = refresh_tgts[refresh_idx_page++][0].replace(/!.*/,'');
             if (threads[name]) {
               if (threads[name][14].toString()[0]=='?') {
                 var page_no_old = parseInt(threads[name][15].toString().replace(/\..*/,''),10);
