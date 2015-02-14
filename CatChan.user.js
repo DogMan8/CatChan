@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.02.04.0
+// @version 2015.02.14.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -208,6 +208,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           bookmark_list_obj2 : {},
           bookmark_list_rm404 : true,
           kwd_match : 'match',
+          tag_scansite : true,
         },
         auto_load_filter : false,
         auto_save_filter : false,
@@ -235,6 +236,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       cloudflare: {auto_reload: true, auto_reload_time: 5},
       scan: {max:10000, lifetime:20, crawler:50, max_threads:1000, crawler_adaptive:true},
       sound: {notify: false, file:'', src:'beep', beep_freq:1000, beep_length_f:0.2, beep_volume_f:1},
+      test_mode: {0:false, 1:false, 2:false, 3:false, 4:false, 5:false},
     };
   }
 
@@ -437,12 +439,18 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           if (time ) tgt[name]['time']  = Date.parse(time) - pref.localtime_offset*3600000;
 //          if (style) tgt[name]['style'] = style;
           if (style) {
-            tgt[name]['style'] = true;
+            if (!tgt[name].style) tgt[name].style = {};
             var styles = style.split(';');
             for (var j=0;j<styles.length;j++) {
               var stl = styles[j].split(':');
-              tgt[name]['style.'+stl[0]] = stl[1];
+              tgt[name].style[stl[0]] = stl[1];
             }
+//            tgt[name]['style'] = true;
+//            var styles = style.split(';');
+//            for (var j=0;j<styles.length;j++) {
+//              var stl = styles[j].split(':');
+//              tgt[name]['style.'+stl[0]] = stl[1];
+//            }
           }
         }
         var key3 = key.replace(/_obj2/,'_obj3');
@@ -556,7 +564,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         add: function(elem){
           if (pref_func.tooltips.str[elem.name]) {
             if (pref_func.tooltips.func[elem.name]) pref_func.tooltips.remove(elem.name); // patch for the same name instance.
-            pref_func.tooltips.func[elem.name]= [elem, function(e){pref_func.tooltips.show(elem.name,e.clientX,e.clientY)}];
+            pref_func.tooltips.func[elem.name]= [elem, function(e){pref_func.tooltips.show(elem.name,e.clientX,e.clientY);}];
             elem.addEventListener('mouseover',pref_func.tooltips.func[elem.name][1],false);
             elem.addEventListener('mouseout' ,pref_func.tooltips.hide,false);
           }
@@ -850,11 +858,20 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;<input type="checkbox" name="cloudflare.auto_reload"> Auto reload at server error<br>'+
           '&emsp;&emsp;<input type="text" name="cloudflare.auto_reload_time" size="2" style="text-align: right;"> minutes after<br>'+
           '<br>'+
-          '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.02.04.0<br>'+
-          '<a href="https://github.com/DogMan8/CatChan">https://github.com/DogMan8/CatChan</a><br>'
+          'Version 2015.02.14.0<br>'+
+          '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
+          '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
+          '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
+          '<br><br>'+
+          '<input type="checkbox" name="debug_mode"> Debug mode<br>'+
+          'Test <input type="checkbox" name="test_mode.0">'+
+          '<input type="checkbox" name="test_mode.1">'+
+          '<input type="checkbox" name="test_mode.2">'+
+          '<input type="checkbox" name="test_mode.3">'+
+          '<input type="checkbox" name="test_mode.4">'+
+          '<input type="checkbox" name="test_mode.5"><br>'
         ],
         html_common:
           '<br><button name="close">close</button>'+
@@ -891,8 +908,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             http_req.get('tag','8chan','https://'+site2['8chan'].domain_url+'/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
             if (pref_func.settings.pn13) pref_func.settings.apply_pn13_1();
           },
-          'tag.generate_callback' : function(date,status,response_txt,arg){
-            site3['8chan'].boards = JSON.parse(response_txt);
+          'tag.generate_callback' : function(key,value,arg){
+            site3['8chan'].boards = JSON.parse(value.responseText);
             pref_func.settings.onchange_funcs['tag.re_generate'](arg);
           },
           'tag.re_generate' : function(arg){
@@ -1178,7 +1195,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     thread_keyword : 'thread', // thread keyword in URL.
     max_page : function(board){return 10;}, // returns max_page
 //    max_page : 10, // maximum page number.
-    make_url : function(board,no,key){return '_blank';}, // returns URL from board name and page number.
+    make_url : function(board,no,key){return ['_blank','raw'];}, // returns URL and type from board name and page number.
     make_url3: function(board,th){return '_blank';}, // returns URL from board name and thread number.
     get_ops : function(doc){return [];}, // returns array of op numbers from the document.
     get_posts : function(doc) {return [];}, // returns array of posts numbers from the document.
@@ -1428,9 +1445,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     max_page : function(){return 15;},
     make_url : function(board,no,key){
       var url_prefix = site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board;
-      if (key==='p') return url_prefix + ((no!=0)? (no+1) :'index')+'.html';
-      else if (key==='j') return url_prefix + 'catalog.json';  // Doesn't contain information about webm thumbnail.
-      else return url_prefix + 'catalog.html';
+      if (key==='p') return [url_prefix + ((no!=0)? (no+1) :'index')+'.html', 'html'];
+      else if (key==='j') return [url_prefix + 'catalog.json', 'json'];  // Doesn't contain information about webm thumbnail.
+      else return [url_prefix + 'catalog.html', 'html'];
     },
     make_url3: function(board,th){return site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board + 'res/' + th + '.html';},
     url_boards_json : function(){return site2['8chan'].protocol + '//' + site2['8chan'].domain_url + '/boards.json';},
@@ -1544,19 +1561,21 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       var names = aggregate_info(th.getElementsByClassName('name'));
 
       var files = th.getElementsByClassName('files');
-      var filenames = [];
-      for (var i=0;i<files.length;i++) {
-        var files_in_post = files[i].getElementsByClassName('unimportant');
-        filenames[i] = '';
-        for (var j=0;j<files_in_post.length;j++) {
-          if (files_in_post[j].getElementsByTagName('a').length!=0) filenames[i] = filenames[i] + files_in_post[j].getElementsByTagName('a')[0][brwsr.innerText] + '\n';
-          if (files_in_post[j].getElementsByTagName('span').length!=0) filenames[i] = filenames[i] + files_in_post[j].getElementsByTagName('span')[0][brwsr.innerText] + '\n';
+      var filenames = ['',''];
+      if (files.length!=0) {
+        for (var i=0;i<files.length;i++) {
+          var files_in_post = files[i].getElementsByClassName('unimportant');
+          filenames[i] = '';
+          for (var j=0;j<files_in_post.length;j++) {
+            if (files_in_post[j].getElementsByTagName('a').length!=0) filenames[i] = filenames[i] + files_in_post[j].getElementsByTagName('a')[0][brwsr.innerText] + '\n';
+            if (files_in_post[j].getElementsByTagName('span').length!=0) filenames[i] = filenames[i] + files_in_post[j].getElementsByTagName('span')[0][brwsr.innerText] + '\n';
+          }
         }
-      }
-      for (var i=2;i<filenames.length;i++) filenames[1] = filenames[1] + filenames[i] + '\n';
-      if (files[0].parentNode!=th) {
-        filenames[1] = filenames[0] + '\n' + filenames[1];
-        filenames[0] = '';
+        for (var i=2;i<filenames.length;i++) filenames[1] = filenames[1] + filenames[i] + '\n';
+        if (files[0].parentNode!=th) {
+          filenames[1] = filenames[0] + '\n' + filenames[1];
+          filenames[0] = '';
+        }
       }
       return [coms[0], subs[0], names[0], filenames[0], coms[1], subs[1], names[1], filenames[1]];
 
@@ -1679,7 +1698,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         time_created : (parseInt(th.getAttribute('data-time'),10)-pref.localtime_offset*3600)*1000,
         nof_posts: parseInt(th.getAttribute('data-reply'),10),
         nof_files: parseInt(th.getElementsByClassName('replies')[0].getElementsByTagName('strong')[0].textContent.replace(/.*I: */,''),10),
-        init_func: site2['8chan'].catalog_from_native_init_elem_func,
+//        init_func: site2['8chan'].catalog_from_native_init_elem_func,
         update_func: site2['8chan'].catalog_from_native_update_elem_func
       }
     },
@@ -1744,9 +1763,12 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       th.setAttribute('data-reply',obj.replies);
       th.setAttribute('data-bump',obj.last_modified);
       th.setAttribute('data-time',obj.time);
+//      if (obj.ext==='.gif' || obj.ext==='.png') obj.ext='.jpg';
+      if (obj.ext==='.gif') obj.ext='.jpg';
       th.innerHTML = '<div class="thread grid-li grid-size-small"><a href="'
                    + site2['8chan'].make_url3(board,obj.no) + '"><img src="'
-                   + ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://media.' + site2['8chan'].domain_url + board + 'thumb/' + obj.tim + obj.ext : '')
+//                   + ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://media.' + site2['8chan'].domain_url + board + 'thumb/' + obj.tim + obj.ext : '')
+                   + ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2['8chan'].domain_url + board + 'thumb/' + obj.tim + obj.ext : '')
                    + '" id="img-'
                    + obj.no  + '" data-subject="'
                    + obj.sub + '" data-name="'
@@ -1868,8 +1890,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       '/m/'   : 5
     },
     max_page: function(bn){return site2['KC'].max_page_kc[bn];},
-    make_url : function(board,no){return site2['KC'].protocol + '//krautchan.net' + board + ((no==0)? '' : no + '.html');},
-    make_url3: function(board,th){return site2['KC'].protocol + '//krautchan.net' + board + 'thread-' + th + '.html';},
+    make_url : function(board,no){return [site2['KC'].protocol + '//krautchan.net' + board + ((no==0)? '' : no + '.html'), 'html'];},
+    make_url3: function(board,th){return  site2['KC'].protocol + '//krautchan.net' + board + 'thread-' + th + '.html';},
     get_ops : function(doc){
       var ops = [];
       var divs = doc.getElementsByTagName('div');
@@ -2080,8 +2102,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     catalog_threads_in_page : function(doc){return doc.getElementsByClassName('thread');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
     max_page : function(){return 10;},
-    make_url : function(board,no){return site.protocol+'//boards.4chan.org' + board + ((no!=0)? (no+1) :'');},
-    make_url3: function(board,th){return site.protocol+'//boards.4chan.org' + board + 'thread/' + th;},
+    make_url : function(board,no){return [site.protocol+'//boards.4chan.org' + board + ((no!=0)? (no+1) :''), 'html'];},
+    make_url3: function(board,th){return  site.protocol+'//boards.4chan.org' + board + 'thread/' + th;},
     get_ops : function(doc){
       var ops = [];
       var threads = doc.getElementsByClassName('thread');
@@ -2282,7 +2304,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       'dec/b/' : 8,
     },
     max_page : function(bn){return site2['futaba'].max_page_futaba[bn];},
-    make_url : function(board,no){return 'http://'+site.server_name+'.2chan.net' + board + ((no==0)? 'futaba' : no) + '.htm';},
+    make_url : function(board,no){return ['http://'+site.server_name+'.2chan.net' + board + ((no==0)? 'futaba' : no) + '.htm', 'html'];},
     get_ops : function(doc){
       var ops = [];
       var responds = doc.getElementsByClassName('hsbn');
@@ -2312,7 +2334,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 
   site3 = {};
   for (var i in site2) if (i!=='DEFAULT' && i!=='common') {
-    site3[i] = {boards: null, tags: null};
+    site3[i] = {boards: null, tags: {cs:[], ci:[]}};
     site2[i].check_func();
     site.nicknames = site.nicknames + ((site.nicknames!=='')? '|' : '') + i;
   }
@@ -2401,6 +2423,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     else if (val[0]=='MARK' && val[1]>=0) {
       var marked_first_post = site2[site.nickname].mark_newer_posts(document,val[1]);
       if (marked_first_post) scrollTo(0,marked_first_post.offsetTop - site.header_height());
+      else scrollTo(0,document.body.clientHeight - window.innerHeight);
     } else if (val[0]=='SUBFRAME_INIT') http_req.remote();
     else if (val[0]=='SUB_GET') http_req.sub_get(val[1]);
     else if (val[0]=='SUB_ACK') http_req.sub_ack(val[1]);
@@ -2484,17 +2507,32 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //    var caches = {}; // prevent occuring multiple access to the same url in short time.
     var local = true;
     var httpds = {};
+    var httpds_events = {};
     var req = {};
+    var parser = new DOMParser();
+    var serializer = new XMLSerializer();
     function make_httpd(sender){
       var httpd = new XMLHttpRequest();
       function httpd_events(){
-        if (local) onload_local(sender,Date.now(),httpd.status,httpd.responseText,false);
+        if (local) onload_local(sender,{date: Date.now(), status: httpd.status, responseText: httpd.responseText},false);
         else send_message('parent',[['SUB_ACK',[sender,Date.now(),httpd.status,httpd.responseText]]]);
       }
       httpd.addEventListener('load',  httpd_events, false);
       httpd.addEventListener('error', httpd_events, false);
       httpd.addEventListener('abort', httpd_events, false);
       httpds[sender] = httpd;
+      httpds_events[sender] = httpd_events;
+    }
+    function destroy_httpd(sender){
+      var httpd = httpds[sender];
+      if (httpd) {
+        var httpd_events = httpds_events[sender];
+        httpd.removeEventListener('load',  httpd_events, false);
+        httpd.removeEventListener('error', httpd_events, false);
+        httpd.removeEventListener('abort', httpd_events, false);
+        delete httpds[sender];
+        delete httpds_events[sender];
+      }
     }
     function make_iframe(domain,url){
       var ifrm = cnst.init('left:200px:bottom:200px:display:none:Show');
@@ -2505,38 +2543,37 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     }
     function onload_from_sw_cache_check(key,value,args) {
       if (value!==null) {
-        var date = JSON.parse(value)[0];
-        var req_date = Date.now() - args[4]*1000;
-        if (date>req_date) {onload_from_sw_cache(key,value,args);return;}
+//        var date = value[0];
+//        var req_date = Date.now() - args[4]*1000;
+//        if (date>req_date) {onload_from_sw_cache(key,value,args);return;}
+        if (args[4]===true || value.date > Date.now() - args[4]*1000) {onload_local(args[0],value,true);return;} // date check.
       }
       get_req(args[0],args[1],args[2],args[3],false);
     }
-    function onload_from_sw_cache(key,value,args) {
-//      var val = (value!=null)? JSON.parse(value) : [0,1000,null];
-      var val = (value!==null)? JSON.parse(value) : [0,null];
-//      for (var i in req)
-//        if (req[i].sw_cache && key==req[i].key)
-//          onload_local(i,val[0],200,val[1],true);
-
-//      onload_local(args[0],val[0],val[1],val[2],true);
-      onload_local(args[0],val[0],200,val[1],true);
-    }
-    function onload_local(sender,date,status,response_txt,from_cache) {
+    function onload_local(sender,value,from_cache) {
       var callback = req[sender].callback;
       var callback_arg = req[sender].callback_arg;
       var key = req[sender].key;
       var cache_write = req[sender].sw_cache_write;
+      var data_type = req[sender].data_type;
       delete req[sender]; // patch
-      if (!from_cache && cache_write) {
-//        caches[key] = [date, status, response_txt];
-//        setTimeout(function(){delete caches[key];},10000);
-        if (pref.info_server && brwsr.sw_cache && status==200) brwsr.sw_cache.setItem(key,JSON.stringify([date, response_txt]));
-//        if (pref.info_server && brwsr.sw_cache && status==200) brwsr.sw_cache.setItem(key,JSON.stringify([date, status, response_txt]));
+      if (!from_cache && data_type==='html') {
+        var doc = parser.parseFromString(value.responseText, 'text/html');
+        site2.common.remove_by_tagname(doc,'script');
+        doc.getElementsByTagName('head')[0].innerHTML = '';
+        value = {date:value.date, status:value.status, responseText:serializer.serializeToString(doc)};
       }
-      callback(date, status, response_txt, callback_arg);
+      if (!from_cache && cache_write) {
+//        caches[key] = [date, value.status, response_txt];
+//        setTimeout(function(){delete caches[key];},10000);
+//        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, response_txt]);
+//        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, value.status, response_txt]);
+        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,value);
+      }
+      callback(key, value, callback_arg);
     }
     function get_req(sender,domain,url,key,sw_cache){
-//      if (caches[key]) setTimeout(function(){onload_local(sender,caches[key][0],caches[key][1],caches[key][2],true);},0); // this make racing condition at checking page in catalog.
+//      if (caches[key]) setTimeout(function(){onload_local(sender,{date: caches[key][0], status: caches[key][1], responseText: caches[key][2]},true);},0); // this make racing condition at checking page in catalog.
       if ((sw_cache===true || typeof(sw_cache)==='number') && brwsr.sw_cache) brwsr.sw_cache.trygetItem(key,onload_from_sw_cache_check,[sender,domain,url,key,sw_cache]);
       else {
         if (domain==site.nickname || pref.catalog_cross_domain_connection=='direct') {
@@ -2553,14 +2590,16 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg){
         var dbt = cnst.name2domainboardthread(key,true);
         key = dbt[0]+dbt[1]+dbt[2];
-        req[sender] = {url:url, callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg};
         if (url==='')
           if (dbt[2][0]==='c' || dbt[2][0]==='p' || dbt[2][0]==='j') url = site2[dbt[0]].make_url(dbt[1],parseInt(dbt[2].substr(1),10),dbt[2][0]);
           else url = site2[dbt[0]].make_url3(dbt[1],dbt[2]);
-        get_req(sender,dbt[0],url,key,sw_cache);
+        if (typeof(url)==='string') url = [ url, 'raw'];
+        req[sender] = {url:url[0], callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg, data_type:url[1]};
+        get_req(sender,dbt[0],url[0],key,sw_cache);
       },
+      close:   function(sender){destroy_httpd(sender);},
       sub_get: function(arg){get_req(arg[0],arg[1],arg[2],arg[3],arg[4]);},
-      sub_ack: function(arg){onload_local(arg[0],arg[1],arg[2],arg[3],false);},
+      sub_ack: function(arg){onload_local(arg[0],{date: arg[1], status: arg[2], responseText: arg[3]},false);},
       remote : function(){local=false;}
     };
   })();
@@ -2702,6 +2741,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     return {
       init: function(func_str,rolldown_func,rollup_func,exit_func,maximize_func){
         var pn = document.createElement('div');
+        if (!pn.style) ph['style'] = {};
         pn.style.position = 'fixed';
         pn.draggable = true;
         pn.style.padding = '0px';
@@ -2916,9 +2956,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     var threads_req = {};
     var threads_req_mutex = true;
     var threads_opened = {};
-    function uip_auto_open(date,status,response_txt){
+    function uip_auto_open(key,value){
 //      var obj = JSON.parse(response_txt);
-      var obj = site2[site.nickname].parse_json_catalog(response_txt);
+      var obj = site2[site.nickname].parse_json_catalog(value.responseText);
       threads['max'] = 0;
       for (var i=0;i<obj.length;i++) {
         for (var j=0;j<obj[i].threads.length;j++) {
@@ -2967,10 +3007,10 @@ if (pref.debug_mode) console.log('auto_opener: '+i+': '+flag);
         http_req.get('uip_auto',key,url2,uip_auto_open,false,false);
       }
     }
-    function uip_show(date,status,response_txt){ // from http
-      uip_show_2(date,status,response_txt,true);
+    function uip_show(key,value){ // from http
+      uip_show_2(key,value,true);
     }
-    function uip_show_from_doc(date,status,response_txt){ // from document
+    function uip_show_from_doc(key,value){ // from document
  //     uip_show_2(Date.now(),1200,'',false);
      uip_show_3();
     }
@@ -3005,12 +3045,12 @@ if (pref.debug_mode) console.log('auto_opener: '+i+': '+flag);
       }
       add_dom_event_listener();
     }
-    function uip_show_2(date,status,response_txt,from_http){ // from http and doc
-//console.log(new Date(date).toLocaleTimeString()+', IN, '+from_http);
+    function uip_show_2(key,value,from_http){ // from http and doc
+//console.log(new Date(value.date).toLocaleTimeString()+', IN, '+from_http);
       waste_count++;
-      if (status==200) {
-//        var obj = JSON.parse(response_txt);
-        var obj = site2[site.nickname].parse_json_thread(response_txt,from_http);
+      if (value.status==200) {
+//        var obj = JSON.parse(value.responseText);
+        var obj = site2[site.nickname].parse_json_thread(value.responseText,from_http);
         var posts = obj.posts.length;
         var uips = obj.posts[posts-1]['unique_ips'];
         if (uips==0) uips = last_updated[2];
@@ -3034,7 +3074,7 @@ if (pref.debug_mode) console.log('auto_opener: '+i+': '+flag);
         }
         if (last_updated[0]!=no || last_updated[1]!=posts || last_updated[2]!=uips) {
 //          last_updated = [no,posts,uips,last_updated[1]+1!=posts,last_updated[2]!=uips];
-if (pref.debug_mode) console.log(new Date(date).toLocaleTimeString()+', '+no+', '+posts+', '+uips);
+if (pref.debug_mode) console.log(new Date(value.date).toLocaleTimeString()+', '+no+', '+posts+', '+uips);
           var post_hilight = (obj.posts.length<last_updated[1] || obj.posts[last_updated[1]-1]['no']!=last_updated[0]);
           var posts_deleted = '';
           if (pref.uip_tracker.deletion) {
@@ -3060,9 +3100,9 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
              if (interval>=3600) interval=3600;
             }
           }
-//          if (status!=404) setTimeout(uip_check,interval*1000);
-          var p0 = (status==200)? obj.posts[0] : null;
-          if (status!=404 && (!p0 || (!p0['archived'] && !p0['closed']))) uip_tracker_id = setTimeout(uip_check,interval*1000);
+//          if (value.status!=404) setTimeout(uip_check,interval*1000);
+          var p0 = (value.status==200)? obj.posts[0] : null;
+          if (value.status!=404 && (!p0 || (!p0['archived'] && !p0['closed']))) uip_tracker_id = setTimeout(uip_check,interval*1000);
           else uip_tracker_destroy();
         }
       } else uip_tracker_destroy();
@@ -3070,7 +3110,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     function uip_tracker_destroy(){
       remove_dom_event_listener();
       uip_tracker = null;
-if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+status);
+if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+value.status);
     }
     return function(){return uip_tracker_id;}
   }
@@ -3101,16 +3141,16 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       pn12.addEventListener('click', show_hide, false); // show_hide
     }
 
-    function scan_tags_common(ths,html_str){
-      var tags_obj = {};
+    function scan_tags_common(ths,html_str,tags_obj){
+      var acc = true;
+      if (tags_obj===undefined) {
+        tags_obj = {cs:{}, ci:{}};
+        acc = false;
+      }
       for (var i in ths) {
         var tags_th = ths[i].tags;
         if (tags_th) {
-//          var tags_th_uniq = {};
-//          for (var j=0;j<tags_th.length;j++) tags_th_uniq[tags_th[j]] = null;
-//          for (var j in tags_th_uniq)
-//            if (tags_obj[j]===undefined) tags_obj[j] = 1;
-//            else tags_obj[j]++;
+          var dbt = cnst.name2domainboardthread(i,true);
           var tags_th_uniq = {};
           for (var j=tags_th.length-1;j>=0;j--)
             if (tags_th_uniq[tags_th[j]]===undefined) tags_th_uniq[tags_th[j]] = null;
@@ -3118,50 +3158,148 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           if (tags_th.length<=pref.catalog.tag.max) {
             var end = (pref.catalog.tag.ignore<tags_th.length)? pref.catalog.tag.ignore : tags_th.length;
             for (var j=0;j<end;j++) {
-              if (tags_obj[tags_th[j]]===undefined) tags_obj[tags_th[j]] = [0,{}];
-              tags_obj[tags_th[j]][0]++;
-              tags_obj[tags_th[j]][1][i] = 0;
-            }
-          } 
-        }
-      }
-      var tags = [];
-      for (var i in tags_obj) tags.push({key:i, val:tags_obj[i][0], mem:tags_obj[i][1]});
-      tags.sort(function(a,b){return b.val - a.val;});
-      if (pref.catalog.filter.tag_ci) {
-        for (var i=0;i<tags.length-1;i++)
-          for (var j=tags.length-1;j>i;j--) {
-            var key = tags[j].key.replace(/[\*\(\)]/g,'\\$&');
-            if (tags[i].key.search(new RegExp(key,'i'))!=-1) {
-//console.log(tags[i].key+', '+tags[i].val +' + '+tags[j].key+', '+tags[j].val);
-              tags[i].val += tags[j].val;
-              for (var k in tags[j].mem) tags[i].mem[k] = 0;
-              tags.splice(j,1);
+              for (var k in tags_obj) {
+                var tag_test = (k==='cs')? tags_th[j] : tags_th[j].toLowerCase();
+                if (tags_obj[k][tag_test]===undefined) tags_obj[k][tag_test] = {num:1,mem:{}};
+                else tags_obj[k][tag_test].num++;
+                if (!tags_obj[k][tag_test].mem[dbt[0]+dbt[1]]) tags_obj[k][tag_test].mem[dbt[0]+dbt[1]] = 1;
+                else tags_obj[k][tag_test].mem[dbt[0]+dbt[1]]++;
+      }}}}}
+      if (!acc) return scan_tags_common_b(tags_obj,html_str,{cs:[],ci:[]})[0];
+    }
+    function scan_tags_common_b(tags_obj, html_str, tags){ // CAN'T FIND 1->0 AT A BOARD.
+      for (var i in tags_obj) {
+        for (var j in tags_obj[i]) {
+          var tag_ref = (i==='cs')? j : j.toLowerCase();
+          for (var n=0;n<tags[i].length;n++) {
+            var tag_test = (i==='cs')? tags[i][n].key : tags[i][n].key.toLowerCase();
+            if (tag_ref===tag_test) {
+              for (var k in tags_obj[i][j].mem) tags[i][n].mem[k] = tags_obj[i][j].mem[k]; // update.
+//var old = tags[i][n].num;
+              tags[i][n].num = 0;
+              for (var k in tags[i][n].mem) tags[i][n].num += tags[i][n].mem[k];
+//if (old!=tags[i][n].num) console.log(i+', '+j+', '+n+', '+tag_test+', '+old+', '+tags[i][n].num);
+              delete tags_obj[i][j]; // works in Chrome and FF, BUT DANGEROUS?
+              break;
             }
           }
-        for (var i in tags) {
-          var num = 0;
-          for (var j in tags[i].mem) num++;
-          tags[i].val = num;
-//var str = num + ', ';
-//for (var j in tags[i].mem) str = str + j + ', ';
-//console.log(tags[i].key+', '+str);
         }
-        tags.sort(function(a,b){return b.val - a.val;});
+        for (var j in tags_obj[i]) tags[i].push({key:j, num:tags_obj[i][j].num, mem:tags_obj[i][j].mem});
+        tags[i].sort(function(a,b){return b.num - a.num;});
       }
+      for (var i=0;i<tags.ci.length;i++) {
+        var key = tags.ci[i].key.toLowerCase();
+        for (var j=0;j<tags.cs.length;j++)
+          if (key===tags.cs[j].key.toLowerCase()) {tags.ci[i].key=tags.cs[j].key; break;}
+      }
+      var tags_tgt = (pref.catalog.filter.tag_ci)? tags.ci : tags.cs;
       var str2 = '';
-      for (var i=0;i<tags.length;i++) {
-        var item = tags[i].val + ': ' + tags[i].key;
+      for (var i=0;i<tags_tgt.length;i++) {
+        var item = tags_tgt[i].num + ': ' + tags_tgt[i].key;
         str2 = str2 + '<input type="checkbox"' + html_str + '> '+item + '<br>';
       }
-      return str2;
+      return [str2, tags];
     }
+//    function scan_tags_common(ths,html_str,tags_obj){
+//      var acc = true;
+//      if (tags_obj===undefined) {
+//        tags_obj = {cs:{}, ci:{}};
+//        acc = false;
+//      }
+//      for (var i in ths) {
+//        var tags_th = ths[i].tags;
+//        if (tags_th) {
+//          var dbt = cnst.name2domainboardthread(i,true);
+//          var tags_th_uniq = {};
+//          for (var j=tags_th.length-1;j>=0;j--)
+//            if (tags_th_uniq[tags_th[j]]===undefined) tags_th_uniq[tags_th[j]] = null;
+//            else tags_th.splice(j,1);
+//          if (tags_th.length<=pref.catalog.tag.max) {
+//            var end = (pref.catalog.tag.ignore<tags_th.length)? pref.catalog.tag.ignore : tags_th.length;
+//            for (var j=0;j<end;j++) {
+//              for (var k in tags_obj) {
+//                var tag_test = (k==='cs')? tags_th[j] : tags_th[j].toLowerCase();
+//                if (tags_obj[k][tag_test]===undefined) tags_obj[k][tag_test] = {num:0,mem:{}};
+//                tags_obj[k][tag_test].num++;
+//                tags_obj[k][tag_test].mem[dbt[0]+dbt[1]] = null;
+//      }}}}}
+//      if (!acc) return scan_tags_common_b(tags_obj,html_str)[0];
+//    }
+//    function scan_tags_common_b(tags_obj,html_str){
+//      var tags = [];
+//      for (var i in tags_obj.cs) tags.push({key:i, num:tags_obj.cs[i].num, mem:tags_obj.cs[i].mem});
+//      tags.sort(function(a,b){return b.num - a.num;});
+//      if (pref.catalog.filter.tag_ci) {
+//        for (var i=0;i<tags.length-1;i++) {
+//          var key = tags[i].key.toLowerCase();
+//          tags[i].num = tags_obj.ci[key].num;
+//          tags[i].mem = tags_obj.ci[key].mem;
+//          for (var j=tags.length-1;j>i;j--) if (key===tags[j].key.toLowerCase()) tags.splice(j,1);
+//        }
+//        tags.sort(function(a,b){return b.num - a.num;});
+//      }
+//      var str2 = '';
+//      for (var i=0;i<tags.length;i++) {
+//        var item = tags[i].num + ': ' + tags[i].key;
+//        str2 = str2 + '<input type="checkbox"' + html_str + '> '+item + '<br>';
+//      }
+//      return [str2, tags];
+//    }
+////    function scan_tags_common(ths,html_str,tags_obj,acc){
+////      if (tags_obj===undefined) tags_obj = {};
+//////      var tags_obj = {};
+////      for (var i in ths) {
+////        var tags_th = ths[i].tags;
+////        if (tags_th) {
+////          var tags_th_uniq = {};
+////          for (var j=tags_th.length-1;j>=0;j--)
+////            if (tags_th_uniq[tags_th[j]]===undefined) tags_th_uniq[tags_th[j]] = null;
+////            else tags_th.splice(j,1);
+////          if (tags_th.length<=pref.catalog.tag.max) {
+////            var end = (pref.catalog.tag.ignore<tags_th.length)? pref.catalog.tag.ignore : tags_th.length;
+////            for (var j=0;j<end;j++) {
+////              if (tags_obj[tags_th[j]]===undefined) tags_obj[tags_th[j]] = [0,{}];
+////              tags_obj[tags_th[j]][0]++;
+////              tags_obj[tags_th[j]][1][i] = 0;
+////            }
+////          } 
+////        }
+////      }
+////      if (!acc) return scan_tags_common_b(tags_obj,html_str);
+////    }
+////    function scan_tags_common_b(tags_obj,html_str){
+////      var tags = [];
+////      for (var i in tags_obj) tags.push({key:i, val:tags_obj[i][0], mem:tags_obj[i][1]});
+////      tags.sort(function(a,b){return b.val - a.val;});
+////      if (pref.catalog.filter.tag_ci) {
+////        for (var i=0;i<tags.length-1;i++) {
+////          var key = tags[i].key.toLowerCase();
+////          for (var j=tags.length-1;j>i;j--) {
+////            if (key===tags[j].key.toLowerCase()) {
+//////console.log(tags[i].key+', '+tags[i].val +' + '+tags[j].key+', '+tags[j].val);
+////              tags[i].val += tags[j].val;
+////              for (var k in tags[j].mem) tags[i].mem[k] = 0;
+////              tags.splice(j,1);
+////            }
+////          }
+////        }
+////        for (var i in tags) tags[i].val = Object.keys(tags[i].mem).length;
+////        tags.sort(function(a,b){return b.val - a.val;});
+////      }
+////      var str2 = '';
+////      for (var i=0;i<tags.length;i++) {
+////        var item = tags[i].val + ': ' + tags[i].key;
+////        str2 = str2 + '<input type="checkbox"' + html_str + '> '+item + '<br>';
+////      }
+////      return str2;
+////    }
 
     function make_catalog(){
 //      var threads = []; // This makes non-associative array.
       var threads = {}; // This makes object.
       var threads_idx = [];
       var pop_up_status = {};
+      var boards = {};
 
       var pn12_0_4 = document.createElement('div');
 //      var pn12 = cnst.init('left:0px:tile:get:bottom:resize:both:Show:tb:width:400px:height:400px:resize:both:overflow:auto',cnst.void_func,cnst.void_func,show_hide,show_catalog_cont);
@@ -3264,7 +3402,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
               '<input type="checkbox" name="catalog.filter.tag"> Tag :'+
             '</div>'+
             '<div style="float:left;overflow:auto;resize:both;" name="catalog.filter.tag_list"></div>'+
-            '<button name="scan">scan</button>'+
+            '<button name="scan">scanBoard</button>'+
 //            '<textarea style="height:1em" cols="25" name="catalog.filter.tag_list_str"></textarea>'+
             '<input type="checkbox" name="catalog.filter.tag_scan_auto"> Auto'+
             '<input type="checkbox" name="catalog.filter.tag_ci"> Case insensitive<br>'+
@@ -3284,6 +3422,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
             '<span name="scan_progress"></span><br>'+
             '<button name="clear_threads">Clear</button>'+
             '<input type="checkbox" name="catalog.filter.kwd_scan_clear_auto">Auto <br>'+
+//            '<div style="float:left;overflow:auto;resize:both;" name="catalog.filter.tag_site_list"></div>'+
+            '<input type="checkbox" name="catalog.filter.tag_scansite">scan tags<br>'+
           '</div>'+
           '<div style="clear:both"></div>'+
           '<div style="float:left">'+
@@ -3374,17 +3514,19 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         'catalog.filter.kwd_post_name' : catalog_filter_changed,
         'catalog.filter.kwd_post_file' : catalog_filter_changed,
         'catalog.filter.tag'       : catalog_filter_changed,
-        'catalog.filter.tag_list'  : catalog_filter_changed,
+//        'catalog.filter.tag_list'  : catalog_filter_changed,
         'catalog.filter.time'      : catalog_filter_changed,
         'catalog.filter.time_str'  : catalog_filter_changed,
         'catalog.filter.list'      : catalog_filter_changed,
         'catalog.filter.list_str'  : catalog_filter_changed,
-        'catalog.filter.attr_list' : catalog_filter_changed,
-        'catalog.filter.attr_list_str' : catalog_filter_changed,
+//        'catalog.filter.attr_list' : catalog_filter_changed,
+//        'catalog.filter.attr_list_str' : catalog_filter_changed,
+//        'catalog.filter.attr_list' : show_catalog, //catalog_attr_changed,
+//        'catalog.filter.attr_list_str' : show_catalog, //catalog_attr_changed
+        'catalog.filter.attr_list' : catalog_attr_changed,
+        'catalog.filter.attr_list_str' : catalog_attr_changed,
         'scan'                     : scan_tags,
-        'catalog.filter.attr_list' : show_catalog, //catalog_attr_changed,
-        'catalog.filter.attr_list_str' : show_catalog, //catalog_attr_changed
-        'scanSite' : function(){if (pref.catalog.filter.kwd_scan_clear_auto) onchange_funcs.clear_threads();scan_boards_keyword_load();},
+        'scanSite' : function(){if (pref.catalog.filter.kwd_scan_clear_auto) onchange_funcs.clear_threads();scan_boards.keyword_load('scan');},
       }
       pref_func.add_onchange(pn12_0_2,onchange_funcs);
       pref_func.add_onchange(pn12_0_4,onchange_funcs);
@@ -3394,128 +3536,219 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       var pn_filter = pn12_0_4.childNodes[1];
       if (pref.catalog.auto_load_filter) onchange_funcs.load();
 
-      var scan_progress = pn12_0_4.getElementsByTagName('span')['scan_progress'];
-      var scan_button   = pn12_0_4.getElementsByTagName('button')['scanSite'];
-      function scan_boards_keyword_load(){
-        if (scan_boards_idx>=scan_boards_max) {
-          scan_button.innerHTML = 'Cancel';
-          scan_progress.innerHTML = 'Loading boards\' information';
-          if (!site3[site.nickname].boards) http_req.get('scan',site.nickname,site2[site.nickname].url_boards_json(),scan_boards_keyword_callback,pref.scan.lifetime*60,true);
-          else scan_boards_keyword_init();
-        } else {
-          scan_boards_max = scan_boards_idx;
-          scan_button.innerHTML = 'scanSite';
-        }
-      }
-      function scan_boards_keyword_callback(date,status,response_txt){
-        if (status==200) {
-          site3[site.nickname].boards = JSON.parse(response_txt);
-          scan_progress.innerHTML = '0';
-          scan_boards_keyword_init();
-        }
-      }
-      var scan_boards_idx = 0;
-      var scan_boards_max = 0;
-      var scan_boards_found = 0;
-      var scan_boards_found_board = 0;
-      var scan_boards_scanned = 0;
-      var scan_boards_crawler;
-      var scan_boards_error;
-      var scan_boards_crawler_timer = null;
-      function scan_boards_keyword_init(){
-        var obj = site3[site.nickname].boards;
-        scan_boards_idx = 0;
-        scan_boards_found = 0;
-        scan_boards_found_board = 0;
-        scan_boards_scanned = 0;
-        scan_boards_max = (obj.length>pref.scan.max)? pref.scan.max : obj.length;
-        while (obj[scan_boards_max-1].max===null) scan_boards_max--;
-        scan_boards_error = '';
-        scan_boards_crawler = 0;
-        while (scan_boards_crawler<pref.scan.crawler) {
-          scan_boards_spawn_crawler();
-          if (pref.scan.crawler_adaptive) break;
-        }
-      }
-      function scan_boards_spawn_crawler(){
-        scan_boards_keyword('scan'+scan_boards_crawler++,200);
-//console.log('spawn '+scan_boards_crawler);
-      }
-      function scan_boards_keyword(sender,status){
-        var obj = site3[site.nickname].boards;
-        if (scan_boards_idx<scan_boards_max && scan_boards_found<pref.scan.max_threads && status<500) {
-          var tgt_db = site.nickname+'/'+obj[scan_boards_idx].uri+'/';
-          var tgt    = tgt_db + ((pref.catalog.catalog_json)? 'j0' : 'c0');
-          scan_boards_idx++;
-          scan_progress.innerHTML = scan_boards_found+'/'+scan_boards_scanned+', '+scan_boards_found_board+'/'+scan_boards_idx+'/'+scan_boards_max+', ' + tgt_db;
-          var val = catalog_obj_merge(tgt,pref.catalog.board.ex_list_obj2,null);
-          if (!val.hit) {
-            http_req.get(sender,tgt,'',scan_boards_keyword_callback2,pref.scan.lifetime*60,true,[tgt,sender]); 
-            if (pref.scan.crawler_adaptive) {
-              if (scan_boards_crawler_timer!==null) {clearTimeout(scan_boards_crawler_timer);scan_boards_crawler_timer=null;}
-              if (scan_boards_crawler<pref.scan.crawler) scan_boards_crawler_timer = setTimeout(scan_boards_spawn_crawler,100);
-            }
-          } else scan_boards_keyword(sender,200);
-        } else if (--scan_boards_crawler==0) {
-          scan_progress.innerHTML = scan_boards_found+'/'+scan_boards_scanned+', '+scan_boards_found_board+'/'+scan_boards_max
-                                  + '<span style="color:red">'
-                                  +( (scan_boards_error!=='')? ', Error at loading '+scan_boards_error :
-                                     ((scan_boards_found>=pref.scan.max_threads)? ', Aborted.(Reached upper limit)' : ''))
-                                  + '</span>'
-          scan_boards_max = scan_boards_idx;
-          scan_button.innerHTML = 'scanSite';
-        }
-      }
-      function scan_boards_keyword_callback2(date,status,response_txt,args){
-        if (pref.scan.crawler_adaptive && scan_boards_crawler_timer!==null) {clearTimeout(scan_boards_crawler_timer);scan_boards_crawler_timer=null;}
-        var dbt = cnst.name2domainboardthread(args[0],true);
-        if (status==200 && scan_boards_found<pref.scan.max_threads) {
-          var ths;
-          if (dbt[2]=='j0') {
-            var obj = JSON.parse(response_txt);
-            for (var i=0;i<obj.length;i++) {
-              scan_boards_scanned += obj[i].threads.length;
-              for (var j=obj[i].threads.length-1;j>=0;j--) {
-                var search_obj = [obj[i].threads[j].com, obj[i].threads[j].sub, obj[i].threads[j].name,'','','','',''];
-                if (!catalog_filter_query_keyword(search_obj)) obj[i].threads.splice(j,1);
-              }
-            }
-//            for (var i=0;i<obj.length;i++) scan_boards_scanned += obj[i].threads.length; // NOT SO FAST.
-//            var kwd = pref.catalog.filter.kwd_str;
-//            if (pref.catalog.filter.kwd && kwd!=='') {
-//              if (!pref.catalog.filter.kwd_re) kwd = kwd.replace(/\*/g,'.*');
-//              if (pref.catalog.filter.kwd_ci) kwd = new RegExp(kwd,'i');
-//              for (var i=0;i<obj.length;i++) {
-//                for (var j=obj[i].threads.length-1;j>=0;j--) {
-//                  var str = obj[i].threads[j].name + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].com;
-//                  var result = (str.search(kwd)!=-1);
-//                  if (pref.catalog.filter.kwd_match==='unmatch') result = !result;
-//                  if (!result) obj[i].threads.splice(j,1);
-//                }
-//              }
-//            }
-            ths = site2[dbt[0]].catalog_from_json2(obj,dbt[1]); // heavy, and cause loading in chrome.
-          } else {
-            var doc = new DOMParser().parseFromString(response_txt, 'text/html');
-            ths = site2[dbt[0]].catalog_from_native(date,doc,dbt[1]);
-            scan_boards_scanned += ths.length;
-            for (var i=ths.length-1;i>=0;i--) 
-              if (!catalog_filter_query_keyword(ths[i].search_obj)) ths.splice(i,1);
-          }         
-          if (ths.length!=0) {
-            scan_boards_found_board++;
-            scan_boards_found += ths.length;
-            var tgts = {};
-            for (var i=0;i<ths.length;i++) {
-              insert_thread_from_native(ths[i], dbt[0], dbt[1], false, date);
-              tgts[dbt[0]+dbt[1]+ths[i].no] = true;
-            }
-            show_catalog(tgts);
-            if (pref.catalog.filter.tag_scan_auto) scan_tags();
+      var tags_scan_regex = new RegExp('#[^#, \.:;\n]+(?=#|,| |\.|:|;|\n|$)','g'); // ATTENTION. REFER function prep_tag_str();
+      var scan_boards = (function(){
+        var scan_progress = pn12_0_4.getElementsByTagName('span')['scan_progress'];
+        var scan_button   = pn12_0_4.getElementsByTagName('button')['scanSite'];
+        var scan_boards   = {args:{}, crawler_timer:null, pool:null};
+        function keyword_load(key){
+          if (scan_boards_check_pre(key,true)) {
+            scan_button.innerHTML = 'Cancel';
+            if (!site3[site.nickname].boards) {
+              http_req.get(key,site.nickname,site2[site.nickname].url_boards_json(),scan_boards_keyword_callback,pref.scan.lifetime*60,true,key);
+              scan_progress.innerHTML = 'Loading boards\' information';
+            } else scan_boards_keyword_init(key);
           }
-        } else if (status!=200) scan_boards_error = ((scan_boards_error==='')? '' : ', ') + key;
-        scan_boards_keyword(args[1],status);
-      }
+        }
+        function scan_boards_keyword_callback(key,value,scan_key){
+          if (value.status==200) {
+            site3[site.nickname].boards = JSON.parse(value.responseText);
+            scan_boards_keyword_init(scan_key);
+          } else scan_progress.innerHTML = 'Error at loading board\'s infomation.';
+        }
+        function scan_boards_check_pre(key,button_cap){
+          if (scan_boards.args[key]) {
+            if (scan_boards.args[key].max != scan_boards.args[key].idx) scan_boards.args[key].max = scan_boards.args[key].idx;
+            else {
+              delete scan_boards.args[key];
+              if (button_cap) scan_button.innerHTML = 'scanSite';
+            }
+            return false;
+          } else return true;
+        }
+        function scan_boards_keyword_init(key){
+          scan_boards_init(key, site3[site.nickname].boards,pref.catalog.filter.tag_scansite,pref.catalog.filter.tag_scansite,pref.scan.lifetime*60);
+        }
+        function tag_init(key,mem,lifetime){
+          if (Object.keys(mem).length==0) return;
+          if (!scan_boards_check_pre(key,false)) return;
+          var obj = [];
+          for (var i in mem) obj.push({uri:cnst.name2domainboardthread(i,true)[1].replace(/\//g,'')});
+          scan_boards_init(key, obj,true,false,lifetime);
+        }
+        function scan_boards_init(key,obj,scan_tag,store_tag,lifetime){
+          if (!scan_boards.pool) scan_boards.pool = {div: document.createElement('div'), parser: new DOMParser(), doc: null, ths: null, dbt: null, tgts: null, tags:{cs:{}, ci:{}}};
+  //        var obj = site3[site.nickname].boards;
+          scan_boards.args[key] = {
+                key: key,
+                idx: 0,
+                max: (obj.length>pref.scan.max)? pref.scan.max : obj.length,
+                found_threads: 0,
+                found_boards: 0,
+                scanned: 0,
+                error: '',
+                crawler: 0,
+                obj: obj,
+//                scan_tag: scan_tag,
+//                store_tag: store_tag,
+                scan_tag: pref.catalog.filter.tag_scansite,
+                store_tag: pref.catalog.filter.tag_scansite,
+                lifetime: lifetime,
+                pool: scan_boards.pool,
+                spawn_crawler: function(){scan_boards_spawn_crawler(scan_boards.args[key]);}};
+          var sb = scan_boards.args[key];
+          while (obj[sb.max-1].max===null) sb.max--;
+          while (sb.crawler<pref.scan.crawler) {
+            scan_boards_spawn_crawler(sb);
+            if (pref.scan.crawler_adaptive) break;
+          }
+        }
+        function scan_boards_spawn_crawler(sb){
+          scan_boards_keyword([sb.key+sb.crawler++,sb],200);
+  //console.log('spawn '+sb.crawler);
+        }
+        function scan_boards_crawler_timer_clear(){
+          if (scan_boards.crawler_timer!==null) {
+            clearTimeout(scan_boards.crawler_timer);
+            scan_boards.crawler_timer=null;
+          }
+        }
+        function scan_boards_keyword(args,status){
+          var sender = args[0];
+          var sb = args[1];
+          if (sb.idx<sb.max && sb.found_threads<pref.scan.max_threads && status<500) {
+            var tgt_db = site.nickname+'/'+sb.obj[sb.idx].uri+'/';
+            var tgt    = tgt_db + ((pref.catalog.catalog_json)? 'j0' : 'c0');
+            sb.idx++;
+            scan_progress.innerHTML = sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.idx+'/'+sb.max+', ' + tgt_db;
+            var val = catalog_obj_merge(tgt,pref.catalog.board.ex_list_obj2,null);
+            if (!val.hit) {
+              http_req.get(sender,tgt,'',scan_boards_keyword_callback2,sb.lifetime,true,args); 
+              if (pref.scan.crawler_adaptive) {
+                scan_boards_crawler_timer_clear();
+                if (sb.crawler<pref.scan.crawler) scan_boards.crawler_timer = setTimeout(sb.spawn_crawler,100);
+              }
+            } else scan_boards_keyword(sender,200);
+          } else {
+            http_req.close(sender);
+            if (--sb.crawler==0) {
+              scan_progress.innerHTML = sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.max
+                                      + '<span style="color:red">'
+                                      +( (sb.error!=='')? ', Error at loading '+sb.error :
+                                         ((sb.found_threads>=pref.scan.max_threads)? ', Aborted.(Reached upper limit)' : ''))
+                                      + '</span>'
+//              sb.max = sb.idx;
+              scan_button.innerHTML = 'scanSite';
+              if (sb.store_tag) {
+  //console.log(new Date());
+  //              scan_tags_init(sb.pool.tags);
+                var ret_obj = scan_tags_common_b(sb.pool.tags,'',site3[site.nickname].tags);
+                site3[site.nickname].tags = ret_obj[1];
+                scan_tags_init(ret_obj[0],true);
+  //              sb.pool.div.innerHTML = '';
+  //console.log(new Date());
+              }
+//              sb = null;
+              delete scan_boards.args[sb.key];
+              if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
+            }
+          }
+        }
+        function scan_boards_keyword_callback2(key,value,args){
+          var sb = args[1];
+          if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
+          sb.pool.dbt = cnst.name2domainboardthread(key,true);
+          if (value.status==200 && sb.found_threads<pref.scan.max_threads) {
+            if (sb.pool.dbt[2]=='j0') {
+              var obj = JSON.parse(value.responseText);
+  //            if (sb.scan_tag) {
+  //              for (var i=0;i<obj.length;i++) {
+  //                for (var j=0;j<obj[i].threads.length;j++) {
+  //                  sb.pool.div.innerHTML = obj[i].threads[j].com;
+  //                  obj[i].threads[j].tags = tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+obj[i].threads[j].no,sb.pool.div,sb);
+  //                }
+  //            }}
+              for (var i=0;i<obj.length;i++) {
+                if (obj[i].threads) {
+                  sb.scanned += obj[i].threads.length;
+                  for (var j=0;j<obj[i].threads.length;j++) {
+                    if (sb.scan_tag) {
+                      sb.pool.div.innerHTML = obj[i].threads[j].com + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].name;
+                      tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+obj[i].threads[j].no,sb.pool.div,sb);
+                    }
+                    var search_obj = [obj[i].threads[j].com, obj[i].threads[j].sub, obj[i].threads[j].name,'','','','',''];
+                    if (!catalog_filter_query_scan(search_obj,sb.pool.div.tags)) {obj[i].threads.splice(j,1);j--;}
+                  }
+                }
+              }
+  //            for (var i=0;i<obj.length;i++) sb.scanned += obj[i].threads.length; // NOT SO FAST.
+  //            var kwd = pref.catalog.filter.kwd_str;
+  //            if (pref.catalog.filter.kwd && kwd!=='') {
+  //              if (!pref.catalog.filter.kwd_re) kwd = kwd.replace(/\*/g,'.*');
+  //              if (pref.catalog.filter.kwd_ci) kwd = new RegExp(kwd,'i');
+  //              for (var i=0;i<obj.length;i++) {
+  //                for (var j=obj[i].threads.length-1;j>=0;j--) {
+  //                  var str = obj[i].threads[j].name + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].com;
+  //                  var result = (str.search(kwd)!=-1);
+  //                  if (pref.catalog.filter.kwd_match==='unmatch') result = !result;
+  //                  if (!result) obj[i].threads.splice(j,1);
+  //                }
+  //              }
+  //            }
+              if ((pref.catalog.filter.kwd && pref.catalog.filter.kwd_str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))
+                sb.pool.ths = site2[sb.pool.dbt[0]].catalog_from_json2(obj,sb.pool.dbt[1]); // heavy, and cause loading in chrome.
+              else sb.pool.ths = [];
+            } else {
+              sb.pool.doc = sb.pool.parser.parseFromString(value.responseText, 'text/html');
+              sb.pool.ths = site2[sb.pool.dbt[0]].catalog_from_native(value.date,sb.pool.doc,sb.pool.dbt[1]);
+  //            if (sb.scan_tag) for (var i=0;i<sb.pool.ths.length;i++) sb.pool.ths[i].tags = tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+sb.pool.ths[i].no,sb.pool.ths[i].pn,sb);
+              sb.scanned += sb.pool.ths.length;
+              for (var i=0;i<sb.pool.ths.length;i++) {
+                if (sb.scan_tag) tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+sb.pool.ths[i].no,sb.pool.ths[i].pn,sb);
+                if (!catalog_filter_query_scan(sb.pool.ths[i].search_obj,sb.pool.ths[i].pn.tags)) {sb.pool.ths.splice(i,1);i--;}
+              }
+            }         
+            if (sb.pool.ths.length!=0 && ((pref.catalog.filter.kwd && pref.catalog.filter.kwd_str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))) {
+              sb.found_boards++;
+              sb.found_threads += sb.pool.ths.length;
+              sb.pool.tgts = {};
+              for (var i=0;i<sb.pool.ths.length;i++) {
+                insert_thread_from_native(sb.pool.ths[i], sb.pool.dbt[0], sb.pool.dbt[1], false, value.date);
+                sb.pool.tgts[sb.pool.dbt[0]+sb.pool.dbt[1]+sb.pool.ths[i].no] = true;
+              }
+              show_catalog(sb.pool.tgts);
+  //            if (pref.catalog.filter.tag_scan_auto) scan_tags();
+            }
+          } else if (value.status!=200) sb.error = ((sb.error==='')? '' : ', ') + key;
+          scan_boards_keyword(args,value.status);
+        }
+  
+        function tag_scan_extract_1(key,pn,sb) {
+  //        sb.pool.tags[key] = {};
+  //        var tags = pn[brwsr.innerText].match(tags_scan_regex);
+  //        sb.pool.tags[key].tags = tags;
+  ////        var tags = div[brwsr.innerText].match(tags_scan_regex);
+  ////        if (tags) {
+  ////          var tags_uniq = {};
+  ////          for (var k=0;k<tags.length;k++) tags_uniq[tags[k]] = 1;
+  ////          for (var k in tags_uniq) {
+  ////            if (sb.pool.tags[k]===undefined) sb.pool.tags[k] = [];
+  ////            sb.pool.tags[k].push(key);
+  ////          }
+  ////        }
+  //        return tags;
+          pn.tags = pn[brwsr.innerText].match(tags_scan_regex);
+          var ths = {};
+          ths[key] = pn;
+          scan_tags_common(ths,'',sb.pool.tags);
+  //        scan_tags_common({key:pn},'',sb.pool.tags,true);
+  //        return pn.tags;
+        }
+        return {
+          keyword_load: keyword_load,
+          tag_init: tag_init
+        }
+      }());
 
       function catalog_resized() {
         for (var i in threads) {
@@ -3554,7 +3787,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       var search_ex_list = pn_filter.getElementsByTagName('textarea')['catalog.filter.list_str'];
       search_ex_list.onkeyup = pn_filter_changed;
       var attr_list = pn_filter.getElementsByTagName('textarea')['catalog.filter.attr_list_str'];
-      attr_list.onkeyup = pn_filter_changed;
+      attr_list.onkeyup = catalog_attr_changed;
 //      pn_filter.onchange = pn_filter_changed;
       function pn_filter_changed(){
         pref_func.apply_prep(pn_filter,true);
@@ -3568,59 +3801,65 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         var j=0;
         for (var i in threads) {
           ths[j] = {};
-          ths[j++].tags = threads[i][0][brwsr.innerText].match(/#[^#, \.:;\n]+(?=#|,| |\.|:|;|\n|$)/g); // ATTENTION. DESCRIPTION IS ALSO EXIST IN CATALOG_FILTER_QUERY().
+          ths[j++].tags = threads[i][0][brwsr.innerText].match(tags_scan_regex); // ATTENTION. DESCRIPTION IS ALSO EXIST IN CATALOG_FILTER_QUERY().
         }
         var str2 = scan_tags_common(ths,'');
-//        var tags_obj = {};
-//        for (var i in threads) {
-//          var tags_th = threads[i][0][brwsr.innerText].match(/#[^#, \n]+(?=#|,| |\n|$)/g);
-//          if (tags_th) {
-////            var tags_th_uniq = {};
-////            for (var j=0;j<tags_th.length;j++) tags_th_uniq[tags_th[j]] = null;
-////            for (var j in tags_th_uniq)
-////              if (tags_obj[j]===undefined) tags_obj[j] = 1;
-////              else tags_obj[j]++;
-//            var tags_th_uniq = {};
-//            for (var j=tags_th.length-1;j>=0;j--)
-//              if (tags_th_uniq[tags_th[j]]===undefined) tags_th_uniq[tags_th[j]] = null;
-//              else tags_th.splice(j,1);
-//            if (tags_th.length<=pref.catalog.tag.max) {
-//              var end = (pref.catalog.tag.ignore<tags_th.length)? pref.catalog.tag.ignore : tags_th.length;
-//              for (var j=0;j<end;j++)
-//                if (tags_obj[tags_th[j]]===undefined) tags_obj[tags_th[j]] = 1;
-//                else tags_obj[tags_th[j]]++;
-//            } 
-//          }
-//        }
-//        var tags = [];
-//        for (var i in tags_obj) tags.push({key:i, val:tags_obj[i]});
-//        tags.sort(function(a,b){return b.val - a.val;});
-//        if (pref.catalog.filter.tag_ci) {
-//          for (var i=0;i<tags.length-1;i++)
-//            for (var j=tags.length-1;j>i;j--) {
-//              var key = tags[j].key.replace(/[\*\(\)]/g,'\\$&');
-//              if (tags[i].key.search(new RegExp(key,'i'))!=-1) {
-//                tags[i].val += tags[j].val;
-//                tags.splice(j,1);
-//              }
-//            }
-//          tags.sort(function(a,b){return b.val - a.val;});
-//        }
-////        var str = '';
-//        var str2 = '';
-//        for (var i=0;i<tags.length;i++) {
-//          var item = tags[i].val + ': ' + tags[i].key;
-////          str  = str  + item + '\n';
-//          str2 = str2 + '<input type="checkbox"> '+item + '<br>';
-//        }
-////        var pn_tag_list_str = pn_filter.getElementsByTagName('textarea')['catalog.filter.tag_list_str'];
-////        pn_tag_list_str.value = str;
-////        pref_func.apply_prep(pn_tag_list_str,true);
+        scan_tags_init(str2,false);
+      }
+      function scan_tags_init(str2, reload){
         var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
-        pn_tag_list.onchange = pn_filter_changed;
+        pn_tag_list.onchange = function(){prep_tag_str(null,reload);};
         pn_tag_list.innerHTML = str2;
         if (pn_tag_list.style.height=='') pn_tag_list.style.height = '30px';
         if (pn_tag_list.style.width=='') pn_tag_list.style.width = '100px';
+//        prep_tag_str(true,reload);
+        prep_tag_str(true,false);
+      }
+      var filter_tags = [];
+      function prep_tag_str(keep,reload){
+        var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
+        var cbxes = pn_tag_list.getElementsByTagName('input');
+        if (keep===true) {
+          for (var i=0;i<filter_tags.length;i++) filter_tags[i] = filter_tags[i].toString().replace(/^\//,'').replace(/\(.*\n*.*/,'');
+          var tags = [];
+          for (var i=0;i<cbxes.length;i++) tags[i] = cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'');
+          for (var i=0;i<filter_tags.length;i++)
+            for (var j=0;j<cbxes.length;j++)
+              if (tags[j]==filter_tags[i]) cbxes[j].checked = true;
+        }
+        filter_tags = [];
+        var tgts = {};
+        for (var i=0;i<cbxes.length;i++)
+          if (cbxes[i].checked) {
+            filter_tags.push(new RegExp(cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'').replace(/$/,'(#|,| |\\.|:|;|\n|$)'),(pref.catalog.filter.tag_ci)? 'i' : '')); // ATTENTION. REFER tag_scan_regex.
+            if (reload) {
+              var tags_tgt = (pref.catalog.filter.tag_ci)? site3[site.nickname].tags.ci[i].mem : site3[site.nickname].tags.cs[i].mem;
+              for (var j in tags_tgt) tgts[j] = null;
+            }
+          }
+        if (reload) {
+          if (Object.keys(tgts).length!=0) {
+            pref.catalog.filter.tag = true;
+            pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.tag'],false);
+          }
+        }
+        pn_filter_changed();
+        if (reload) {
+//          for (var i in tgts) console.log(i);
+
+//          load_list.tag.tgts = []; // working code.
+//          for (var i in tgts) load_list.tag.tgts.push(i+'c0');
+////          load_list.tag.use_cache = !refresh;
+//          load_list.tag.idx = 0;
+//          load_list.tag.mutex = true;
+//          load_list.tag.from_auto = false;
+//          load_list.tag.tgts = trim_list(load_list.tag.tgts,false);
+//          if (pref.catalog_refresh_clear) catalog_clear_threads(pref.catalog.max_threads_at_refresh);
+//          if (load_list.tag.idx<load_list.tag.tgts.length) get_page(load_list.tag);
+          scan_boards.tag_init('refresh',tgts,pref.scan.lifetime*60);
+          set_auto_update();
+          filter_tags_refresh_mem = tgts;
+        }
       }
 //      function load_save_key(){
 //        return pref.script_prefix + '.catalog.adv_str.' + pref.catalog_board_list_obj[board_sel.selectedIndex][0].key;
@@ -3880,9 +4119,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         var name = nickname + boardname + op_no;
         if (snoop && !pref.catalog_promiscuous && !threads[name]) {
           var hit = false;
-          for (var i=0;i<refresh_tgts.length;i++)
-            if (refresh_tgts[i][0].indexOf(nickname+boardname+'p'+page_no)!=-1 ||
-                refresh_tgts[i][0].indexOf(nickname+boardname+op_no)!=-1) {hit=true;break;}
+          for (var i=0;i<load_list.refresh.tgts.length;i++)
+            if (load_list.refresh.tgts[i][0].indexOf(nickname+boardname+'p'+page_no)!=-1 ||
+                load_list.refresh.tgts[i][0].indexOf(nickname+boardname+op_no)!=-1) {hit=true;break;}
           if (!hit) return 0;
         }
         var date = site2[nickname].get_time_of_posts(src);
@@ -3904,7 +4143,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         trim_html(src,  nickname, pref.catalog_format.show, date_mark);
 //        trim_html(src1, nickname, pref.catalog_format.hover, date_mark);
         trim_html(src2, nickname, pref.catalog_format.search, date_mark);
-        return insert_thread(src, nickname, page_no, date_load, name, html_org, date, src2, url, false);
+        insert_thread(src, nickname, page_no, date_load, name, html_org, date, src2, url, false);
       }
       function insert_thread(src, nickname, page_no, date_load, name, html_org, date, src2, url, from_native, th){
         var ch = threads[name];
@@ -3912,10 +4151,11 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           if (th && th.exist) ch = th.pn; // native on base board
           else {
             ch = document.createElement('div');
-            catalog_attr_set(name,ch);
+//            catalog_attr_set(name,ch);
           }
           ch.name = name;
-          if (from_native) th.init_func(ch);
+//          if (from_native) th.init_func(ch);
+          if (from_native) site2[nickname].catalog_from_native_init_elem_func(ch);
           if (!(pref.catalog.embed && site.catalog) || !from_native) {
             ch.style.width  = pref.catalog_size_width + 'px';
             ch.style.height = pref.catalog_size_height + 'px';
@@ -3923,6 +4163,8 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
             ch.style.overflow = 'hidden';
             ch.style.background = '#e5ecf9';
           }
+          if (!ch.style) ch['style'] = {};
+          catalog_attr_set(name,ch);
 //          threads[name] = [ch, false, (from_native)? [catalog_triage_in, null] : [func_in, func_pop_up],
           threads[name] = [ch, (th && th.exist), (from_native)? [catalog_triage_in, null] : [func_in, func_pop_up],
                            [html_org, nickname],
@@ -3930,10 +4172,14 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
                            (from_native)? click_thread_native : click_thread, null, url, date, true,
                            null,
                            null, null, date_load, page_no, 0,
-                           (from_native && brwsr.ff)? th.init_func : null];
+//                           (from_native && brwsr.ff)? th.init_func : null, // 16
+                           null, // 16, NOT USED
+                           src[brwsr.innerText].match(tags_scan_regex)]; //17
           ch.addEventListener('mouseover', threads[name][2][0], false);
           ch.addEventListener('click', threads[name][5], true);
           if (!from_native && pref.catalog_expand_at_initial) expand_shrink_thread(name);
+          var dbt = cnst.name2domainboardthread(name,true);
+          boards[dbt[0]+dbt[1]] = null;
 //console.log(name+', '+threads[name][8]);
         } else {
           for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
@@ -3953,7 +4199,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           threads[name][11] = add_open_new_thread_event(name,site2[nickname].modify_thread_link(ch));
         }
 //        if (pref.catalog.embed && site.catalog) triage_parent.appendChild(ch);
-        return insert_thread_idx(name);
+        insert_thread_idx(name);
       }
       function func_in(e){pop_up_delay(e,this.name);catalog_triage_in(this.name);}
       function func_pop_up(e){pop_up_delay(e,this.name);}
@@ -3961,12 +4207,10 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         var indexing = pref.catalog.indexing;
         var date = threads[name][8][indexing];
         var ref=0;
-        while (ref<threads_idx.length && date<=threads[threads_idx[ref]][8][indexing]) ref++;
+        while (ref<threads_idx.length && threads_idx[ref].substr(0,4)!=='ODL:' && date<=threads[threads_idx[ref]][8][indexing]) ref++;
         if (ref==threads_idx.length) threads_idx.push(name);
         else threads_idx.splice(ref,0,name);
-//        console.log(threads_idx);
-//        show_catalog();
-        return ref;
+//        return ref;
       }
       function expand_shrink_thread(name){
         if (pref.catalog_click=='expand') {
@@ -4032,14 +4276,16 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         var ref_count = 0;
         var ref_height = (pref.catalog.embed && site.catalog)? brwsr.document_body.scrollTop + window.innerHeight*1.5
                                                              : triage_parent.scrollTop + triage_parent.clientHeight*1.5;
+        var load_tgt = '';
         for (var i=0;i<threads_idx.length;i++) {
 //console.log(drawn_y+', '+triage_parent.scrollTop+', '+triage_parent.clientHeight*1.5+', '+ref_height);
-//          if ((!pref.catalog_draw_on_demand) || drawn_y<triage_parent.scrollTop + triage_parent.clientHeight*1.5) {
           if ((!pref.catalog_draw_on_demand) || drawn_y<ref_height) {
             var name = threads_idx[i];
-            if (name==='url') {
-              threads_idx.splice(i,1);
-              get_page(true);
+            if (name.substr(0,4)==='ODL:') {
+              if (load_tgt==='') {
+                load_tgt = name;
+                threads_idx.splice(i--,1);
+              }
             } else {
               var ch = threads[name][0];
               if (tgts===undefined || tgts[name]) {
@@ -4049,17 +4295,17 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
                   else ch = triage_parent.insertBefore(ch,ref);
                   var nickname = name.replace(/\/.*/,'');
                   if (pref.catalog.filter.list_mark_time && threads[name][9][1]) site2[nickname].mark_newer_posts(ch,threads[name][9][1]);
-                  if (!brwsr.ff) catalog_attr_set(name,ch);
+//                  if (!brwsr.ff) catalog_attr_set(name,ch);
                   if (!threads[name][1]) {
-                    if (brwsr.ff) {
-                      ch.setAttribute('style','float: left');
-                      ch.style.width  = pref.catalog_size_width + 'px';
-                      ch.style.height = pref.catalog_size_height + 'px';
-                      ch.style.overflow = 'hidden';
-                      ch.style.resize ='both';
-                      catalog_attr_set(name,ch);
-                      if (threads[name][16]) threads[name][16](ch);
-                    }
+//                    if (brwsr.ff) {
+//                      ch.setAttribute('style','float: left');
+//                      ch.style.width  = pref.catalog_size_width + 'px';
+//                      ch.style.height = pref.catalog_size_height + 'px';
+//                      ch.style.overflow = 'hidden';
+//                      ch.style.resize ='both';
+//                      catalog_attr_set(name,ch);
+//                      if (threads[name][16]) threads[name][16](ch);
+//                    }
                     threads[name][0] = ch;
                     threads[name][1] = true;
 //                    threads[name][11] = add_open_new_thread_event(name,site2[nickname].modify_thread_link(ch));
@@ -4080,6 +4326,12 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
             }
           } else break;
         }
+        if (load_tgt!=='') 
+          if (load_list.ondemand.mutex) {
+            load_list.ondemand.idx  = 0;
+            load_list.ondemand.tgts = [load_tgt.substr(4)];
+            get_page(load_list.ondemand);
+          } else threads_idx.unshift(load_tgt);
       }
       scroll_event_src.addEventListener('scroll', show_catalog_cont, false);
 
@@ -4093,8 +4345,17 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //            var stl = styles[i].split(':');
 //            pn.style[stl[0]] = stl[1];
 //          }
-          for (var stl in val)
-            if (stl.indexOf('style')==0) pn.style[stl.substr(6)] = val[stl];
+//console.log('catalog_attr_set :'+name+', '+val.toSource());
+//          for (var stl in val)
+//            if (stl.indexOf('style')==0) pn.style[stl.substr(6)] = val[stl];
+//          for (var stl in val) {
+//            if (stl.indexOf('style')==0 && stl.length>6) pn.style[stl.substr(6)] = val[stl];
+//            if (stl.indexOf('style')==0 && stl.length>6) {
+//              pn.setAttribute('style',pn.getAttribute('style')+stl.substr(6)+':'+val[stl]+';');
+//              console.log('catalog_attr_set_1 :'+name+', '+pn.getAttribute('style')+';'+stl.substr(6)+val[stl]+':');
+//            }
+//          }
+          for (var stl in val.style) pn.style[stl] = val.style[stl];
         }
       }
     
@@ -4146,6 +4407,17 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
         return flag;
       }
+      function catalog_filter_query_tag(str){
+//        if (!pref.catalog.filter.tag || filter_tags.length==0) return true;
+        if (!pref.catalog.filter.tag) return true;
+        if (filter_tags.length==0) return false;
+        if (!str) return false;
+//console.log(str);
+        for (var i=0;i<str.length;i++)
+          for (var j=0;j<filter_tags.length;j++)
+            if (str[i].search(filter_tags[j])!=-1) return true;
+        return false;
+      }
       function catalog_filter_query(name){
         if (!catalog_filter_query_keyword(threads[name][4])) return [false];
 //        var kwd = pref.catalog.filter.kwd_str;
@@ -4157,24 +4429,31 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //          var match = (pref.catalog.filter.kwd_match==='match');
 //          if ((match && !result) || (!match && result)) return [false];
 //        }
-        if (pref.catalog.filter.tag) {
-          var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
-          var cbxes = pn_tag_list.getElementsByTagName('input');
-          var tags = '';
-          for (var i=0;i<cbxes.length;i++)
-            if (cbxes[i].checked) tags = tags + cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'').replace(/$/,'(#|,| |\.|:|;|\n|$)') + '|'; // ATTENTION. DESCRIPTION IS ALSO EXIST IN SCAN_TAGS().
-          if (tags!=='') {
-            tags = tags.replace(/\|$/,'');
-            if (pref.catalog.filter.tag_ci) tags = new RegExp(tags,'i');
-            var str = threads[name][0][brwsr.innerText];
-//if (name==='8chan/gamergate/63349') {
-//  console.log(tags);
-//  console.log(str);
-//  console.log(str.search(tags));
-//}
-            if (str.search(tags)==-1) return [false];
-          }
-        }
+//        if (pref.catalog.filter.tag) {
+//          var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
+//          var cbxes = pn_tag_list.getElementsByTagName('input');
+//          var tags = '';
+//          for (var i=0;i<cbxes.length;i++)
+//            if (cbxes[i].checked) tags = tags + cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'').replace(/$/,'(#|,| |\.|:|;|\n|$)') + '|'; // ATTENTION. DESCRIPTION IS ALSO EXIST IN SCAN_TAGS().
+//          if (tags!=='') {
+//            tags = tags.replace(/\|$/,'');
+//            if (pref.catalog.filter.tag_ci) tags = new RegExp(tags,'i');
+//            var str = threads[name][0][brwsr.innerText];
+//            if (str.search(tags)==-1) return [false];
+//          }
+//        }
+        if (!catalog_filter_query_tag(threads[name][17])) return [false];
+//        if (pref.catalog.filter.tag && filter_tags.length!=0) {
+//          var str = threads[name][17];
+//          if (!str) return [false];
+//          else {
+//            var flag = false;
+//            for (var i=0;i<str.length;i++)
+//              for (var j=0;j<filter_tags.length;j++)
+//                if (str[i].search(filter_tags[j])!=-1) {flag = true; break;}
+//            if (!flag) return [false];
+//          }
+//        }
         if (pref.catalog.filter.time) {
           var time = Date.parse(pref.catalog.filter.time_str) - pref.localtime_offset*3600000;
           if (threads[name][8][0]<=time) return [false];
@@ -4182,6 +4461,11 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         if (pref.catalog.filter.list || pref.catalog.filter.list_mark_time) return catalog_filter_query_time_list(name);
 //        else if (pref.catalog.filter.list_mark_time) [true, get_mark_time(name)];
         else return [true];
+      }
+      function catalog_filter_query_scan(kwd,tags){
+        if (!catalog_filter_query_keyword(kwd)) return false;
+        if (!catalog_filter_query_tag(tags)) return false;
+        return true;
       }
       function catalog_filter_query_time_list(name){
         var val = catalog_obj_merge(name,pref.catalog.filter.list_obj2,null);
@@ -4223,10 +4507,15 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         else for (var th in threads) threads[th][9] = [true];
         show_catalog();
       }
-//      function catalog_attr_changed(){
+      function catalog_attr_changed(){
 //        if (pref.catalog.filter.attr_list)
 //          for (var th in threads) catalog_attr_set(th,threads[th][0]);
-//      }
+        if (pref.catalog.filter.attr_list) {
+          pref_func.apply_prep(attr_list,true);
+          for (var name in threads) catalog_attr_set(name,threads[name][0]);
+          show_catalog();
+        }
+      }
 
       var pop_up_delay_id = {};
       function pop_up_delay(e,name){
@@ -4311,10 +4600,12 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //      for (var i=0;i<site.max_page;i++) page_delim[i] = null;
 //      var page_delim_idx = [];
 
-      var refresh_idx = 0;
-      var refresh_tgts;
+      var load_list = {refresh: {key:'',    idx:0, tgts:null, mutex:true, use_cache:false, from_auto:false, page_check:true },
+                       ondemand:{key:'odl', idx:0, tgts:null, mutex:true, use_cache:false, from_auto:false, page_check:false},
+                       tag:     {key:'tag', idx:0, tgts:null, mutex:true, use_cache:true,  from_auto:false, page_check:false}};
+      var filter_tags_refresh_mem = {};
       var refresh_use_cache = false;
-      function make_refresh_list(embed_init){
+      function make_refresh_list(){
 //      function make_refresh_list(remove_attr){
         var tgts = [];
 //        if (pref.catalog.filter.bookmark_list) tgts = pref.catalog.filter.bookmark_list_str.replace(/\n/g,',').replace(/,,+/,',').split(',');
@@ -4331,6 +4622,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //            if (i!=1 && pref.catalog.design==='catalog' && tgts[tgts.length-1].indexOf('8chan')==0) tgts.pop(); // patch for 8chan.
           }
 //        if (remove_attr) for (var i=0;i<tgts.length;i++) tgts[i] = tgts[i].replace(/!.*/,'');
+        return tgts;
+      }
+      function trim_list(tgts,embed_init){
         if (pref.catalog.board.ex_list) {
           for (var i=tgts.length-1;i>=0;i--) {
             var val = catalog_obj_merge(tgts[i],pref.catalog.board.ex_list_obj2,null);
@@ -4350,7 +4644,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         return tgts;
       }
       function remove_thread(name){
-        if (name!=='url') {
+        if (name.substr(0,4)!=='ODL:') {
           threads[name][0].removeEventListener('mouseover', threads[name][2][0], false);
           threads[name][0].removeEventListener('click', threads[name][5], false);
           if (threads[name][11]) remove_open_new_thread_event(threads[name][11]);
@@ -4365,46 +4659,33 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       }
       function catalog_clear_threads(num){
         catalog_triage_out();
-//        if (pref.catalog.embed && site.catalog) {
-//          var ths = site2[site.nickname].catalog_enum_native(triage_parent);
-//          threads_idx = [];
-//          for (var i=0;i<ths.length;i++) threads_idx.push(ths[i].name);
-//          for (var i=threads_idx.length-1;i>=num;i--) {
-//            var name = threads_idx[i];
-//            triage_parent.removeChild(threads[name][0]);
-//            delete threads[threads_idx[i]];
-//          }
-//        } else {
+        var idx = 0;
+        while (idx<threads_idx.length && idx<num) if (threads_idx[idx++].substr(0,4)==='ODL:') num++;
         while (threads_idx.length>num) {
           var name = threads_idx[threads_idx.length-1];
           remove_thread(name);
-//            if (name!=='url') {
-//              threads[name][0].removeEventListener('mouseover', threads[name][2][0], false);
-//              threads[name][0].removeEventListener('click', threads[name][5], false);
-//              if (threads[name][11]) remove_open_new_thread_event(threads[name][11]);
-//              if (threads[name][1]) {
-////                if (threads[name][12]) remove_open_new_thread_event(threads[name][12]);
-//                if (pop_up_status[name]) pop_down_op(name);
-//                triage_parent.removeChild(threads[name][0]);
-//              }
-//            }
-//            delete threads[name];
-//            threads_idx.splice(threads_idx.length-1,1);
         }
-//        }
+        boards = {};
+        for (var name in threads) {
+          var dbt = cnst.name2domainboardthread(name,true);
+          boards[dbt[0]+dbt[1]] = null;
+        }
       }
       function catalog_refresh(refresh, embed_init, from_auto) {
 //if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: start: ');
         set_auto_update();
-        refresh_use_cache = !refresh;
-        refresh_idx = 0;
-        refresh_tgts = make_refresh_list(embed_init);
+        load_list.refresh.use_cache = !refresh;
+        load_list.refresh.idx = 0;
+        load_list.refresh.mutex = true;
+        load_list.refresh.from_auto = from_auto;
+        load_list.refresh.tgts = trim_list(make_refresh_list(),embed_init);
         if (refresh && pref.catalog_refresh_clear && !embed_init) catalog_clear_threads(pref.catalog.max_threads_at_refresh);
-        for (var i=0;i<refresh_tgts.length;i++) refresh_tgts[i] = [refresh_tgts[i], from_auto];
-        if (refresh_idx<refresh_tgts.length) {
-          health_indicator.shift('limegreen','0');
-          get_page();
+//        for (var i=0;i<load_list.refresh.tgts.length;i++) load_list.refresh.tgts[i] = [load_list.refresh.tgts[i], from_auto];
+        if (load_list.refresh.idx<load_list.refresh.tgts.length) {
+//          health_indicator.shift('limegreen','0');
+          get_page(load_list.refresh);
         }
+        scan_boards.tag_init('refresh',filter_tags_refresh_mem,(refresh)? 0 : pref.scan.lifetime*60);
       }
       var flag_initial_refresh = pref.catalog.on_bt_page && pref.catalog.refresh.except_bt;
       catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page, pref.catalog.embed && site.catalog, false);
@@ -4412,16 +4693,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       function catalog_insert(key,cached_info) {
         if (pref.catalog.embed && site.catalog) return;
         if (cached_info==null) return;
-//        var page_no = (key.substr(0,info_raw.length)==info_raw)? parseInt(key.substr(info_raw.length),10) : site.max_page;
-//        if ((!pref.catalog_enable_cross_board) && page_no>=site.max_page) return;
-        var value = JSON.parse(cached_info);
-//        var nickname = key.replace(/\/.*/,'');
-//        var page_no = key.replace(/[^\/]*\//,'').replace(/[^\/]*\//,'');
-//        var board_name = key.substr(nickname.length,key.length-nickname.length-page_no.length);
-//        catalog_insert2(nickname,board_name,page_no,value[1]);
-        catalog_insert2(key,value[0],value[1],true,true);
+        catalog_insert2(key,cached_info,true,true);
       }
-      function catalog_insert2(key,date,doc_txt,snoop,from_auto) {
+      function catalog_insert2(key,value,snoop,from_auto) {
         var dbt = cnst.name2domainboardthread(key,true);
         var nickname = dbt[0];
         var board = dbt[1];
@@ -4431,16 +4705,15 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 
         var tgts_show = {};
 //        catalog_clear_threads(pref.catalog.max_threads);
-        var inserted_idx = 0;
         if (read_type==='page' || read_type==='thread') {
           var name = nickname + board + thread;
           if (snoop && !pref.catalog_promiscuous && read_type==='thread' && !threads[name]) {
             var hit = false;
-            for (var i=0;i<refresh_tgts.length;i++) if (refresh_tgts[i][0].indexOf(name)!=-1) {hit=true;break;}
+            for (var i=0;i<load_list.refresh.tgts.length;i++) if (load_list.refresh.tgts[i][0].indexOf(name)!=-1) {hit=true;break;}
             if (!hit) return 0; // return if no interest.
           }
-//          doc_txt = site2[nickname].preprocess_html(doc_txt,read_type==='page'); // cause memory leak.
-          var doc = new DOMParser().parseFromString(doc_txt, 'text/html');
+//          value.responseText = site2[nickname].preprocess_html(value.responseText,read_type==='page'); // cause memory leak.
+          var doc = new DOMParser().parseFromString(value.responseText, 'text/html');
           site2[nickname].preprocess_doc(doc);
           var nof_posts = 0;
           var nof_files = 0;
@@ -4457,7 +4730,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 
           for (var i=0;i<threads_in_page.length;i++) {
             var p_node = threads_in_page[i].parentNode;
-            inserted_idx = insert_thread_from_page(threads_in_page[i], nickname, board, th_no[i], page_no+((read_type==='page' && pref.show_page_fraction)? '.'+i : ''), (i==0)?nof_posts : 0, (i==0)?nof_files : 0, snoop, date);
+            insert_thread_from_page(threads_in_page[i], nickname, board, th_no[i], page_no+((read_type==='page' && pref.show_page_fraction)? '.'+i : ''), (i==0)?nof_posts : 0, (i==0)?nof_files : 0, snoop, value.date);
 //          if (threads_in_page[i].parentNode==p_node) threads_in_page[i].parentNode.removeChild(threads_in_page[i]);
             tgts_show[nickname+board+th_no[i]]=true;
           }
@@ -4467,7 +4740,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           var ths;
           var db = nickname + board;
           if (read_type==='catalog_json') {
-            var obj = JSON.parse(doc_txt);
+            var obj = JSON.parse(value.responseText);
             if (rm_items_404_check(db)) {
               var nos = {};
               for (var i=0;i<obj.length;i++) for (var j=0;j<obj[i].threads.length;j++) nos[obj[i].threads[j].no] = true;
@@ -4477,12 +4750,12 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
               for (var i=0;i<obj.length;i++) 
                 for (var j=obj[i].threads.length-1;j>=0;j--) if (threads[db+obj[i].threads[j].no]===undefined) obj[i].threads.splice(j,1);
             }
-//            site2[nickname].catalog_from_json(date,200,doc_txt,[threads,callback_func,triage_parent,init_native,snoop_npro,board]); // Doesn't work when OP has webm.
+//            site2[nickname].catalog_from_json(value.date,200,value.responseText,[threads,callback_func,triage_parent,init_native,snoop_npro,board]); // Doesn't work when OP has webm.
             ths = site2[nickname].catalog_from_json2(obj,board); // Doesn't work when OP has webm.
           } else {
-//            site2[nickname].catalog_from_native_callback(date,200,doc_txt,[threads,callback_func,triage_parent,init_native,snoop_npro]);
-            var doc = new DOMParser().parseFromString(doc_txt, 'text/html');
-            ths = site2['8chan'].catalog_from_native(date,doc,board);
+//            site2[nickname].catalog_from_native_callback(value.date,200,value.responseText,[threads,callback_func,triage_parent,init_native,snoop_npro]);
+            var doc = new DOMParser().parseFromString(value.responseText, 'text/html');
+            ths = site2['8chan'].catalog_from_native(value.date,doc,board);
             if (rm_items_404_check(db)) {
               var nos = {};
               for (var i=0;i<ths.length;i++) nos[ths[i].no] = true;
@@ -4492,7 +4765,7 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           }
           for (var i=0;i<ths.length;i++) {
             if (ths[i].pn.parentNode) ths[i].pn.parentNode.removeChild(ths[i].pn);
-            insert_thread_from_native(ths[i], nickname, board, snoop, date);
+            insert_thread_from_native(ths[i], nickname, board, snoop, value.date);
             tgts_show[nickname+board+ths[i].no]=true;
           }
         }
@@ -4501,7 +4774,6 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
           show_catalog(tgts_show,from_auto);
           if (pref.catalog.filter.tag_scan_auto) scan_tags();
         }
-        return inserted_idx;
       }
 
       function rm_items_404_check(db){
@@ -4542,84 +4814,83 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
         }
       }
 
-//      var req = new XMLHttpRequest(); // working code
-//      req.addEventListener('load',  req_events, false);
-//      req.addEventListener('error', req_events, false);
-//      req.addEventListener('abort', req_events, false);
-//
-//      function req_events(evt) {
-//        var inserted_idx = 0;
-//        if (req.status==200) {
-//          if (pref.info_server && brwsr.sw_cache)
-//            brwsr.sw_cache.setItem(url[0]+url[1]+url[2],JSON.stringify([cnst.get_time(), req.responseText]));
-//          inserted_idx = catalog_insert2(url[0],url[1],url[2],req.responseText);
-//        }
-//        refresh_idx++;
-//        if (refresh_idx<refresh_num) {
-//          if (!pref.catalog_load_on_demand) get_page(true);
-//          else {
-//            if (threads_idx.length==inserted_idx+1) threads_idx.push(['url']);
-//            else threads_idx.splice(inserted_idx+1,0,['url']);
-////            threads_idx.splice(page_delim_idx[refresh_idx],0,['url']); // THIS MAKES SUBTLE BUG, insert point slides from here at snoop refresh, but ok to use, so I'll omit.
-//            show_catalog();
-//          }
-//        }
-//      }
-//      function get_page(refresh){
-//        var num = pref.catalog_board_list_obj[board_sel.selectedIndex].length-1;
-//        var col = refresh_idx%num;
-//        var row = parseInt(refresh_idx/num);
-//        var bn = pref.catalog_board_list_obj[board_sel.selectedIndex][col+1];
-//        url = site.make_url2(bn.key,row);
-//        if (refresh) {
-//          req.open('GET', url[3], true);
-//          req.send(null);
-//        } else {
-//          brwsr.sw_cache.trygetItem(url[0]+url[1]+url[2],catalog_insert);
-//          if (++refresh_idx<refresh_num) get_page(false);
-//        }
-//      }
-
-      function req_events(date,status,response_txt,args) {
-//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: callback: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
-        var inserted_idx = 0;
-//        var key = refresh_tgts[refresh_idx][0].replace(/!.*/,'');
-        var key = args[0].replace(/!.*/,'');
-        if (status==200 && response_txt) {
-          inserted_idx = catalog_insert2(key,date,response_txt,false,args[1]);
-        } else {
-          if (status==404) comment_out_bookmark(key);
+      function req_events(key,value,list) {
+        list.mutex = true;
+//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: callback: '+load_list.refresh.tgts[load_list.refresh.idx]+', '+load_list.refresh.idx);
+        if (value.status==200 && value.responseText) catalog_insert2(key,value,false,list.from_auto);
+        else {
+          if (value.status==404) comment_out_bookmark(key);
           health_indicator.set('orange');
         }
-        refresh_idx++;
-        if (refresh_idx<refresh_tgts.length && status<500) {
-          if (!pref.catalog_load_on_demand) get_page();
-          else {
-            if (threads_idx.length==inserted_idx+1) threads_idx.push('url');
-            else threads_idx.splice(inserted_idx+1,0,'url');
-//            threads_idx.splice(page_delim_idx[refresh_idx],0,'url'); // THIS MAKES SUBTLE BUG, insert point slides from here at snoop refresh, but ok to use, so I'll omit.
-            show_catalog();
-          }
+        if (list.idx<list.tgts.length && value.status<500) {
+          if (!pref.catalog_load_on_demand) get_page(list);
         } else {
-          if (refresh_idx==1 && status!=200) health_indicator.set('red','X');
-          else if (refresh_idx==refresh_tgts.length) health_indicator.set(null,'\u25cf');
+          if (list.idx==1 && value.status!=200) health_indicator.set('red','X');
+          else if (list.idx==list.tgts.length) health_indicator.set(null,'\u25cf');
           else health_indicator.set(null,'\u25b2');
-          refresh_idx_page = 0;
-          page_check_entry();
+          if (list.check_page) {
+            refresh_idx_page = 0;
+            page_check_entry();
+          } else http_req.close('catalog'+list);
         }
       }
-      function get_page(){
-//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: get: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
-        health_indicator.set(null,(refresh_idx+1)+'/'+refresh_tgts.length);
-        http_req.get('catalog',refresh_tgts[refresh_idx][0].replace(/!.*/,''),'',req_events,refresh_use_cache,true,refresh_tgts[refresh_idx]);
+      function get_page(list){
+//if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: get: '+list.tgts[list.idx]+', '+list.idx);
+        if (pref.catalog_load_on_demand && list.idx==0) 
+          for (var i=list.tgts.length-1;i>=1;i--) {
+            var name = 'ODL:'+list.tgts[i];
+            if (threads[name]) remove_thread(name);
+            threads_idx.unshift(name);
+          }
+//        if (tgt===undefined) tgt = list.tgts[list.idx];
+//        else tgt = [tgt,false];
+        if (list.idx==0) health_indicator.shift('limegreen','0');
+        health_indicator.set(null,(list.idx+1)+'/'+list.tgts.length);
+        http_req.get('catalog'+list.key,list.tgts[list.idx].replace(/!.*/,''),'',req_events,list.use_cache,true,list);
+        list.idx++;
+        list.mutex = false;
       }
+
+//      function req_events(key,value,args) {
+////if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: callback: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
+//        var inserted_idx = 0;
+////        var key = refresh_tgts[refresh_idx][0].replace(/!.*/,'');
+////        var key = args[0].replace(/!.*/,'');
+//        if (value.status==200 && value.responseText) {
+//          inserted_idx = catalog_insert2(key,value,false,args[1]);
+//        } else {
+//          if (value.status==404) comment_out_bookmark(key);
+//          health_indicator.set('orange');
+//        }
+//        refresh_idx++;
+//        if (refresh_idx<refresh_tgts.length && value.status<500) {
+//          if (!pref.catalog_load_on_demand) get_page();
+//          else {
+//            if (threads_idx.length==inserted_idx+1) threads_idx.push('url');
+//            else threads_idx.splice(inserted_idx+1,0,'url');
+////            threads_idx.splice(page_delim_idx[refresh_idx],0,'url'); // THIS MAKES SUBTLE BUG, insert point slides from here at snoop refresh, but ok to use, so I'll omit.
+//            show_catalog();
+//          }
+//        } else {
+//          if (refresh_idx==1 && value.status!=200) health_indicator.set('red','X');
+//          else if (refresh_idx==refresh_tgts.length) health_indicator.set(null,'\u25cf');
+//          else health_indicator.set(null,'\u25b2');
+//          refresh_idx_page = 0;
+//          page_check_entry();
+//        }
+//      }
+//      function get_page(){
+////if (pref.debug_mode) console.log(new Date().toLocaleTimeString() + ', refresh: get: '+refresh_tgts[refresh_idx][0]+', '+refresh_idx);
+//        health_indicator.set(null,(refresh_idx+1)+'/'+refresh_tgts.length);
+//        http_req.get('catalog',refresh_tgts[refresh_idx][0].replace(/!.*/,''),'',req_events,refresh_use_cache,true,refresh_tgts[refresh_idx]);
+//      }
 
       var refresh_idx_page;
       function page_check_entry(){
-        while (refresh_idx_page<refresh_tgts.length) {
-          if (refresh_tgts[refresh_idx_page][0].search(/!page/)==-1) refresh_idx_page++;
+        while (refresh_idx_page<load_list.refresh.tgts.length) {
+          if (load_list.refresh.tgts[refresh_idx_page][0].search(/!page/)==-1) refresh_idx_page++;
           else {
-            var name = refresh_tgts[refresh_idx_page++][0].replace(/!.*/,'');
+            var name = load_list.refresh.tgts[refresh_idx_page++][0].replace(/!.*/,'');
             if (threads[name]) {
               if (threads[name][14].toString()[0]=='?') {
                 var page_no_old = parseInt(threads[name][15].toString().replace(/\..*/,''),10);
@@ -4666,30 +4937,29 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
       
         function page_check(){
           page_no = page_idx.shift();
-//          var url = (page_no==max_page)? site2[domain].make_url(dbt[1],thread) : site2[domain].make_url(dbt[1],page_no);
           key = (page_no==max_page)? domain+board+thread : domain+board+'p'+page_no;
 //          http_req.get('catalog',key,url,req_events_page_check,refresh_use_cache);
           http_req.get('catalog',key,'',req_events_page_check,refresh_use_cache,true);
         }
         page_check();
-        function req_events_page_check(date,status,response_txt) {
-//console.log('Read : '+name+', '+key+', '+status);
+        function req_events_page_check(key,value) {
+//console.log('Read : '+name+', '+key+', '+value.status);
           var callback_str = null;
-          if (status!=200) {
-            if (page_no==max_page && status==404) callback_str = 'Dead';
-            else callback_str = 'HTTP'+status;
+          if (value.status!=200) {
+            if (page_no==max_page && value.status==404) callback_str = 'Dead';
+            else callback_str = 'HTTP'+value.status;
           } else {
-            var doc = new DOMParser().parseFromString(response_txt, 'text/html');
+            var doc = new DOMParser().parseFromString(value.responseText, 'text/html');
             var ops = site2[domain].get_ops(doc);
             var hit = false;
             if (page_no!=max_page) for (var i=0;i<ops.length;i++) if (thread==ops[i]) {hit=true;callback_str = page_no+((pref.show_page_fraction)? '.'+i : '');}
             if (!hit) {
-              if (response_txt != null && page_idx.length!=0) setTimeout(page_check, 0); // live cache make racing condition with this. I don't know why.
+              if (value.responseText != null && page_idx.length!=0) setTimeout(page_check, 0); // live cache make racing condition with this. I don't know why.
               else callback_str = '?' + ((!refresh_use_cache)? '(missing)' : '');
               if (site2[domain].check_thread_archived(doc)) callback_str = 'Archived';
             }
           }
-          if (status==200) catalog_insert2(key,date,response_txt,true); // update
+          if (value.status==200) catalog_insert2(key,value,true); // update
           if (callback_str!==null) {
             if (callback_str==='Dead' || callback_str==='Archived') {
               comment_out_bookmark(name);
@@ -4697,9 +4967,9 @@ if (pref.debug_mode && uip_tracker===null) console.log('uip_tracker: stopped, '+
 //              tgt.value = comment_out_key(name,tgt.value);
 //              pref_func.apply_prep(tgt,true);
             }
-            callback(name,callback_str,date);
+            callback(name,callback_str,value.date);
           }
-//console.log('Out : '+name+', '+key+', '+status);
+//console.log('Out : '+name+', '+key+', '+value.status);
         }
       }
       function comment_out_bookmark(name){
@@ -5287,9 +5557,9 @@ Statistics:<br>\
         else {
           var date = Date.now();
           if (pref.info_server && page.no()!=site.max_page && brwsr.sw_cache)
-            brwsr.sw_cache.setItem(info_raw+'p'+page.no(),JSON.stringify([date, req.responseText]));
+            brwsr.sw_cache.setItem(info_raw+'p'+page.no(),{date: date, status: req.status, responseText: req.responseText});
           if (pref.catalog_snoop_refresh && catalog_obj.catalog_func()!=null)
-            catalog_obj.catalog_func().catalog_insert(info_raw+'p'+page.no(),JSON.stringify([date, req.responseText]));
+            catalog_obj.catalog_func().catalog_insert(info_raw+'p'+page.no(),{date: date, status: req.status, responseText: req.responseText});
           page_check2(parser.parseFromString(req.responseText, 'text/html'));
         }
       }
@@ -5309,7 +5579,7 @@ Statistics:<br>\
       function page_check(){
 //        timer.stop(false);
 //        var url = site.url_prefix + page.no() + '.html';
-        var url = site.make_url(site.board, page.no(), 'p');
+        var url = site.make_url(site.board, page.no(), 'p')[0];
         if (page.no()==site.max_page) url = window.location.href;
         get_page(url);
       }
@@ -6097,7 +6367,7 @@ Statistics:<br>\
     function sw_out(e){
 //      alert('Worker said : ' + e.data);
 //      console.log('Worker said : ' + e.data);
-      console.log(new Date().toLocaleTimeString() + ', Worker said : ' + e.data.substr(0,80));
+      console.log(new Date().toLocaleTimeString() + ', Worker said : ' + e.data.substr(0,120));
       if (!sw_alive) {
         worker.port.postMessage(JSON.stringify(['STAT']));
         if (!pref.debug_mode) worker.port.postMessage(JSON.stringify(['ECHO','OFF']));
@@ -6127,8 +6397,9 @@ Statistics:<br>\
 //    }
     var callbacks = [];
     var tryget_ids = [];
+    var fields = null; // static object for scan.
     function sw_tryget(e){
-      var fields = JSON.parse(e.data);
+      fields = JSON.parse(e.data);
       if (fields[0]=="ACK") {
         var key = fields[1];
         clearTimeout(tryget_ids[key]);
@@ -6148,6 +6419,7 @@ Statistics:<br>\
         if (pref.info_client && catalog_obj && catalog_obj.catalog_func()!=null && pref.catalog_snoop_refresh)
           catalog_obj.catalog_func().catalog_insert(fields[1],fields[2]);
       }
+      fields = null;
     }
     function tryget_timeout(key){ // timeout is sequential always.
       callbacks[key][0](key,null,callbacks[key][1]); // callback with null.
