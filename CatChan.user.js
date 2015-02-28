@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.01.0
+// @version 2015.03.01.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1035,7 +1035,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.01.0<br>'+
+          'Version 2015.03.01.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3700,7 +3700,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     threads[name] = [];
     threads[name][8]  = [0,0,obj.length,0];
     threads[name][19] = [obj[obj.length-1].time,0,obj.length,0,null,false];
-    site2[site.nickname].prep_own_posts();
+//    site2[site.nickname].prep_own_posts();
     var favicon_obj = [];
     var buf_id = null;
     function updated_buf(){
@@ -3717,6 +3717,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         if (base_thread.childNodes[i].className==='post reply') {
           var id = base_thread.childNodes[i].id;
           if (!(id in posts)) {
+            site2[site.nickname].prep_own_posts(); // couldn't get an event from myself, so don't miss posts from my thread.
             nof_posts++;
             posts[id] = id;
             var post = base_thread.childNodes[i];
