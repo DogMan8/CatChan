@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.03.01.1: A bug is Fixed.<br>
 v2015.03.01.0: Added watcher function.<br>
 v2015.02.14.0: Added thread-tagging.<br>
 v2015.02.04.0: Added sound notifier.<br>
