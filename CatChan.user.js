@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.01.1
+// @version 2015.03.01.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -834,7 +834,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           var pn13 = cnst.init('left:0px:tile:get:bottom:Show:tb',cnst.void_func,cnst.void_func,pref_func.settings.show_hide,cnst.void_func)[0];
           var pn13_0_2 = cnst.add_to_tb(pn13,
             '<select name="settings.indexing">'+
-              '<option>Catalog: General</option>'+
+              '<option>Catalog: General 0</option>'+
+              '<option>Catalog: General 1</option>'+
               '<option>Catalog: Board Group</option>'+
               '<option>Catalog: Appearance</option>'+
               '<option>Watcher / Notifiers</option>'+
@@ -884,8 +885,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;<input type="checkbox" name="catalog.refresh.initial"> Refresh at initial<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog.refresh.except_bt"> Except the page of selecting boards\' tag.<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.refresh.at_switch"> Clear and refresh when boards are switched<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.embed"> Embed to native catalog<br>'+
-//          '&emsp;Max threads in catalog: <input type="text" name="catalog.max_threads" size="4" style="text-align: right;"><br>'+
+          '&emsp;&emsp;<input type="checkbox" name="catalog.embed"> Embed to native catalog<br>',
+//          '&emsp;Max threads in catalog: <input type="text" name="catalog.max_threads" size="4" style="text-align: right;"><br>',
+          'Catalog:<br>'+
           '&emsp;Design from:<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="page">Page<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="auto">Auto<br>'+
@@ -900,7 +902,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_use_named_window"> Prevent opening a thread in multiple tabs<br>',
           'Catalog:<br>'+
           '&emsp;Board group configuration:<br>'+
-          '&emsp;&emsp;<textarea rows="9" cols="60" name="catalog_board_list_str"></textarea><br>'+
+          '&emsp;&emsp;<textarea rows="1" cols="60" name="catalog_board_list_str"></textarea><br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.board.recommendation"> Read owner\'s recommendation '+
           '&emsp;&emsp;<button name="tag.recommendation_add">Add to list</button><br>'+
 //          '&emsp;&emsp;<input type="button" value="Scan"> Scan board tags<br>'+
@@ -910,9 +912,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;<input type="checkbox" name="catalog.board.board_tags_same"> Pick up boards which have the same tag'+
           '&emsp;&emsp;<button name="tag.same_tag_refresh">Refresh</button><br>'+
           '&emsp;<input type="checkbox" name="catalog.board.ex_list"> Use exclusive list<br>'+
-          '&emsp;&emsp;<textarea rows="4" cols="40" name="catalog.board.ex_list_str"></textarea><br>'+
+          '&emsp;&emsp;<textarea rows="1" cols="40" name="catalog.board.ex_list_str"></textarea><br>'+
           '&emsp;<input type="checkbox" name="catalog.style_general_list"> Use general style<br>'+
-          '&emsp;&emsp;<textarea rows="4" cols="40" name="catalog.style_general_list_str"></textarea><br>'+
+          '&emsp;&emsp;<textarea rows="1" cols="40" name="catalog.style_general_list_str"></textarea><br>'+
           '&emsp;Tagging:<br>'+
           '&emsp;&emsp;Ignore tags latter than <input type="text" name="catalog.tag.ignore" size="2" style="text-align: right;">th in a board/thread<br>'+
           '&emsp;&emsp;Ignore boards/threads which have more than <input type="text" name="catalog.tag.max" size="2" style="text-align: right;"> tags<br>'+
@@ -1035,7 +1037,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.01.1<br>'+
+          'Version 2015.03.01.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
