@@ -21,7 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
-v2015.03.01.1: A bug is Fixed.<br>
+v2015.03.01.2-v2015.03.01.1: A bug and size of setting window are Fixed.<br>
 v2015.03.01.0: Added watcher function.<br>
 v2015.02.14.0: Added thread-tagging.<br>
 v2015.02.04.0: Added sound notifier.<br>
@@ -33,5 +33,5 @@ v2015.01.12.0: Added function of exporting configuration.<br>
 v2015.01.05.0: Added merging boards function to native catalog support.<br>
 v2014.12.21.0: Fixed a bug in Tampermonkey.(degrade)<br>
 v2014.12.20.0: Added support for native catalog in 8chan.<br>
-v2014.12.14.1-v2014.12.14.2: Added capability to use "http" for 8chan.<br>
+v2014.12.14.2-v2014.12.14.1: Added capability to use "http" for 8chan.<br>
 v2014.12.14.0: Initial Release.<br>
