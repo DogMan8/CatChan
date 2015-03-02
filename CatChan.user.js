@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.01.2
+// @version 2015.03.02.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -196,11 +196,13 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           tag_ci   : false,
           time     : false,
           time_str : '',
-          time_ago_str : '24:00',
+//          time_ago_str : '24:00',
+          time_ago_str : '0:00',
           time_track : false,
           time_mark : false,
           time_mark_str : '',
           time_watch : false,
+          time_watch_creation : false,
           list_time_scroll: true,
           list : true,
           list_mark_time : true,
@@ -659,6 +661,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           'catalog.filter.time': 'Time : show threads which have newer posts than the time.',
           'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
           'catalog.filter.time_watch': 'Watch: watch threads which have newer posts than the time.',
+          'catalog.filter.time_watch_creation': 'Watch(creation time): watch threads which are created later than the time.',
           'catalog_cross_domain_connection': 'Use \'direct\' if you could, because it\'s quite light, but it doesn\'t work in almost of all environments.\n\'indirect\' usually works well.',
           'debug_mode' : 'Debug mode.',
           'show_tooltip' : 'Show this tooltip.',
@@ -1037,7 +1040,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.01.2<br>'+
+          'Version 2015.03.02.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -1212,7 +1215,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           },
           'catalog_triage_str' : function(){
             if (catalog_obj && catalog_obj.catalog_func()!==null) catalog_obj.catalog_func().remake_triage();
-          }
+          },
+          'thread_reader' : thread_reader_init
 //          'sound.beep_length_f' : notifier.sound.make_beep,
 //          'sound.beep_volume_f' : notifier.sound.make_beep,
 //          'sound.beep_freq'     : notifier.sound.make_beep,
@@ -1407,7 +1411,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         if (obj.new_thread) obj.title = 'New Thread '+name;
         if (obj.appear_thread) obj.title = 'Appear thread '+name;
 //        if (obj.tag) obj.tag = 'CatChan/' + obj.tag;
-        obj.tag = pref.script_prefix+'/' + name;
+        obj.tag = pref.script_prefix+'/' + name + ', '+(objs.length-num-1);
         pn.innerHTML = obj.body;
         var dtn = new Notification(obj.title,{tag:obj.tag, body:pn[brwsr.innerText], icon:obj.icon});
         dtn.onclick = win_focus;
@@ -1442,6 +1446,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           for (var i=0;i<threads[name][19][4].length;i++) if (pref.notify.sound.reply || (pref.notify.sound.reply_to_me && threads[name][19][4][i].to_me)) sound_flag = true;
         }
         if (pref.notify.sound.notify && sound_flag) notifier.sound.play();
+//console.log(threads[name][19][4].length);
       },
       appeared: function(names,threads,threads_last_deleted){
 //        if (pref.notify.sound.notify) notifier.sound.play();
@@ -3706,7 +3711,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     var favicon_obj = [];
     var buf_id = null;
     function updated_buf(){
-      if (!buf_id) buf_id = setTimeout(updated,10);
+      if (!buf_id) buf_id = setTimeout(updated,100);
     }
     var posts = {};
     var nof_posts = 0;
@@ -3750,7 +3755,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           } else break;
         }
       }
-      if (init) {init=false;bif_id=null;return;}
+      if (init) {init=false;buf_id=null;return;}
       threads[name][8][2]  = nof_posts;
       threads[name][19][2] = nof_posts - threads[name][19][4].length;
       for (var i=0;i<threads[name][19][4].length;i++) favicon_obj.push([threads[name][19][4][i].offsetTop,threads[name][19][4][i]]);
@@ -3761,7 +3766,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //      for (var i=0;i<threads[name][19][4].length;i++) favicon_obj.push([site2[site.nickname].get_post_offsetTop(document,nof_posts-1-i),threads[name][19][4][i]]);
 
       if (threads[name][19][4].length!=0) notifier.changed(name,threads);
-      bif_id = null;
+      buf_id = null;
     }
     function favicon_check_event(){
       this.removeEventListener('mouseover', favicon_check_event, false);
@@ -3779,13 +3784,13 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         notifier.favicon.set(threads);
       }
     }
-    window.addEventListener('storage', site2[site.nickname].prep_own_posts_event, false);
+//    window.addEventListener('storage', site2[site.nickname].prep_own_posts_event, false); // can't catch events from this thread.
     if (pref.notify.favicon) window.addEventListener('scroll', favicon_check, false);
-    base_thread.addEventListener('DOMSubtreeModified',updated,false);
+    base_thread.addEventListener('DOMSubtreeModified',updated_buf,false);
 
 //    threads[name][19][3] = --threads[name][19][0];threads[name][19][0]--;updated(); // debug
     return function(){ // destroy
-      base_thread.removeEventListener('DOMSubtreeModified',updated,false);
+      base_thread.removeEventListener('DOMSubtreeModified',updated_buf,false);
       return null;
     }
   }
@@ -4107,6 +4112,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
             '<input type="checkbox" name="catalog.filter.time"> Time: '+
             '<input type="checkbox" name="catalog.filter.time_mark"> Mark: '+
             '<input type="checkbox" name="catalog.filter.time_watch"> Watch: '+
+            '<input type="checkbox" name="catalog.filter.time_watch_creation"> Watch(creation time): '+
             '<textarea style="height:1em" cols="25" name="catalog.filter.time_str"></textarea>'+
             '<!-- <button name="now"><- Now</button> -->'+
             '<button name="ago"><- Ago</button>'+
@@ -4157,6 +4163,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         pn12_0_4.getElementsByTagName('div')['hide_at_embed'].style.display = 'none';
       }
 
+      if (pref.catalog.filter.time_str==='') pref.catalog.filter.time_str = new Date().toLocaleString();
       if (pref.show_tooltip) pref_func.tooltips.add_hier(pn12_0_4);
       pref_func.apply_prep(pn12_0_4,false);
       pref_func.apply_prep(pn12_0_4,true); // obj init.
@@ -4207,6 +4214,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         'load_default'               : function(){
           var pref_def = pref_default();
           pref_func.pref_overwrite(pref.catalog.filter,pref_def.catalog.filter);
+          pref.catalog.filter.time_str = new Date().toLocaleString();
           pref_func.apply_prep(pn12_0_4,false);
           pref_func.apply_prep(pn12_0_4,true); // obj init.
           catalog_filter_changed();
@@ -4247,7 +4255,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         'catalog.order.reply'       : re_sort_thread,
         'catalog.order.watch'       : re_sort_thread,
         'catalog.order.sticky'      : re_sort_thread,
-        'catalog.filter.tag_ci'     : function(){scan_tags_init(scan_tags_common_c(site3[site.nickname].tags,'')[0],true);},
+        'catalog.filter.tag_ci'     : function(){scan_tags_init(scan_tags_common_c(site3[site.nickname].tags,'')[0],false);},
       }
       window.addEventListener('beforeunload', onchange_funcs.save_onleave, false);
       pref_func.add_onchange(pn12_0_2,onchange_funcs);
@@ -4308,7 +4316,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
             for (var i in mem) obj.push(i);
           }
           if (obj.length==0) {
-            if (args.callback) args.callback();
+            if (args.callback) args.callback(args.callback_args);
             return;
           }
           scan_boards_init(key, obj, args);
@@ -4423,6 +4431,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
                       if (threads[sb.name] && threads[sb.name][20]!==obj[i].threads[j].sticky) {
                         site2[sb.pool.dbt[0]].add_sticky_info(threads[sb.name][0],threads[sb.name][18],obj[i].threads[j].sticky);
                         threads[sb.name][20] = obj[i].threads[j].sticky;
+//                        reorder_thread_idx(sb.pool.dbt[0] + sb.pool.dbt[1] +sb.pool.dbt[2].substr(1)); doesn't prepared threads[];
                       }
                       if (sb.scan_tag) {
                         sb.pool.div.innerHTML = obj[i].threads[j].com + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].name;
@@ -4480,12 +4489,10 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
                 if (threads[name][20]!==sb.pool.sticky) {
                   site2[sb.pool.dbt[0]].add_sticky_info(threads[name][0],threads[name][18],sb.pool.sticky);
                   threads[name][20] = sb.pool.sticky;
-                  reorder_thread_idx(name);
                 }
                 if (threads[name][23]) {
                   threads[name][23] = false;
                   threads[name][9] = catalog_filter_query(name);
-                  reorder_thread_idx(name);
                 }
                 if (pref.catalog_footer_show_nof_rep) site2[sb.pool.dbt[0]].insert_footer2(threads[name][0],threads[name][18],threads[name][19],threads[name][8]);
                 threads[name][21] = false;
@@ -4558,7 +4565,9 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       pn_filter.getElementsByTagName('textarea')['catalog.filter.kwd_str'].onkeyup = pn_filter_changed;
       var filter_time_str = pn_filter.getElementsByTagName('textarea')['catalog.filter.time_str'];
 //      pn_filter.getElementsByTagName('button')['now'].onclick = function(){set_time_str(Date.now());}
-      pn_filter.getElementsByTagName('button')['ago'].onclick= function(){
+      pn_filter.getElementsByTagName('textarea')['catalog.filter.time_ago_str'].onkeyup = ago_clicked;
+      pn_filter.getElementsByTagName('button')['ago'].onclick= ago_clicked;
+      function ago_clicked(){
         var str = pn_filter.getElementsByTagName('textarea')['catalog.filter.time_ago_str'].value;
         var time = Date.now() - (parseInt(str.replace(/:.*/,''),10)*60+parseInt(str.replace(/[^:]*:/,''),10))*60000;
         set_time_str(time);
@@ -4618,6 +4627,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         }
         filter_tags = [];
         var tgts = {};
+        var flag = false;
         for (var i=0;i<cbxes.length;i++)
           if (cbxes[i].checked) {
             filter_tags.push(new RegExp(cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'').replace(/$/,'(#|,| |\\.|:|;|\n|$)'),(pref.catalog.filter.tag_ci)? 'i' : '')); // ATTENTION. REFER tag_scan_regex.
@@ -4625,12 +4635,11 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
               var tags_tgt = (pref.catalog.filter.tag_ci)? site3[site.nickname].tags.ci[i].mem : site3[site.nickname].tags.cs[i].mem;
               for (var j in tags_tgt) tgts[j] = null;
             }
+            flag = true;
           }
-        if (reload) {
-          if (Object.keys(tgts).length!=0) {
-            pref.catalog.filter.tag = true;
-            pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.tag'],false);
-          }
+        if (flag) {
+          pref.catalog.filter.tag = true;
+          pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.tag'],false);
         }
         if (pref.catalog.filter.tag) catalog_filter_changed();
 //        pn_filter_changed();
@@ -4846,7 +4855,8 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         if (changed.ex)    pref_func.apply_prep(search_ex_list,true);
         if (changed.attr)  pref_func.apply_prep(attr_list,true);
         if (tri_str_ex==='UNDO' && changed.watch) { // re-order
-          threads[changed.name][19][0] = get_mark_time(changed.name,pref.catalog.filter.time_watch,false,true); // REMAKE, THIS IS SEEMS TO BE A BUG BECAUSE OF INCONSISTENCY.
+          threads[changed.name][19][0] = get_mark_time(changed.name,pref.catalog.filter.time_watch || pref.catalog.filter.time_watch_creation,false,true); // REMAKE, THIS IS SEEMS TO BE A BUG BECAUSE OF INCONSISTENCY.
+          if (!pref.catalog.filter.time_watch && pref.catalog.filter.time_watch_creation && threads[name][19][0]>threads[name][8][1]) threads[name][19][0] = -1; // patch
           threads[changed.name][21] = true;
           catalog_refresh_watch();
         }
@@ -5082,12 +5092,17 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //          var date_mark_1 = catalog_obj_merge(name,pref.catalog.filter.watch_list_obj2,null);
 //          threads[name][19][0] = (date_mark_1.hit)? date_mark_1.time :
 //                                ((pref.catalog.filter.time_watch && pref.catalog.filter.time_str!=='')? Date.parse(pref.catalog.filter.time_str) - pref.localtime_offset*3600000 : -1);
-          threads[name][19][0] = get_mark_time(name,pref.catalog.filter.time_watch,false,true);
+          threads[name][19][0] = get_mark_time(name,pref.catalog.filter.time_watch || pref.catalog.filter.time_watch_creation,false,true);
+          if (!pref.catalog.filter.time_watch && pref.catalog.filter.time_watch_creation && threads[name][19][0]>date[1]) threads[name][19][0] = -1;// patch
           if (threads[name][19][0]>=0 && site2[nickname].time_revised_check(date[2])) threads[name][21] = true; // redundant???
           if (threads[name][19][0]<0  || threads[name][19][0]==threads[name][8][0]) threads[name][19][2] = threads[name][8][2];
           ch.innerHTML = src.innerHTML;
 //console.log(name+', '+threads[name][8]);
         } else {
+          if (threads[name][19][0]<0) { // patch
+            threads[name][19][0] = get_mark_time(name,pref.catalog.filter.time_watch,false,true);
+            if (threads[name][19][0]>0) threads[name][19][2] = threads[name][8][2];
+          }
 //          for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
 //          if (pref.notify.desktop.use && pref.notify.desktop.reply && threads[name][8][2]!=date[2]) desktop_notifier_obj.show('New Reples in '+name,name);
           ch = threads[name][0];
@@ -5783,8 +5798,9 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           if (dbt[0]==='8chan' && pref.catalog.order.sticky!=='dont_care' && threads[name][20]===null) tgts[dbt[0]+dbt[1]] = true; // get sticky in 8chan from json.
         }
 //console.log(tgts);
-        if (Object.keys(tgts).length!=0) scan_boards.scan_init('refresh_watch', tgts, {force_json:true, callback:show_catalog});
+        scan_boards.scan_init('refresh_watch', tgts, {force_json:true, callback:re_sort_thread});
       }
+
 //      function catalog_refresh_gather_info() {
 //        if (pref.catalog.order.sticky!=='dont_care') {
 //          var tgts = {};
