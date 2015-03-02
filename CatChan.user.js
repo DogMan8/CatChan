@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.02.0
+// @version 2015.03.02.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1040,7 +1040,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.02.0<br>'+
+          'Version 2015.03.02.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3719,6 +3719,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     updated();
     function updated(){
 //console.log('called');
+      threads[name][19][1] = 0;
       threads[name][19][4] = [];
       for (var i=base_thread.childNodes.length-1;i>=0;i--) { // num of posts is changed by hover and inline.
         if (base_thread.childNodes[i].className==='post reply') {
@@ -3751,6 +3752,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //               time: Date.parse(post.getElementsByTagName('time')[0].getAttribute('datetime')) - pref.localtime_offset*3600000,
                to_me: to_me,
                offsetTop: post.offsetTop});
+            if (to_me) threads[name][19][1]++;
             base_thread.childNodes[i].addEventListener('mouseover', favicon_check_event, false);
           } else break;
         }
