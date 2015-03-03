@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.02.1
+// @version 2015.03.03.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -256,7 +256,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       scan: {max:10000, lifetime:20, crawler:50, max_threads:1000, crawler_adaptive:true},
       notify : {sound: {notify: false, file:'', src:'beep', beep_freq:1000, beep_length_f:0.2, beep_volume_f:1, reply_to_me: true, reply: true, new_thread: true, appear: true},
                 desktop: {notify: true, reply_to_me: true, reply: true, new_thread:true, appear:true, lifetime:30, show_last:false},
-                favicon: true},
+                favicon: true,
+                title_hide_zero: true},
       test_mode: {0:false, 1:false, 2:false, 3:false, 4:false, 5:false},
     };
   }
@@ -988,6 +989,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<!-- &emsp;&emsp; Cache working in <textarea style="height:1em" cols="20" name="catalog_sw_domain"></textarea><br> -->',
           'Watcher:<br>'+
           '&emsp;<input type="checkbox" name="catalog.auto_watch"> Auto add to watch list<br>'+
+          '&emsp;<input type="checkbox" name="notify.title_hide_zero"> Hide unread count in title bar when it is zero<br>'+
 //          '&emsp;<input type="checkbox" name="catalog.order.find_sage_in_8chan"> Find sage post in native catalog in 8chan<br>'+
           '&emsp;<input type="checkbox" name="catalog.unmark_on_hover"> Unmark post on hover<br>'+
           '&emsp;<input type="checkbox" name="thread_reader"> Thread reader for 8chan<br>'+
@@ -1040,7 +1042,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.02.1<br>'+
+          'Version 2015.03.03.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -1355,7 +1357,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             nof_r   += threads[name][8][2] - threads[name][19][2];
           }
         }
-        if (nof_rtm + nof_r !=0) title_set(((pref.catalog_footer_show_nof_rep_to_me)? nof_rtm + '/' + nof_r : '('+nof_r+')') + ' - ');
+        if (nof_rtm + nof_r !=0 || !pref.notify.title_hide_zero) title_set(((pref.catalog_footer_show_nof_rep_to_me)? nof_rtm + '/' + nof_r : '('+nof_r+')') + ' - ');
         else title_set('');
       }
       function title_set(str){
@@ -5800,7 +5802,11 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           if (dbt[0]==='8chan' && pref.catalog.order.sticky!=='dont_care' && threads[name][20]===null) tgts[dbt[0]+dbt[1]] = true; // get sticky in 8chan from json.
         }
 //console.log(tgts);
-        scan_boards.scan_init('refresh_watch', tgts, {force_json:true, callback:re_sort_thread});
+        scan_boards.scan_init('refresh_watch', tgts, {force_json:true, callback:catalog_refresh_end});
+      }
+      function catalog_refresh_end(){
+        re_sort_thread();
+        if (pref.notify.favicon && !pref.notify.title_hide_zero) notifier.favicon.set(threads);
       }
 
 //      function catalog_refresh_gather_info() {
