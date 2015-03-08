@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.03.08.0: Added sync function between catalog and thread.<br>
 v2015.03.03.0-v2015.03.02.0: Fixed many inconsistencies, added an option.<br>
 v2015.03.01.2-v2015.03.01.1: A bug and size of setting window are Fixed.<br>
 v2015.03.01.0: Added watcher function.<br>
