@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.03.0
+// @version 2015.03.08.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -250,6 +250,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //      graph : {key: null, pipe: null},
       uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, auto_open:false, auto_open_th:300, auto_open_kwd:''},
       thread_reader: true,
+      thread_reader_sync: true,
       settings: {indexing: 0},
       tag : {gen: false, gen_str:''}, // dummy for checkbox and textarea.
       cloudflare: {auto_reload: true, auto_reload_time: 5},
@@ -993,6 +994,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //          '&emsp;<input type="checkbox" name="catalog.order.find_sage_in_8chan"> Find sage post in native catalog in 8chan<br>'+
           '&emsp;<input type="checkbox" name="catalog.unmark_on_hover"> Unmark post on hover<br>'+
           '&emsp;<input type="checkbox" name="thread_reader"> Thread reader for 8chan<br>'+
+          '&emsp;&emsp;<input type="checkbox" name="thread_reader_sync"> Sync with parent catalog<br>'+
           'Notifiers:<br>'+
           '&emsp;<input type="checkbox" name="notify.desktop.notify"> Desktop<br>'+
           '&emsp;&emsp;&emsp;<input type="text" name="notify.desktop.lifetime" size="3" style="text-align: right;"> seconds. (0 means permanent)<br>'+
@@ -1042,7 +1044,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.03.0<br>'+
+          'Version 2015.03.08.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2996,6 +2998,10 @@ obj[i].time += - pref.localtime_offset*3600000; // BUG PATCH.
     else if (val[0]=='SUB_GET') http_req.sub_get(val[1]);
     else if (val[0]=='SUB_ACK') http_req.sub_ack(val[1]);
     else if (val[0]=='OWN_POSTS') site3[val[1]].own_posts = val[2];
+    else if (val[0]=='TRIAGE') {
+//console.log('receive: TRIAGE, '+val[1]+', '+val[2]+', '+val[3]);
+      if (catalog_obj && catalog_obj.catalog_func()!=null) catalog_obj.catalog_func().triage_exe_0(val[1],val[2],'',true,val[3]);
+    }
   }
 //  function receive_message(e,name) { // working code for old http_req
 //    if (pref.debug_mode) console.log(window.name + ': Received from '+name+': '+e.data.toString().substr(0,80));
@@ -3718,13 +3724,16 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     var posts = {};
     var nof_posts = 0;
     var init = true;
+    var time_lastpost = 0;
     updated();
     function updated(){
 //console.log('called');
       threads[name][19][1] = 0;
       threads[name][19][4] = [];
       for (var i=base_thread.childNodes.length-1;i>=0;i--) { // num of posts is changed by hover and inline.
-        if (base_thread.childNodes[i].className==='post reply') {
+//        if (base_thread.childNodes[i].className==='post reply') {
+        var classname = base_thread.childNodes[i].className;
+        if (classname && classname.indexOf('post')!=-1 && classname.indexOf('reply')!=-1) {
           var id = base_thread.childNodes[i].id;
           if (!(id in posts)) {
             site2[site.nickname].prep_own_posts(); // couldn't get an event from myself, so don't miss posts from my thread.
@@ -3751,11 +3760,12 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
             threads[name][19][4].unshift(
               {icon: image,
                body: body,
-//               time: Date.parse(post.getElementsByTagName('time')[0].getAttribute('datetime')) - pref.localtime_offset*3600000,
+               time: Date.parse(post.getElementsByTagName('time')[0].getAttribute('datetime')) - pref.localtime_offset*3600000,
                to_me: to_me,
                offsetTop: post.offsetTop});
             if (to_me) threads[name][19][1]++;
             base_thread.childNodes[i].addEventListener('mouseover', favicon_check_event, false);
+            if (time_lastpost<threads[name][19][4][0].time) time_lastpost=threads[name][19][4][0].time;
           } else break;
         }
       }
@@ -3780,13 +3790,24 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       if (favicon_obj.length==0) return;
       var ref_height = brwsr.document_body.scrollTop + window.innerHeight -50;
       var flag = false;
-      while (favicon_obj.length!=0 && favicon_obj[0][0]<ref_height) {favicon_obj.shift();flag=true;}
+      var time;
+      while (favicon_obj.length!=0 && favicon_obj[0][0]<ref_height) {time = favicon_obj.shift()[1].time;flag=true;}
       if (flag) {
         threads[name][19][2] = threads[name][8][2] - favicon_obj.length;
         threads[name][19][1] = 0;
         for (var i=0;i<favicon_obj.length;i++) if (favicon_obj[i][1].to_me) threads[name][19][1]++;
         notifier.favicon.set(threads);
+        if (pref.thread_reader_sync && window.opener) send_message('parent',[['TRIAGE',name,'WATCH',time]]);
       }
+    }
+    if (window.opener) {
+      var buttons = document.createElement('div');
+      buttons.innerHTML = '<button>Kill this thread from parent catalog</button><br>'+
+                          '<button>Hide this thread from parent catalog untill it gets new posts</button>';
+      buttons.childNodes[0].onclick = function(){send_message('parent',[['TRIAGE',name,'KILL']]);};
+      buttons.childNodes[2].onclick = function(){send_message('parent',[['TRIAGE',name,'TIME',time_lastpost + pref.localtime_offset*3600000]]);}; // patch.
+      var th_link = document.getElementById('thread-links');
+      th_link.parentNode.insertBefore(buttons,th_link);
     }
 //    window.addEventListener('storage', site2[site.nickname].prep_own_posts_event, false); // can't catch events from this thread.
     if (pref.notify.favicon) window.addEventListener('scroll', favicon_check, false);
@@ -4785,14 +4806,17 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //        if (triage_str[i][j]==='WATCH' || triage_str[i][j]==='UNWATCH') show_catalog(name);
 //        else catalog_filter_changed();
 ////        catalog_triage_out();
-        var changed = triage_exe(name,triage_str[i][j],triage_str[i][j+2],true);
+        triage_exe_0(name,triage_str[i][j],triage_str[i][j+2],true);
+      }
+      function triage_exe_0(name,tri_str_ex,tri_str_attr,hist,datetime){
+        var changed = triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime);
         name = changed.name;
         if (changed.attr) catalog_attr_set(name,threads[name][0]);
         if (changed.ex) threads[name][9] = catalog_filter_query(name);
         if (changed.watch) reorder_thread_idx(name);
         if (changed.ex || changed.watch) show_catalog(name);
       }
-      function triage_exe(name,tri_str_ex,tri_str_attr,hist){ // KILL,TIME,UNDO,NONE,WATCH,UNWATCH,DELETE
+      function triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime){ // KILL,TIME,UNDO,NONE,WATCH,UNWATCH,DELETE
         var changed = {ex:false, attr:false, watch:false, name:name};
         if (tri_str_ex!=='UNDO') {
           if (hist) {
@@ -4807,7 +4831,8 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           if (['KILL','TIME','WATCH','UNWATCH','DELETE'].indexOf(tri_str_ex)!=-1) {
 //            var datetime = threads[name][8][0] + pref.localtime_offset*3600000; // NO BLOCK SCOPE
 //            var datetime = ((threads[name][8][0]>threads[name][8][4])? threads[name][8][0] : threads[name][8][4]) + pref.localtime_offset*3600000; // NO BLOCK SCOPE
-            var datetime = (tri_str_ex!=='DELETE')? threads[name][8][4] + pref.localtime_offset*3600000 : 0; // NO BLOCK SCOPE
+//            var datetime = (tri_str_ex!=='DELETE')? threads[name][8][4] + pref.localtime_offset*3600000 : 0; // NO BLOCK SCOPE
+            if (!datetime) datetime = (tri_str_ex!=='DELETE')? threads[name][8][4] + pref.localtime_offset*3600000 : 0; // NO BLOCK SCOPE
             var millisec = datetime%1000; // NO BLOCK SCOPE
             var time_str = '@' + new Date(datetime).toLocaleString() + ((datetime%1000==0)? '' : '.'+millisec); // NO BLOCK SCOPE
             var wat_str = watch_list.value.replace(key,',')
@@ -4824,12 +4849,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //          if (tri_str_ex.search(/KILL|TIME|NONE/)!=-1) {
           if (['KILL','TIME','NONE','DELETE'].indexOf(tri_str_ex)!=-1) {
             var ex_str = search_ex_list.value.replace(key,',');
-//            var datetime = threads[name][8][0] + pref.localtime_offset*3600000;
             if (tri_str_ex!=='NONE' && tri_str_ex!=='DELETE') ex_str = ex_str + ',' + name + ((tri_str_ex.search(/TIME/)!=-1)? time_str : '') +'\n';
-//            var millisec = threads[name][8][0]%1000;
-//            ex_str = ex_str + ',' + name
-//              + ((tri_str_ex.search(/TIME/)!=-1)? 
-//                '@' + new Date(datetime).toLocaleString() + ((millisec==0)? '' : '.'+millisec ) : '') +'\n';
             search_ex_list.value = ex_str.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,'');
             changed.ex = true;
           }
@@ -6147,6 +6167,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           return null;
         },
         remake_triage: remake_triage,
+        triage_exe_0: triage_exe_0,
         catalog_insert: function(key,cache_info){catalog_insert(key,cache_info);}
       }
     }
