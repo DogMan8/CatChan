@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.14.0
+// @version 2015.03.14.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1071,7 +1071,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<br>'+
           '<input type="checkbox" name="show_tooltip"> Show tooltips<br>',
           'CatChan<br>'+
-          'Version 2015.03.14.0<br>'+
+          'Version 2015.03.14.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4197,25 +4197,26 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     }
     var triage_pn;
     var triage_str;
+    var buttons = document.createElement('div');
+    buttons.innerHTML = '<button>Bookmark this thread to current catalog</button><br>'+
+                        '<button>Unbookmark this thread from current catalog</button><br>'+
+                        ((window.opener)? '<button>Kill this thread from parent catalog (and close)</button><br>'+
+                                          '<button>Hide this thread from parent catalog untill it gets new posts(, and close)</button>'
+                                        : '');
+    buttons.childNodes[0].onclick = function(){common_func.modify_bookmark(name,true)};
+    buttons.childNodes[2].onclick = function(){common_func.modify_bookmark(name,false)};
     if (window.opener) {
-      var buttons = document.createElement('div');
-      buttons.innerHTML = '<button>Bookmark this thread to current catalog</button><br>'+
-                          '<button>Unbookmark this thread from current catalog</button><br>'+
-                          '<button>Kill this thread from parent catalog (and close)</button><br>'+
-                          '<button>Hide this thread from parent catalog untill it gets new posts(, and close)</button>';
-      buttons.childNodes[0].onclick = function(){common_func.modify_bookmark(name,true)};
-      buttons.childNodes[2].onclick = function(){common_func.modify_bookmark(name,false)};
       buttons.childNodes[4].onclick = function(){triage_exe('KILL','');};
       buttons.childNodes[6].onclick = function(){triage_exe('TIME','');};
-      var th_link = document.getElementById('thread-links');
-      th_link.parentNode.insertBefore(buttons,th_link);
-
-      if (pref.thread_reader.triage) {
-        var triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:false});
-        triage_str = triage_all.str;
-        th_link.parentNode.insertBefore(triage_all.pn,th_link);
-      }
     }
+    var th_link = document.getElementById('thread-links');
+    th_link.parentNode.insertBefore(buttons,th_link);
+    if (window.opener && pref.thread_reader.triage) {
+      var triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:false});
+      triage_str = triage_all.str;
+      th_link.parentNode.insertBefore(triage_all.pn,th_link);
+    }
+
     function triage_event(){
       var flds = this.name.split(',');
       var i = parseInt(flds[0],10);
