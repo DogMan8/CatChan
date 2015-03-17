@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.03.17.1: Fixed a bug.(degrade)<br>
 v2015.03.14.1: Changed a specification.<br>
 v2015.03.14.0: Tuned and added some functions.<br>
 v2015.03.08.0: Added sync function between catalog and thread.<br>
