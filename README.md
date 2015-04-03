@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.04.04.0: Cleaned up and added text mode.<br>
 v2015.03.28.0: Cleaned up and tuned.<br>
 v2015.03.21.0: Cleaned up.<br>
 v2015.03.17.1: Fixed a bug.(degrade)<br>
