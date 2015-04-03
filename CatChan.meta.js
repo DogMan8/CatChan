@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.03.21.0
+// @version 2015.03.28.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -10,3 +10,4 @@
 // @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
 // ==/UserScript==
+
