@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.04.11.0
+// @version 2015.04.11.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1200,7 +1200,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.04.11.0<br>'+
+          'Version 2015.04.11.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3802,11 +3802,15 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
 //        qf2.name = 'CatChan_qf2';
 //        qf.parentNode.insertBefore(qf2,qf.nextSibling);
 //        qf.setAttribute('style','display:none');
+        var kwd_str = document.getElementsByName('catalog.filter.kwd.str')[0];
+        if (kwd_str.value!=='') {
+          kwd_str.value = '';
+          pref_func.apply_prep(kwd_str,true,true);
+        }
         qf2.onkeyup = function(){
           pref.catalog.filter.kwd.str = this.value;
-          var tgt = document.getElementsByName('catalog.filter.kwd.str')[0];
-          pref_func.apply_prep(tgt,false);
-          tgt.onkeyup();
+          pref_func.apply_prep(kwd_str,false);
+          kwd_str.onkeyup();
         }
         var qfctrl = this.catalog_native_prep_clonenode(document.getElementById('qf-ctrl'),true);
         qfctrl.onclick = function(){
