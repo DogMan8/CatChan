@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.04.04.0
+// @version 2015.04.11.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -90,6 +90,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       catalog_size_height: 350,
       catalog_size_text_width: 400,
       catalog_size_text_height: 16,
+//      catalog_size_tn_width: 240,
+//      catalog_size_tn_height: 240,
 //      catalog_enable_cross_board: true,
 //      catalog_enable_cross_domain: true,
       catalog_draw_on_demand: false,
@@ -108,6 +110,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       catalog_popdown_delay: 500,
       catalog_popup_size_fix: true,
       catalog_click: 'open',
+      catalog_click_area: 'thumbnail',
       catalog_open_last50: 'exist_watch',
       catalog_board_list_str: '//sample of board group\n' +
 //        '//board_name[,nickname+board_name[+thread No.] | \'*\'+up to X page | \'%\'+style]...\n'+
@@ -177,29 +180,19 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       catalog_show_setting : false,
       catalog_t2h_num_of_posts : 5,
       catalog_expand_at_initial : false,
+      catalog_expand_with_hr : false,
       overwrite_site2_json_str: '//{"site2":{"KC":{"time_offset":2}}} // summer time for KC.',
       overwrite_site2_eval_str: '',
 //      show_tooltip : true,
-      tooltip: {show: true, popup_delay:4000, popdown_delay:1000},
+      tooltip: {show: true, popup_delay:2000, popdown_delay:1000},
       catalog: {
         indexing: 0,
 //        max_threads : 512,
         max_threads_at_refresh : 500,
         filter: {
           show : false,
-          kwd      : false,
-          kwd_str  : '',
-          kwd_re   : false,
-          kwd_ci   : true,
-          kwd_op        : true,
-          kwd_op_sub    : true,
-          kwd_op_name   : true,
-          kwd_op_file   : false,
-          kwd_post      : false,
-          kwd_post_sub  : false,
-          kwd_post_name : false,
-          kwd_post_file : false,
-          kwd_scan_clear_auto : true,
+          kwd : {use: false, str: '', re: false, ci: true, match:'match', op: true, post: false, sub: true, name: true, trip: false, com: true, file: false, kwds: []},
+          scan_clear_auto : true,
           tag      : false,
 //          tag_list_str : '',
           tag_scan_auto : false,
@@ -251,6 +244,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         design : 'auto',
         catalog_json : false,
         embed : true,
+        embed_page : false,
 //        order : {reply_to_me: true, reply: true, watch: 'dont_care', sticky:'dont_care', find_sage_in_8chan: false},
         order : {reply_to_me: true, reply: true, watch: 'dont_care', sticky:'dont_care'},
         health_indicator: {on: true, max:10},
@@ -353,8 +347,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           if (fm[i].tagName==='TEXTAREA') {
             if (set) {
               parent[tgt] = fm[i].value;
-              if (tgt.search(/_str/)!=-1 && parent[tgt.replace(/_str/,'_obj')]) pref_func.str2obj(tgt);
-              if (tgt.search(/_str/)!=-1 && parent[tgt.replace(/_str/,'_obj2')]) pref_func.str2obj2(parent,tgt.replace(/_str/,'_obj2'),fm[i].value);
+              if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj')]) pref_func.str2obj(tgt);
+              if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj2')]) pref_func.str2obj2(parent,tgt.replace(/str$/,'obj2'),fm[i].value);
             } else fm[i].value = parent[tgt];
           }
           if (fm[i].tagName==='SELECT') {
@@ -380,8 +374,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         var target_hier = pref_func.get_tgt(name);
         var parent = target_hier[0];
         var tgt    = target_hier[1];
-        if (tgt.search(/_str/)!=-1 && parent[tgt.replace(/_str/,'_obj')]) pref_func.str2obj(tgt);
-        if (tgt.search(/_str/)!=-1 && parent[tgt.replace(/_str/,'_obj2')]) pref_func.str2obj2(parent,tgt.replace(/_str/,'_obj2'),parent[tgt]);
+        if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj')]) pref_func.str2obj(tgt);
+        if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj2')]) pref_func.str2obj2(parent,tgt.replace(/str$/,'obj2'),parent[tgt]);
       },
       board_sel : null,
       catalog_board_list_str_or: '',
@@ -421,7 +415,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 //      },
       str2obj: function(key) {
 //        var tgt = key+'_obj';
-        var tgt = key.replace(/_str/,'_obj');
+        var tgt = key.replace(/str$/,'obj');
         pref[tgt] = [];
         tgt = pref[tgt];
 //        var lines = pref[key].split('\n');
@@ -567,7 +561,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         for (var i in src)
           if (dst[i]!==undefined) {
             if (strict && typeof(src[i])!==typeof(dst[i])) continue;
-            if (typeof(src[i])==='object') pref_func.pref_overwrite(dst[i],src[i]);
+            if (typeof(src[i])==='object' && !Array.isArray(src[i])) pref_func.pref_overwrite(dst[i],src[i],strict);
             else dst[i] = src[i];
           }
       },
@@ -771,7 +765,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
 ////            'In other words, you can appear it again by unckecking them.\nAnd you can configure these appearance in \'Attribute list\' and \'Triage styles\'.',
           'catalog_refresh_clear': 'Clear all threads at update.',
           'catalog_promiscuous': 'Gather information whatever.',
-          'catalog.filter.kwd_re': 'Regular Expression',
+          'catalog.filter.kwd.re': 'Regular Expression',
           'catalog.filter.time': 'Time : show threads which have newer posts than the time.',
           'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
           'catalog.filter.time_watch': 'Watch: watch threads which have newer posts than the time.',
@@ -860,11 +854,11 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         },
         triage_simple_kill: {
           catalog_triage_str: 'KILL,X,',
-          'pn_catalog_triage': 'hide forever.'
+//          'pn_catalog_triage': 'hide forever.'
         },
         triage_simple: {
           catalog_triage_str: 'KILL,X,,TIME,v,,WATCH,W,,UNWATCH,UW,,UNDO,U,',
-          'pn_catalog_triage': 'hide forever, hide until new replies, watch, unwatch, undo.'
+//          'pn_catalog_triage': 'hide forever, hide until new replies, watch, unwatch, undo.'
         },
         triage_colorful: {
           catalog_triage_str:
@@ -874,11 +868,11 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             'TIME,v,background:#efedbe,TIME,v,background:#fbd5fb,TIME,v,background:#fac2c5\n'+
             'NONE,O,,NONE,O,background:#c3dcf9,NONE,O,background:#b8efc2,'+
             'NONE,O,background:#efedbe,NONE,O,background:#fbd5fb,NONE,O,background:#fac2c5\n'+
-            'UNDO,U,,WATCH,Watch,,UNWATCH,UnWatch,\n',
-          'pn_catalog_triage': '1st row: Hide it forever.\n'+
-            '2nd row: Hide until new replies\n' +
-            '3rd row: Change its appearance.\n' +
-            'Undo, Watch, UnWatch.\n'
+            'UNDO,U,,WATCH,W,,UNWATCH,UW,,GO,G,\n',
+//          'pn_catalog_triage': '1st row: Hide it forever.\n'+
+//            '2nd row: Hide until new replies\n' +
+//            '3rd row: Change its appearance.\n' +
+//            'Undo, Watch, UnWatch.\n'
         },
         triage_borders: {
           catalog_triage_str:
@@ -888,11 +882,11 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             'TIME,v,border:3px solid yellow,TIME,v,border:3px solid orange,TIME,v,border:3px solid red\n'+
             'NONE,O,,NONE,O,border:3px solid blue,NONE,O,border:3px solid lime,'+
             'NONE,O,border:3px solid yellow,NONE,O,border:3px solid orange,NONE,O,border:3px solid red\n'+
-            'UNDO,U,,WATCH,Watch,,UNWATCH,UnWatch,\n',
-          'pn_catalog_triage': '1st row: Hide it forever.\n'+
-            '2nd row: Hide until new replies\n' +
-            '3rd row: Change its appearance.\n' +
-            'Undo, Watch, UnWatch.\n'
+            'UNDO,U,,WATCH,W,,UNWATCH,UW,,GO,G,\n',
+//          'pn_catalog_triage': '1st row: Hide it forever.\n'+
+//            '2nd row: Hide until new replies\n' +
+//            '3rd row: Change its appearance.\n' +
+//            'Undo, Watch, UnWatch.\n'
         },
         triage_samples: {
           catalog_triage_str: 
@@ -905,8 +899,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
             'NONE,border 5px,border:5px solid blue\n'+
             'NONE,border 1px,border:1px solid blue\n'+
             'NONE,transparent,background:\n'+
-            'NONE,shrink,width:100px;height:100px\n',
-          'pn_catalog_triage': 'samples\n'
+            'NONE,shrink,width:100px;height:100px\n'+
+            'GO,open this thread,\n',
+//          'pn_catalog_triage': 'samples\n'
         },
         pn_samples : null,
         init : function(){
@@ -1018,7 +1013,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;<input type="checkbox" name="catalog.refresh.initial"> Refresh at initial<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog.refresh.except_bt"> Except the page of selecting boards\' tag.<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.refresh.at_switch"> Clear and refresh when boards are switched<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.embed"> Embed to native catalog<br>',
+          '&emsp;&emsp;<input type="checkbox" name="catalog.embed"> Embed to native catalog<br>'+
+          '&emsp;&emsp;<input type="checkbox" name="catalog.embed_page"> Embed to native index page<br>',
 //          '&emsp;Max threads in catalog: <input type="text" name="catalog.max_threads" size="4" style="text-align: right;"><br>',
           'Catalog:<br>'+
           '&emsp;Design from:<br>'+
@@ -1026,6 +1022,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="auto">Auto<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.design" value="catalog">Catalog<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog.catalog_json"> From json file<br>'+
+          '&emsp;Click area:<br>'+
+          '&emsp;&emsp;<input type="radio" name="catalog_click_area" value="thumbnail">Thumbnail<br>'+
+          '&emsp;&emsp;<input type="radio" name="catalog_click_area" value="entire">Entire thread card<br>'+
           '&emsp;Click to:<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_click" value="open">Go to/open the thread<br>'+
           '&emsp;&emsp;&emsp;Open link of \'Last 50 Posts\'<br>'+
@@ -1036,6 +1035,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;&emsp;&emsp;<input type="radio" name="catalog_open_last50" value="spec_watch">If it is estimated to exist and unread posts are less than 50<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_click" value="expand">Expand/shrink the OP in catalog<br>'+
           '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_expand_at_initial"> Expand at initial<br>'+
+          '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_expand_with_hr"> Insert horizontal splitter when it is expanded<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_no_popup_at_expanded"> Don\'t popup when the catalog is expanded<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog_open_in_new_tab"> Open the thread in new tab<br>'+
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_use_named_window"> Prevent opening a thread in multiple tabs<br>',
@@ -1081,6 +1081,9 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '<input type="radio" name="catalog.text_mode.mode" value="graphic"> Graphical mode: '+
           '<input type="text" name="catalog_size_width" size="4" style="text-align: right;"> x '+
           '<input type="text" name="catalog_size_height" size="4" style="text-align: right;"><br>'+
+//          '&emsp;&emsp;Thumbnail size: '+
+//          '<input type="text" name="catalog_size_tn_width" size="4" style="text-align: right;"> x '+
+//          '<input type="text" name="catalog_size_tn_height" size="4" style="text-align: right;"><br>'+
           '&emsp;Catalog/Pop-up/Search<br>'+
           '<!-- &emsp;&emsp;<input type="checkbox" name="catalog_format.show.images_2nd">'+
           '<input type="checkbox" name="catalog_format.hover.images_2nd">'+
@@ -1197,7 +1200,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.04.04.0<br>'+
+          'Version 2015.04.11.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -1685,7 +1688,8 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         'TIME': ['Hide this thread until new peplies.',true],
         'WATCH': ['Watch this thread and mark as I\'ve read all posts.', false],
         'UNWATCH': ['Unwatch this thread.', false],
-        'UNDO': ['Undo last modification.', false]
+        'UNDO': ['Undo last modification.', false],
+        'GO': ['Open this thread.', false]
       }
         var pn = document.createElement('div');
         pn.name = (args.name)? args.name : '';
@@ -1794,6 +1798,11 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         } else str += obj[i] + ', ';
       }
       console.log(str);
+    },
+    obj_scopy_from_key: function(obj){
+      for (var i in obj)
+        if (typeof(i)==='string' && Object.prototype.hasOwnProperty.call(obj,obj[i])) obj[i] = obj[obj[i]];
+      return obj;
     }
   }
   var common_obj = {thread_reader:null};
@@ -1846,6 +1855,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     catalog : false,
     whereami: null,
     nicknames : '',
+    embed_to: {},
     root_body : document.getElementsByTagName('body')[0]
 //    root_body : (document.getElementsByTagName('body')[0])? document.getElementsByTagName('body')[0] :
 //                                                            document.getElementsByTagName('frame')[0].contentDocument.getElementsByTagName('body')[0] // KC root
@@ -1890,12 +1900,10 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     favicon: {}, // object for favicon
 //    get_op_image_url: function(th,type){}, // get op image's url.
     add_sticky_info : function(){}, // add sticky icon.
-    embed_to: {
-      'page_top'     : null,
-      'page_bottom'  : null,
-      'thread_top'   : null,
-      'thread_bottom': null,
-    },
+//    embed_to: {
+//      'page'  : {'top' : null, 'bottom' : null},
+//      'thread': {'top' : null, 'bottom' : null}
+//    },
     time_revised_check: function(nof_ths){return false;},
 
     format_thread_layout   : function(thread){}, // formats its layout   for catalog.
@@ -1980,7 +1988,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     remove_last_hrs_and_brs : function(th){
       while (1) {
         var last_node = th.childNodes[th.childNodes.length-1];
-        if (last_node.tagName != 'HR' && last_node.tagName != 'BR') break;
+        if (last_node.tagName !== 'HR' && last_node.tagName !== 'BR') break;
         else th.removeChild(last_node);
       }
     },
@@ -2036,6 +2044,14 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     },
   };
   site4 = {
+   tb_prep_for_embed: function(tb){
+     tb.childNodes[0].innerHTML = '';
+     tb.childNodes[1].innerHTML = '';
+     tb.childNodes[0].draggable = false;
+     tb.childNodes[3].ondblclick = null;
+     tb.childNodes[3].draggable = false;
+     tb.childNodes[3].removeAttribute('style');
+   },
    parse_funcs: {
     'common': {
       entry : function(dtpo,req) { // doc, thread, post, object
@@ -2074,6 +2090,21 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
       flags: function(){return undefined;},
       op_img_url: function() {return undefined;},
     },    
+    'catalog_html': {
+      ths_array: function(doc,ths_col){
+        var ths = [];
+        if (ths_col)
+          site2[doc.domain].absolute_link(doc.pn, doc.board);
+          for (var i=0;i<ths_col.length;i++) {
+            ths[ths.length] = {
+              pn: ths_col[i],
+              type_html: 'catalog_html',
+              page: Math.floor(i/15)+'.'+i%15,
+              __proto__: doc.__proto__};
+          }
+        return ths;
+      },
+    },
     'page_html': {
       ths_array: function(doc,ths_col){
         var ths = [];
@@ -2179,8 +2210,16 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         site.catalog = window.location.href.search(/catalog\.html/)!=-1;
         site.whereami = (document.getElementsByTagName('header')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
                       : (window.location.href.search(/catalog\.html/)!=-1)? 'catalog'
-                      : (window.location.href.search(/res\.html/)!=-1)? 'thread'
-                      : 'page';
+                      : (window.location.href.search(/res\/[0-9]*\.html/)!=-1)? 'thread'
+                      : (window.location.href.search(/\/$|(index|[0-9]+)\.html|\/#all$/)!=-1)? 'page'
+                      : 'other';
+        if (site.whereami==='thread' || site.whereami==='page') {
+          site.embed_to['top']    = document.getElementsByName('postcontrols')[0];
+          site.embed_to['bottom'] = document.getElementsByClassName('boardlist bottom')[0];
+        } else if (site.whereami==='catalog') {
+          site.embed_to['top']    = document.getElementsByTagName('header')[0].nextSibling;
+          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
+        }
         return true;
       } else {
         if (!brwsr.ff) {
@@ -2190,12 +2229,17 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
         return false;
       }
     },
-    embed_to: {
-      'page_top'     : document.getElementsByName('postcontrols')[0],
-      'page_bottom'  : document.getElementsByClassName('boardlist bottom')[0],
-      'thread_top'   : document.getElementsByName('postcontrols')[0],
-      'thread_bottom': document.getElementsByName('postcontrols')[0],
-    },
+//    embed_to: common_func.obj_scopy_from_key({
+//      catalog: {
+//        top    : 
+//        bottom : 
+//      },
+//      page : {
+//        top    : document.getElementsByName('postcontrols')[0],
+//        bottom : document.getElementsByClassName('boardlist bottom')[0]
+//      },
+//      thread : 'page',
+//    }),
     boards_sel_from_tags : function(){
       var boards = document.getElementsByClassName('modlog')[0].getElementsByTagName('tbody')[0];
       var str = 'SELECTED_BOARDS,';
@@ -2314,11 +2358,21 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
     },
     absolute_link : function(doc){
       var all = doc.getElementsByTagName('*');
+      var tgts = ['src','href'];
       for (var i=0;i<all.length;i++) {
-        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('src'));
-        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('href'));
+        for (var j=0;j<tgts.length;j++) {
+          var tgt = all[i].getAttribute(tgts[j]);
+          if (tgt && tgt.indexOf('http')!=0  && tgt.substr(0,2)!='//')  all[i].setAttribute(tgts[j],site2['8chan'].protocol + '//' + site2['8chan'].domain_url + tgt);
+        }
       }
     },
+//    absolute_link : function(doc){
+//      var all = doc.getElementsByTagName('*');
+//      for (var i=0;i<all.length;i++) {
+//        if (all[i].getAttribute('src')  && all[i].getAttribute('src').indexOf('http')!=0  && all[i].getAttribute('src').substr(0,2)!='//')  all[i].setAttribute('src',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('src'));
+//        if (all[i].getAttribute('href') && all[i].getAttribute('href').indexOf('http')!=0 && all[i].getAttribute('href').substr(0,2)!='//') all[i].setAttribute('href',site2['8chan'].protocol + '//' + site2['8chan'].domain_url + all[i].getAttribute('href'));
+//      }
+//    },
 ////////    insert_footer : function(th,page_no,bn,exe,date,nof_posts,nof_files){
 ////////      var key = (!brwsr.ff)? 'innerText' : 'innerHTML';
 ////////      nof_posts += th.getElementsByClassName('post').length;
@@ -2717,41 +2771,71 @@ obj[i].time += - pref.localtime_offset*3600000; // BUG PATCH.
 //    },
     catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
-      var node_ref = document.getElementsByClassName('threads')[0];
-      node_ref.parentNode.insertBefore(pn_hi,node_ref);
+      var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('threads')[0]
+                                                : document.getElementsByName('postcontrols')[0];
+      site4.tb_prep_for_embed(pn_tb);
+      if (site.whereami==='catalog') {
+        var selector_native = document.getElementById('sort_by');
+        if (selector_native.selectedIndex!=0) {
+          selector_native.selectedIndex = 0;
+          var evt = document.createEvent('UIEvents');
+          evt.initUIEvent('change', false, true, window, 1);
+          selector_native.dispatchEvent(evt);
+        }
+        selector_native.style.display = 'none';
+        document.getElementById('image_size').addEventListener('change', site2['8chan'].catalog_native_size_changed, false);
+        var pn_tb_new = document.createElement('span');
+        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+        pn_tb = pn_tb_new;
+        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+      } else if (site.whereami==='page') {
+        var pctrls = document.getElementsByName('postcontrols')[0];
+        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
+        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
+      }
+//      node_ref.parentNode.insertBefore(pn_hi,node_ref);
       node_ref.parentNode.insertBefore(pn_tb,node_ref);
       node_ref.parentNode.insertBefore(pn_filter,node_ref);
-      var selector_native = document.getElementById('sort_by');
-      if (selector_native.selectedIndex!=0) {
-        selector_native.selectedIndex = 0;
-        var evt = document.createEvent('UIEvents');
-        evt.initUIEvent('change', false, true, window, 1);
-        selector_native.dispatchEvent(evt);
-      }
-      selector_native.style.display = 'none';
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
       selector_catchan.childNodes[0].textContent = 'Bump order';
-      selector_native.parentNode.insertBefore(selector_catchan,selector_native);
-      document.getElementById('image_size').addEventListener('change', site2['8chan'].catalog_native_size_changed, false);
-      return site2['8chan'].catalog_from_native(date,document,site.board);
+      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
+      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
+//      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
+//      pn_tb.childNodes[1].setAttribute('style',pn_tb.childNodes[1].getAttribute('style')+';display:none');
+      return site2['8chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
     },
     catalog_native_size: (document.getElementById('image_size'))? document.getElementById('image_size').value : 'small',
     catalog_native_size_changed: function(){site2['8chan'].catalog_native_size = this.value;},
     catalog_get_native_area: function(){
-      return document.getElementById('Grid');
+      if (site.whereami==='catalog') return document.getElementById('Grid');
+      else {
+        var pc = document.getElementsByName('postcontrols')[0];
+        return pc.insertBefore(document.createElement('div'),pc.firstChild);
+      }
     },
-    catalog_from_native : function(date,doc,board) {
+    catalog_from_native : function(date,doc,board,type) {
       var ths;
 if (pref.test_mode['0']) {
       ths = {domain:'8chan', board:board, pn:doc};
       this.parse_funcs['catalog_html'].entry(ths,this.parse_funcs['catalog_html']['full_hier']);
 } else {
-//      ths = {domain:'8chan', board:board, pn:doc, parse_funcs:this.parse_funcs['catalog_html'], __proto__:site4.parse_funcs_on_demand};
-      var parse_obj = {domain:'8chan', board:board, parse_funcs:site2['8chan'].parse_funcs['catalog_html'], __proto__:site4.parse_funcs_on_demand};
+      var parse_obj = {domain:'8chan', board:board, parse_funcs:site2['8chan'].parse_funcs[type], __proto__:site4.parse_funcs_on_demand};
       ths = {pn:doc, __proto__:parse_obj};
 }
       return ths.ths;
     },
+//    catalog_from_native : function(date,doc,board) {
+//      var ths;
+//if (pref.test_mode['0']) {
+//      ths = {domain:'8chan', board:board, pn:doc};
+//      this.parse_funcs['catalog_html'].entry(ths,this.parse_funcs['catalog_html']['full_hier']);
+//} else {
+////      ths = {domain:'8chan', board:board, pn:doc, parse_funcs:this.parse_funcs['catalog_html'], __proto__:site4.parse_funcs_on_demand};
+//      var parse_obj = {domain:'8chan', board:board, parse_funcs:site2['8chan'].parse_funcs['catalog_html'], __proto__:site4.parse_funcs_on_demand};
+//      ths = {pn:doc, __proto__:parse_obj};
+//}
+//      return ths.ths;
+//    },
 //    catalog_from_native : function(date,doc,board) {
 //      var mixs = doc.getElementsByClassName('mix');
 //      var ths = [];
@@ -2827,9 +2911,10 @@ if (pref.test_mode['0']) {
 if (pref.test_mode['0']) {
           for (var i=0;i<mixs.length;i++) if (mixs[i].tagName==='DIV') ths[ths.length] = {pn:mixs[i], page:Math.floor(i/15)+'.'+i%15};
 } else { 
-          for (var i=0;i<mixs.length;i++) if (mixs[i].tagName==='DIV')
-//            ths[ths.length] = {pn:mixs[i], page:Math.floor(i/15)+'.'+i%15, domain:doc.domain, board:doc.board, parse_funcs:doc.parse_funcs, __proto__:site4.parse_funcs_on_demand};
-            ths[ths.length] = {pn:mixs[i], page:Math.floor(i/15)+'.'+i%15, type_html: 'catalog_html', __proto__:doc.__proto__};
+//          for (var i=0;i<mixs.length;i++) if (mixs[i].tagName==='DIV')
+//            ths[ths.length] = {pn:mixs[i], page:Math.floor(i/15)+'.'+i%15, type_html: 'catalog_html', __proto__:doc.__proto__};
+          for (var i=0;i<mixs.length;i++) if (mixs[i].tagName==='DIV') ths[ths.length] = mixs[i];
+          ths = this.ths_array(doc,ths);
 }
           for (var i=0;i<ths.length;i++) {
             var pn_child = ths[i].pn.getElementsByTagName('div')[0];
@@ -2870,7 +2955,7 @@ if (pref.test_mode['0']) {
         format: function(th){th.pn.getElementsByTagName('a')[0].removeAttribute('href');return null;},
         op_img_url: function(th){
           var img = th.pn.getElementsByTagName('img')[0];
-          return (img)? img.src : undefined; // patch.
+          return (img)? img.getAttribute('src') : undefined; // patch.
         },
       },
       'catalog_json' : {
@@ -2964,7 +3049,8 @@ if (!pref.test_mode['0']) {
           var ths = [];
           if (pc) for (var i=0;i<pc.length;i++) if (pc[i].id && pc[i].id.substr(0,6)=='thread') ths[ths.length] = pc[i];
           ths = this.ths_array(doc,ths);
-          for (var i=0;i<ths.length;i++) ths[i].pn.removeAttribute('class');
+          if (site.whereami!=='page' || !pref.catalog.embed_page) for (var i=0;i<ths.length;i++) ths[i].pn.removeAttribute('class');
+//          for (var i=0;i<ths.length;i++) if (ths[i].pn.nextSibling && ths[i].pn.nextSibling.tagName==='HR') ths[i].pn.appendChild(ths[i].pn.nextSibling);
           return ths;
         },
         no : function(th){return parseInt(th.pn.getElementsByClassName('post op')[0].id.substring(3),10);},
@@ -3067,7 +3153,7 @@ if (pref.test_mode['0']) {
 //        },
         op_img_url: function(th){
           var img = th.pn.getElementsByTagName('img')[0];
-          return (img)? img.src : undefined; // patch.
+          return (img)? img.getAttribute('src') : undefined; // patch.
         },
       },
       'thread_html' : {
@@ -3467,6 +3553,7 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
   };
   site2['4chan'] = {
     nickname : '4chan',
+    home : site.protocol + '//boards.4chan.org/int/',
     postform: document.getElementsByClassName('postForm')[0],
     postform_comment: document.getElementsByName('com')[0],
     postform_submit: null,
@@ -3484,6 +3571,11 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
           if (header) return header.offsetHeight;
           else return 0;
         }
+        site.whereami = (document.getElementsByTagName('head')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
+                      : (window.location.href.search(/catalog/)!=-1)? 'catalog'
+//                      : (window.location.href.search(/res\/[0-9]*\.html/)!=-1)? 'thread'
+//                      : (window.location.href.search(/\/$|(index|[0-9]+)\.html|\/#all$/)!=-1)? 'page'
+                      : 'other';
         return true;
       } else return false;
     },
@@ -3492,8 +3584,16 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
     catalog_threads_in_page : function(doc){return doc.getElementsByClassName('thread');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
     max_page : function(){return 10;},
-    make_url : function(board,no){return [site.protocol+'//boards.4chan.org' + board + ((no!=0)? (no+1) :''), 'html'];},
-    make_url3: function(board,th){return  site.protocol+'//boards.4chan.org' + board + 'thread/' + th;},
+//    make_url : function(board,no){return [site.protocol+'//boards.4chan.org' + board + ((no!=0)? (no+1) :''), 'html'];},
+//    make_url3: function(board,th){return  site.protocol+'//boards.4chan.org' + board + 'thread/' + th;},
+    make_url : function(board,no,key){
+      var url_prefix = site.protocol+'//boards.4chan.org' + board;
+      return (key==='p')? [url_prefix + ((no!=0)? (no+1) :''), 'html'] :
+                          [url_prefix + 'catalog.json'       , 'json']; // 4chan's html is skelton.
+//             (key==='j')? [url_prefix + 'catalog.json'       , 'json'] :
+//                          [url_prefix + 'catalog'            , 'html'];
+    },
+    make_url3: function(board,th){return site.protocol+'//boards.4chan.org' + board + 'thread/' + ((th[0]!=='t')? th : th.substr(1)+'.json');},
     get_ops : function(doc){
       var ops = [];
       var threads = doc.getElementsByClassName('thread');
@@ -3678,7 +3778,179 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
     uip_post_num : function(tgt_post){
       return tgt_post.getElementsByClassName('postNum');
     },
+    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+      var node_ref = (site.whereami==='catalog')? document.getElementById('ctrl')
+//      var node_ref = (site.whereami==='catalog')? document.getElementById('settings')
+                                                : document.getElementsByName('postcontrols')[0];
+//      pn_tb.setAttribute('style', 'float:right');
+      site4.tb_prep_for_embed(pn_tb);
+//      if (site.whereami==='catalog') {
+        var selector_native = document.getElementById('order-ctrl');
+        if (selector_native.selectedIndex!=0) {
+          selector_native.selectedIndex = 0;
+          var evt = document.createEvent('UIEvents');
+          evt.initUIEvent('change', false, true, window, 1);
+          selector_native.dispatchEvent(evt);
+        }
+        selector_native.style.display = 'none';
+        document.getElementById('size-ctrl').addEventListener('change', site2['4chan'].catalog_native_size_changed, false);
+        var fl = document.getElementById('filters-ctrl');
+        fl.parentNode.setAttribute('style','display:none');
+        var qf2 = this.catalog_native_prep_clonenode(document.getElementById('qf-box'));
+//        var qf = document.getElementById('qf-box');
+//        var qf2= qf.cloneNode();
+//        qf2.name = 'CatChan_qf2';
+//        qf.parentNode.insertBefore(qf2,qf.nextSibling);
+//        qf.setAttribute('style','display:none');
+        var kwd_str = document.getElementsByName('catalog.filter.kwd.str')[0];
+        if (kwd_str.value!=='') {
+          kwd_str.value = '';
+          pref_func.apply_prep(kwd_str,true,true);
+        }
+        qf2.onkeyup = function(){
+          pref.catalog.filter.kwd.str = this.value;
+          pref_func.apply_prep(kwd_str,false);
+          kwd_str.onkeyup();
+        }
+        var qfctrl = this.catalog_native_prep_clonenode(document.getElementById('qf-ctrl'),true);
+        qfctrl.onclick = function(){
+          var qf_cnt = document.getElementById('qf-cnt');
+          if (qf_cnt.style.display==='none') qf_cnt.style.display = 'inline';
+          else {
+            qf_cnt.style.display = 'none';
+            qf2.value = '';
+            qf2.onkeyup();
+          }
+        }
+        var qfc = this.catalog_native_prep_clonenode(document.getElementById('qf-clear'),true);
+        qfc.onclick = function(){
+          qfctrl.onclick();
+        }
+//        var pn_tb_new = document.createElement('span');
+//        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+//        pn_tb = pn_tb_new;
+//        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+//      } else if (site.whereami==='page') {
+//        var pctrls = document.getElementsByName('postcontrols')[0];
+//        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
+//        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
+//      }
+//      node_ref.parentNode.insertBefore(pn_tb,node_ref);
+      node_ref.appendChild(pn_tb);
+//      node_ref.parentNode.insertBefore(pn_filter,node_ref);
+      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
+      selector_catchan.childNodes[0].textContent = 'Bump order';
+      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
+//      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
+      return site2['4chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
+    },
+    catalog_native_prep_clonenode : function(node,deep) {
+      var cn = node.cloneNode(deep);
+      cn.setAttribute('name',((cn.name)? cn.name : 'clone_node') + '_CatChan');
+      node.parentNode.insertBefore(cn,node.nextSibling);
+      node.setAttribute('style','display:none');
+      return cn;
+    },
+    catalog_from_native : function(date,doc,board,type) {
+      var parse_obj = {domain:'4chan', board:board, parse_funcs:site2['4chan'].parse_funcs[type], __proto__:site4.parse_funcs_on_demand};
+      var ths = {pn:doc, __proto__:parse_obj};
+      return ths.ths;
+    },
+    catalog_get_native_area: function(){
+      return document.getElementById('threads');
+    },
+    catalog_native_size: (document.getElementById('size-ctrl'))? document.getElementById('size-ctrl').value : 'small',
+    catalog_native_size_changed: function(){
+      site2['4chan'].catalog_native_size = this.value;
+      var threads = catalog_obj.catalog_func().get_threads();
+      for (var name in threads) site2['4chan'].catalog_json2html3_size_changed(threads[name][0].getElementsByTagName('img')[0]);
+      catalog_obj.catalog_func().show_catalog();
+    },
     parse_funcs : {
+      'catalog_html' : {
+        ths: function(doc) {
+          var ths = this.ths_array(doc,doc.pn.getElementsByClassName('thread'));
+          for (var i=0;i<ths.length;i++)
+            ths[i].pn.getElementsByTagName('a')[0].removeAttribute('href');
+          return ths;
+        },
+        no : function(th){return parseInt(th.pn.getAttribute('id').substr(7),10);},
+        time_bumped: function(th){return 0;},
+        time_created : function(th){return 0;},
+        nof_posts: function(th){
+          var footer = th.pn.getElementsByClassName('meta')[0];
+          var tmp = footer.textContent.match(/[0-9]+/g);
+          if (tmp===null) tmp = [0,0];
+          else if (tmp.length==1) tmp[1]=0;
+          Object.defineProperty(th, 'nof_files', {value:parseInt(tmp[1],10), enumerable:true, writable:true, configurable:true});
+          Object.defineProperty(th, 'footer', {value:footer, enumerable:true, writable:true, configurable:true});
+          footer.innerHTML = '';
+          return parseInt(tmp[0],10);
+        },
+        nof_files: function(th){
+          if (!th.hasOwnProperty('nof_posts')) th['nof_posts'] = this['nof_posts'](th);
+          return th.nof_files;
+        },
+        key: function(th){return th.domain + th.board + th.no;},
+        sub: function(th){
+          var ts = th.pn.getElementsByClassName('teaser')[0];
+          var sub = ts.getElementsByTagName('b');
+          var com = (sub[0])? ((ts.childNodes[1])? ts.childNodes[1].textContent : '') : ts.childNodes[0].textContent;
+          Object.defineProperty(th, 'com', {value:com, enumerable:true, writable:true, configurable:true});
+          return (sub[0])? sub[0].textContent : '';
+        },
+        name: function(th){return '';},
+        com: function(th){
+          if (!th.hasOwnProperty('sub')) Object.defineProperty(th, 'sub', {value:this['sub'](th), enumerable:true, writable:true, configurable:true});
+          return th.com;
+        },
+        footer: function(th){
+//          if (!th.hasOwnProperty('nof_posts')) Object.defineProperty(th, 'nof_posts', {value:this['nof_posts'](th), enumerable:true, writable:true, configurable:true});
+//          return th.footer;
+          var footer = th.pn.getElementsByClassName('meta')[0]; // must parse pn because of mimic mode.
+          footer.innerHTML = '';
+          return footer;
+        },
+        sticky: function(th){return th.pn.getElementsByClassName('stickyIcon')[0]!==undefined;},
+//        format: function(th){th.pn.getElementsByTagName('a')[0].removeAttribute('href');return null;},
+        op_img_url: function(th){
+          var img = th.pn.getElementsByTagName('img')[0];
+          return (img)? img.getAttribute('src') : undefined; // patch.
+        },
+      },
+      'catalog_json' : {
+        ths: function(obj) { // same as 8chan.
+          var ths = [];
+          for (var i=0;i<obj.obj.length;i++)
+            if (obj.obj[i].threads) for (var j=0;j<obj.obj[i].threads.length;j++) {
+              obj.obj[i].threads[j].page = i + '.' + j;
+              obj.obj[i].threads[j].sticky = obj.obj[i].threads[j].sticky===1; // overwrite property of the same name before setting prototype.
+              obj.obj[i].threads[j].type_html = 'catalog_html';
+              obj.obj[i].threads[j].__proto__ = obj.__proto__;
+              ths[ths.length] = obj.obj[i].threads[j];
+            }
+          return ths;
+        },
+        time_bumped: function(th){
+          return (th.last_replies)? th.last_replies[th.last_replies.length-1].time*1000 - pref.localtime_offset*3600000 :
+                                    th.time*1000                                        - pref.localtime_offset*3600000;
+        },
+        time_created : function(th){return th.time*1000       -pref.localtime_offset*3600000;},
+        nof_posts: function(th){return th.replies+1;}, // same as 8chan
+        nof_files: function(th){return th.images+1;},
+        key: function(th){return th.domain + th.board + th.no;}, // same as 8chan
+        pn: function(th){
+          var pn = site2['4chan'].catalog_json2html3(th,th.board, site2['4chan'].catalog_json2html3_thumbnail(th,th.board));
+          return pn;
+        },
+        sub: function(th){return (th.hasOwnProperty('sub'))? th.sub : '';},
+        name: function(th){return (th.hasOwnProperty('name'))? th.name : '';},
+        com: function(th){return (th.hasOwnProperty('com'))? th.com : '';},
+        op_img_url: function(th) {
+          return site2['4chan'].catalog_json2html3_thumbnail(th, th.board);},
+//        footer: function(th){return th.pn.getElementsByClassName('meta')[0];},
+        proto: 'catalog_html',
+      },
       'page_html' : {
         ths: function(doc) {
           var ths = this.ths_array(doc, doc.pn.getElementsByClassName('thread'));
@@ -3727,6 +3999,42 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
       'thread_html' : {
         proto: 'page_html',
       },
+    },
+    catalog_json2html3_thumbnail: function(obj, board) {
+      var ext = (obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext;
+      return (obj.ext)? 'http://i.4cdn.org' + obj.board + obj.tim + 's' + ext : '';
+    },
+    catalog_json2html3 : function(obj,board,thumb_url) {
+      var th = document.createElement('div');
+      th.setAttribute('class','thread');
+      th.setAttribute('id','thread-'+obj.no);
+//      th.innerHTML = '<a href="http://boards.4chan.org' + obj.board + 'thread/' + obj.no + ((obj.sub)? '/'+obj.sub.replace(/ /,'-') : '') + '">' + // cause direct jump
+      th.innerHTML = '<a>' +
+                       '<img alt="" id="thumb-' + obj.no + '" class="thumb"' + // cause popup error
+//                       '<img alt="" id="thumb-' + obj.no + // don't load image.
+                         ((obj.tn_w)? 'width="' + ((this.catalog_native_size==='small')? obj.tn_w*3/5 : obj.tn_w) + '"' : '' ) +
+                         ((obj.tn_h)? 'height="' + ((this.catalog_native_size==='small')? obj.tn_h*3/5 : obj.tn_h) + '"' : '' ) +
+                         'src=' + thumb_url + ' data-id="' + obj.no + '">' +
+                     '</a>' +
+                     '<div title="(R)eplies / (I)mages" id="meta-' + obj.no + '" class="meta">' +
+                       'R: <b>' + obj.nof_posts + '</b> / I: <b>' + obj.nof_files + '</b></div>' +
+                     '<div class="teaser"><b>' + obj.sub + '</b>' + ((obj.com)? ((obj.sub)? ': ' : '' ) + obj.com : '') + '</div>';
+//      if (!obj.tn_w || !obj.tn_h) {
+        th.childNodes[0].childNodes[0].addEventListener('load',site2['4chan'].catalog_json2html3_onload,false);
+//      }
+      return th;
+    },
+    catalog_json2html3_onload : function() {
+      this.removeEventListener('load',site2['4chan'].catalog_json2html3_onload,false);
+      if (!this.tn_w || !this.tn_h) site2['4chan'].catalog_json2html3_size_changed(this);
+      this.removeAttribute('class'); // remove popup.
+    },
+    catalog_json2html3_size_changed : function(myself) {
+      var w = myself.naturalWidth;
+      var h = myself.naturalHeight;
+      var f = ((w>h)? w : h) / ((site2['4chan'].catalog_native_size==='small')? 150 : 250);
+      myself.setAttribute('width', w/f);
+      myself.setAttribute('height', h/f);
     },
     favicon : site2['8chan'].favicon // DEBUG
   };
@@ -3791,6 +4099,7 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
   for (var i in site2) if (i!=='DEFAULT' && i!=='common') {
     site3[i] = {boards: null, tags: {cs:[], ci:[]}};
     site2[i].check_func();
+    site2[i].check_func = null; // reduce memory consumption.
     site.nicknames = site.nicknames + ((site.nicknames!=='')? '|' : '') + i;
   }
 
@@ -4211,7 +4520,8 @@ if (!pref.test_mode['1']) {
         common_func.overwrite_prop(pn.style, {left:state[1], top:state[2], position:'fixed', resize:'both'});
         common_func.overwrite_prop(pn.childNodes[1].style, {width:state[3], height:state[4], resize:'both'});
       } else {
-        var ref = site2[site.nickname].embed_to[site.whereami+((req==0)?'_top':'_bottom')];
+//        var ref = site2[site.nickname].embed_to[site.whereami][(req==0)?'top':'bottom'];
+        var ref = site.embed_to[(req==0)?'top':'bottom'];
         if (ref){
           common_func.overwrite_prop(pn.style, {left:'auto', top:'auto', position:'static', resize:'none'});
           common_func.overwrite_prop(pn.childNodes[1].style, {width:'auto', height:'auto', resize:'none'});
@@ -4291,6 +4601,8 @@ if (!pref.test_mode['1']) {
 //            pn.innerHTML = '<div><div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button></div><div style="float: right"><button type="button">X</button></div><div></div></div><div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>'
             var tb = pn.childNodes[0];
             tb.childNodes[2].style.height = tb.childNodes[0].offsetHeight + 'px';
+            tb.childNodes[0].style.cursor = 'move';
+            tb.childNodes[2].style.cursor = 'move';
             rollup_func_tb = function(){rollup(pn,pn.childNodes[1],rollup_func,rolldown_func);};
             tb.childNodes[0].childNodes[0].onclick = rollup_func_tb;
             tb.childNodes[0].childNodes[1].onclick = function(){opacity(pn, false);};
@@ -4450,6 +4762,8 @@ if (!pref.test_mode['1']) {
 ////        pn.draggable = false;
 ////        tb.childNodes[0].draggable = true;
 ////        tb.childNodes[2].draggable = true;
+////        tb.childNodes[0].style.cursor = 'move';
+////        tb.childNodes[2].style.cursor = 'move';
 ////        tgt = pn.childNodes[1];
 ////        this.tb = tb;
 ////        this.opacity = 1;
@@ -4516,7 +4830,7 @@ if (!pref.test_mode['1']) {
 ////          common_func.overwrite_prop(this.pn.style, {left:this.state[1], top:this.state[2], position:'fixed', resize:'both'});
 ////          common_func.overwrite_prop(this.pn.childNodes[1].style, {width:this.state[3], height:this.state[4], resize:'both'});
 ////        } else {
-////          var ref = site2[site.nickname].embed_to[site.whereami+((name==='embed_top')?'_top':'_bottom')];
+////          var ref = site.embed_to[(name==='embed_top')?'top':'bottom'];
 ////          if (ref){
 ////            common_func.overwrite_prop(this.pn.style, {left:'auto', top:'auto', position:'static', resize:'none'});
 ////            common_func.overwrite_prop(this.pn.childNodes[1].style, {width:'auto', height:'auto', resize:'none'});
@@ -4573,7 +4887,7 @@ if (!pref.test_mode['1']) {
       setting_obj = make_setting_obj(pn8);
     }
     if (site.features.postform && site.postform!=null) {
-      if (site2[site.nickname].postform_activation) site2[site.nickname].postform_activation();
+//      if (site2[site.nickname].postform_activation) site2[site.nickname].postform_activation();
       wafd = make_wafd();
       var pn9 = cnst.init('tile:get:left:tile:get:bottom:button:post_form:Show:tile:set:left');
       post_form_obj = make_post_form_obj(pn9);
@@ -4911,7 +5225,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
     }
     if (pref.tooltip.show) {
       pref_func.tooltips.add_hier(buttons);
-      pref_func.tooltips.add_hier(triage.pn);
+//      pref_func.tooltips.add_hier(triage.pn);
     }
 
     function triage_event(){
@@ -4951,7 +5265,9 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       if (catalog_func===null) catalog_func = make_catalog();
       else catalog_func = catalog_func.destroy();
     }
-    if (pref.catalog.embed && site.catalog) {
+    var embed_catalog = pref.catalog.embed && site.whereami==='catalog';
+    var embed_page    = pref.catalog.embed_page && site.whereami==='page';
+    if (embed_catalog || embed_page) {
 ////      pref.catalog_board_list_sel = 0;
 ////      pref.catalog.filter.show = true;
 ////      pref.catalog_show_setting = true;
@@ -4961,9 +5277,10 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 ////      pref.catalog.design = 'page';
       pn12.addEventListener('click', show_hide, false); // show_hide
     }
+if (!(brwsr.ff && embed_catalog && site.nickname==='4chan')) { // patch, but WHY???
     document.styleSheets[document.styleSheets.length-1].insertRule('.catalog_triage_parent {pointer-events: none;}',0); 
     document.styleSheets[document.styleSheets.length-1].insertRule('.catalog_triage_button {pointer-events: auto;}',0); 
-
+}
     function scan_tags_common(ths,html_str,tags_obj){
       var acc = true;
       if (tags_obj===undefined) {
@@ -5169,9 +5486,9 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
         '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
         '<button name="refresh">Refresh</button>'+
-        '<label name="num_of_pages">'+
-          '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></label>'+
-        '<label name="boards_selector"><select name="catalog_board_list_sel"></select></label>');
+        '<span name="num_of_pages">'+
+          '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></span>'+
+        '<span name="boards_selector"><select name="catalog_board_list_sel"></select></span>');
       pref_func.apply_prep(pn12_0_2,false);
       var pn12_0_2_childs = ['filter','settings','refresh','num_of_pages','boards_selector'];
       for (var i=0;i<pn12_0_2_childs.length;i++)
@@ -5182,7 +5499,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 
       var health_indicator = (function(){
         var pn_hi = document.createElement('span');
-//        if (!(pref.catalog.embed && site.catalog)) pn_hi.style['font-size'] = '24px';
+//        if (!(embed_catalog)) pn_hi.style['font-size'] = '24px';
         if (!pref.catalog.health_indicator.on) pn_hi.style.display = 'none';
         pn12_0.childNodes[3].appendChild(pn_hi);
         function insert_node(col,str){
@@ -5251,21 +5568,22 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         '</div>'+
         '<div align="left" style="float:left">'+
           '<div style="float:left">'+
-            '<input type="checkbox" name="catalog.filter.kwd"> Keyword :'+
-//            '<textarea style="height:1em" cols="25" name="catalog.filter.kwd_str"></textarea>'+
-            '<input type="text" name="catalog.filter.kwd_str" size="25">'+
-            '<input type="radio" name="catalog.filter.kwd_match" value="match">match '+
-            '<input type="radio" name="catalog.filter.kwd_match" value="unmatch">unmatch '+
-            '<input type="checkbox" name="catalog.filter.kwd_re">RE '+
-            '<input type="checkbox" name="catalog.filter.kwd_ci">Case insensitive <br>'+
-            '&emsp;OP:<input type="checkbox" name="catalog.filter.kwd_op">OP '+
-            '<input type="checkbox" name="catalog.filter.kwd_op_sub">Title '+
-            '<input type="checkbox" name="catalog.filter.kwd_op_name">Name '+
-            '<input type="checkbox" name="catalog.filter.kwd_op_file">Filenames '+
-            '&emsp;Posts:<input type="checkbox" name="catalog.filter.kwd_post">Posts '+
-            '<input type="checkbox" name="catalog.filter.kwd_post_sub">Subjects '+
-            '<input type="checkbox" name="catalog.filter.kwd_post_name">Names '+
-            '<input type="checkbox" name="catalog.filter.kwd_post_file">Filenames <br>'+
+            '<div>'+
+              '<input type="checkbox" name="catalog.filter.kwd.use"> Keyword :'+
+//              '<textarea style="height:1em" cols="25" name="catalog.filter.kwd.str"></textarea>'+
+              '<input type="text" name="catalog.filter.kwd.str" size="25">'+
+              '<input type="radio" name="catalog.filter.kwd.match" value="match">match '+
+              '<input type="radio" name="catalog.filter.kwd.match" value="unamtch">unmatch '+
+              '<input type="checkbox" name="catalog.filter.kwd.re">RE '+
+              '<input type="checkbox" name="catalog.filter.kwd.ci">Case insensitive <br>'+
+              '&emsp;(<input type="checkbox" name="catalog.filter.kwd.sub">Subject '+
+              '<input type="checkbox" name="catalog.filter.kwd.name">Name '+
+              '<input type="checkbox" name="catalog.filter.kwd.trip">Tripcode '+
+              '<input type="checkbox" name="catalog.filter.kwd.com">Comment '+
+              '<input type="checkbox" name="catalog.filter.kwd.file">Filename)'+
+              ' in (<input type="checkbox" name="catalog.filter.kwd.op">OP '+
+              '<input type="checkbox" name="catalog.filter.kwd.post">Posts)'+
+            '</div>'+
             '<div style="float:left">'+
               '<input type="checkbox" name="catalog.filter.tag"> Tag :'+
             '</div>'+
@@ -5294,7 +5612,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
             '<button name="scanSite">scanSite</button> '+
             '<span name="scan_progress"></span><br>'+
             '<button name="clear_threads">ClearAllThreads</button>'+
-            '<input type="checkbox" name="catalog.filter.kwd_scan_clear_auto">Auto <br>'+
+            '<input type="checkbox" name="catalog.filter.scan_clear_auto">Auto <br>'+
 //            '<div style="float:left;overflow:auto;resize:both;" name="catalog.filter.tag_site_list"></div>'+
             '<input type="checkbox" name="catalog.filter.tag_scansite">scan tags<br>'+
           '</div>'+
@@ -5326,13 +5644,14 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           '</div>'+
         '</div>'+
         '<div style="clear:both"></div>';
-      if (!(pref.catalog.embed && site.catalog)) pn12_0_4.style.background = '#e5ecf9';
-      else {
+      if (!embed_catalog && !embed_page) pn12_0_4.style.background = '#e5ecf9';
+      else if (embed_catalog) {
         pn12_0_2.getElementsByTagName('span')['hide_at_embed'].style.display = 'none';
         pn12_0_4.getElementsByTagName('div')['hide_at_embed'].style.display = 'none';
       }
       var hide_target = (pref.catalog.text_mode.mode==='text')? 'catalog.text_mode.mode.graphic' : 'catalog.text_mode.mode.text';
       pn12_0_4.getElementsByTagName('span')[hide_target].style.display = 'none';
+      filter_kwd_prep(pref.catalog.filter.kwd,true); // prep kwd.kwds
 
       if (pref.catalog.filter.time_str==='') pref.catalog.filter.time_str = new Date().toLocaleString();
       if (pref.tooltip.show) pref_func.tooltips.add_hier(pn12_0_4);
@@ -5394,19 +5713,18 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
           catalog_attr_changed();
         },
         'load_save_key'       : function(num){return pref.script_prefix + '.catalog.filter.' + pref.catalog_board_list_obj[num][0].key;},
-        'catalog.filter.kwd'       : catalog_filter_changed,
-        'catalog.filter.kwd_str'   : catalog_filter_changed,
-        'catalog.filter.kwd_match' : catalog_filter_changed,
-        'catalog.filter.kwd_re'    : catalog_filter_changed,
-        'catalog.filter.kwd_ci'    : catalog_filter_changed,
-        'catalog.filter.kwd_op'        : catalog_filter_changed,
-        'catalog.filter.kwd_op_sub'    : catalog_filter_changed,
-        'catalog.filter.kwd_op_name'   : catalog_filter_changed,
-        'catalog.filter.kwd_op_file'   : catalog_filter_changed,
-        'catalog.filter.kwd_post'      : catalog_filter_changed,
-        'catalog.filter.kwd_post_sub'  : catalog_filter_changed,
-        'catalog.filter.kwd_post_name' : catalog_filter_changed,
-        'catalog.filter.kwd_post_file' : catalog_filter_changed,
+        'catalog.filter.kwd.use'   : catalog_filter_changed,
+        'catalog.filter.kwd.str'   : function(){filter_kwd_prep(pref.catalog.filter.kwd);},
+        'catalog.filter.kwd.match' : catalog_filter_changed,
+        'catalog.filter.kwd.re'    : 'catalog.filter.kwd.str',
+        'catalog.filter.kwd.ci'    : 'catalog.filter.kwd.str',
+        'catalog.filter.kwd.op'    : catalog_filter_changed,
+        'catalog.filter.kwd.post'  : catalog_filter_changed,
+        'catalog.filter.kwd.sub'   : catalog_filter_changed,
+        'catalog.filter.kwd.name'  : catalog_filter_changed,
+        'catalog.filter.kwd.file'  : catalog_filter_changed,
+        'catalog.filter.kwd.com'   : catalog_filter_changed,
+        'catalog.filter.kwd.trip'  : catalog_filter_changed,
         'catalog.filter.tag'       : catalog_filter_changed,
 //        'catalog.filter.tag_list'  : catalog_filter_changed,
         'catalog.filter.time'      : catalog_filter_changed,
@@ -5423,12 +5741,12 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         'catalog.filter.attr_list' : catalog_attr_changed,
         'catalog.filter.attr_list_str' : catalog_attr_changed,
         'scan'                     : scan_tags,
-        'scanSite' : function(){if (pref.catalog.filter.kwd_scan_clear_auto) onchange_funcs.clear_threads();scan_boards.keyword_load('scan');},
+        'scanSite' : function(){if (pref.catalog.filter.scan_clear_auto) onchange_funcs.clear_threads();scan_boards.keyword_load('scan');},
         'catalog.order.reply_to_me' : re_sort_thread,
         'catalog.order.reply'       : re_sort_thread,
         'catalog.order.watch'       : re_sort_thread,
         'catalog.order.sticky'      : re_sort_thread,
-        'catalog.filter.tag_ci'     : function(){scan_tags_init(scan_tags_common_c(site3[site.nickname].tags,'')[0],false);},
+        'catalog.filter.tag_ci'     : function(){scan_tags_init(scan_tags_common_c(site3[site.nickname].tags,'')[0], null);},
       }
       window.addEventListener('beforeunload', onchange_funcs.save_onleave, false);
       pref_func.add_onchange(pn12_0_2,onchange_funcs);
@@ -5441,7 +5759,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       var pn_setting = pn12_0_4.childNodes[0];
       if (!pref.catalog_show_setting) pn_setting.style.display = 'none';
       var pn_filter = pn12_0_4.childNodes[1];
-      var triage_parent = (pref.catalog.embed && site.catalog)? site2[site.nickname].catalog_get_native_area() : pn12_1;
+      var triage_parent = (embed_catalog || embed_page)? site2[site.nickname].catalog_get_native_area() : pn12_1;
       if (pref.catalog.auto_load_filter) onchange_funcs.load();
 
       var tags_scan_regex = new RegExp('#[^#, \.:;\n]+(?=#|,| |\.|:|;|\n|$)','g'); // ATTENTION. REFER function prep_tag_str();
@@ -5621,40 +5939,41 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
                         sb.pool.div.innerHTML = obj[i].threads[j].com + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].name;
                         tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+obj[i].threads[j].no,sb.pool.div,sb);
                       }
-                      var search_obj = [obj[i].threads[j].com, obj[i].threads[j].sub, obj[i].threads[j].name,'','','','',''];
-                      if (!catalog_filter_query_scan(search_obj,sb.pool.div.tags)) {obj[i].threads.splice(j,1);j--;}
+//                      var search_obj = [obj[i].threads[j].com, obj[i].threads[j].sub, obj[i].threads[j].name,'','','','',''];
+//                      if (!catalog_filter_query_scan(search_obj,sb.pool.div.tags)) {obj[i].threads.splice(j,1);j--;}
+                      if (!catalog_filter_query_scan(obj[i].threads[j],sb.pool.div.tags)) {obj[i].threads.splice(j,1);j--;}
                     }
                   }
                 }
     //            for (var i=0;i<obj.length;i++) sb.scanned += obj[i].threads.length; // NOT SO FAST.
-    //            var kwd = pref.catalog.filter.kwd_str;
+    //            var kwd = pref.catalog.filter.kwd.str;
     //            if (pref.catalog.filter.kwd && kwd!=='') {
-    //              if (!pref.catalog.filter.kwd_re) kwd = kwd.replace(/\*/g,'.*');
-    //              if (pref.catalog.filter.kwd_ci) kwd = new RegExp(kwd,'i');
+    //              if (!pref.catalog.filter.kwd.re) kwd = kwd.replace(/\*/g,'.*');
+    //              if (pref.catalog.filter.kwd.ci) kwd = new RegExp(kwd,'i');
     //              for (var i=0;i<obj.length;i++) {
     //                for (var j=obj[i].threads.length-1;j>=0;j--) {
     //                  var str = obj[i].threads[j].name + '\n' + obj[i].threads[j].sub + '\n' + obj[i].threads[j].com;
     //                  var result = (str.search(kwd)!=-1);
-    //                  if (pref.catalog.filter.kwd_match==='unmatch') result = !result;
+    //                  if (pref.catalog.filter.kwd.match==='unmatch') result = !result;
     //                  if (!result) obj[i].threads.splice(j,1);
     //                }
     //              }
     //            }
-                if ((pref.catalog.filter.kwd && pref.catalog.filter.kwd_str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))
+                if ((pref.catalog.filter.kwd.use && pref.catalog.filter.kwd.str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))
                   sb.pool.ths = site2[sb.pool.dbt[0]].catalog_from_json3(obj,sb.pool.dbt[1]); // heavy, and cause loading in chrome.
                 else sb.pool.ths = [];
               } else {
                 sb.pool.type = 'catalog_html';
                 sb.pool.doc = ('response' in value)? value.response : sb.pool.parser.parseFromString(value.responseText, 'text/html');
-                sb.pool.ths = site2[sb.pool.dbt[0]].catalog_from_native(value.date,sb.pool.doc,sb.pool.dbt[1]);
+                sb.pool.ths = site2[sb.pool.dbt[0]].catalog_from_native(value.date,sb.pool.doc,sb.pool.dbt[1],sb.pool.type);
     //            if (sb.scan_tag) for (var i=0;i<sb.pool.ths.length;i++) sb.pool.ths[i].tags = tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+sb.pool.ths[i].no,sb.pool.ths[i].pn,sb);
                 sb.scanned += sb.pool.ths.length;
                 for (var i=0;i<sb.pool.ths.length;i++) {
                   if (sb.scan_tag) tag_scan_extract_1(sb.pool.dbt[0]+sb.pool.dbt[1]+sb.pool.ths[i].no,sb.pool.ths[i].pn,sb);
-                  if (!catalog_filter_query_scan(sb.pool.ths[i].search_obj,sb.pool.ths[i].pn.tags)) {sb.pool.ths.splice(i,1);i--;}
+                  if (!catalog_filter_query_scan(sb.pool.ths[i],sb.pool.ths[i].pn.tags)) {sb.pool.ths.splice(i,1);i--;}
                 }
               }         
-              if (sb.pool.ths.length!=0 && ((pref.catalog.filter.kwd && pref.catalog.filter.kwd_str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))) {
+              if (sb.pool.ths.length!=0 && ((pref.catalog.filter.kwd.use && pref.catalog.filter.kwd.str!=='') || (pref.catalog.filter.tag && filter_tags.length!=0))) {
                 sb.found_boards++;
                 sb.found_threads += sb.pool.ths.length;
                 sb.pool.tgts = {};
@@ -5759,7 +6078,14 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       set_auto_update();
 
       if (!pref.catalog.filter.show) pn_filter.style.display = 'none';
-      pn_filter.getElementsByTagName('*')['catalog.filter.kwd_str'].onkeyup = pn_filter_changed;
+      pn_filter.getElementsByTagName('*')['catalog.filter.kwd.str'].onkeyup = function(){
+        pref_func.apply_prep(this,true,true);
+        if ((!pref.catalog.filter.kwd.use && this.value!=='') || (pref.catalog.filter.kwd.use && this.value==='')) {
+          pref.catalog.filter.kwd.use = !pref.catalog.filter.kwd.use;
+          var use = pn_filter.getElementsByTagName('*')['catalog.filter.kwd.use'];
+          pref_func.apply_prep(use,false,true);
+        }
+      }
       var filter_time_str = pn_filter.getElementsByTagName('*')['catalog.filter.time_str'];
 //      pn_filter.getElementsByTagName('button')['now'].onclick = function(){set_time_str(Date.now());}
       var filter_time_ago_str = pn_filter.getElementsByTagName('*')['catalog.filter.time_ago_str'];
@@ -5795,7 +6121,6 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         pref_func.apply_prep(pn_filter,true);
         catalog_filter_changed();
       }
-//      var triage_parent = (pref.catalog.embed && site.catalog)? site2[site.nickname].catalog_get_native_area() : pn12_1;
       if (pref.catalog.appearance.initial.state==='maximized') pn12_0.childNodes[1].childNodes[3].onclick();
       else if (pref.catalog.appearance.initial.state==='top') pn12_0.childNodes[1].childNodes[0].onclick();
       else if (pref.catalog.appearance.initial.state==='bottom') pn12_0.childNodes[1].childNodes[1].onclick();
@@ -5812,7 +6137,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       }
       function scan_tags_init(str2, reload){
         var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
-        pn_tag_list.onchange = function(){prep_tag_str(null, reload, true);};
+        if (reload!==null) pn_tag_list.onchange = function(){prep_tag_str(null, reload, true);};
         pn_tag_list.innerHTML = str2;
         if (pn_tag_list.style.height=='') pn_tag_list.style.height = '30px';
         if (pn_tag_list.style.width=='') pn_tag_list.style.width = '100px';
@@ -5891,7 +6216,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //      pn12_1.style.width  = '';
 //      pn12_1.style.height = '';
 
-      var scroll_event_src = (pref.catalog.embed && site.catalog)? window : triage_parent;
+      var scroll_event_src = (embed_catalog || embed_page)? window : triage_parent;
       var pn12_triage;
       var triage_str;
       make_triage_entry();
@@ -5901,12 +6226,12 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         make_triage_entry();
       }
       function make_triage_entry(){
-        var pn12_triage_all = new common_func.Triage(pref.catalog_triage_str, {onclick:triage_event, wheelpatch:(!(pref.catalog.embed && site.catalog))? triage_wheel : null, name:'pn_catalog_triage'});
+        var pn12_triage_all = new common_func.Triage(pref.catalog_triage_str, {onclick:triage_event, wheelpatch:(!embed_catalog && !embed_page)? triage_wheel : null, name:'pn_catalog_triage'});
         pn12_triage = pn12_triage_all.pn;
         triage_str = pn12_triage_all.str;
         pn12_triage.style.position = 'absolute';
         if (pref.tooltip.show) pref_func.tooltips.add_hier(pn12_triage);
-//        var pn12_triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:(!(pref.catalog.embed && site.catalog))? triage_wheel : null});
+//        var pn12_triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:(!embed_catalog)? triage_wheel : null});
 //        pn12_triage = pn12_triage_all.pn;
 //        triage_str = pn12_triage_all.str;
 //        pn12_triage.style.position = 'absolute';
@@ -6004,9 +6329,10 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         if (changed.watch) reorder_thread_idx(name);
         if (changed.ex || changed.watch) show_catalog(name);
       }
-      function triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime){ // KILL,TIME,UNDO,NONE,WATCH,UNWATCH,DELETE
+      function triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime){ // KILL,TIME,UNDO,NONE,WATCH,UNWATCH,DELETE,GO
         if (tri_str_ex==='UNWATCH') common_func.modify_bookmark(name,false);
         var changed = {ex:false, attr:false, watch:false, name:name};
+        if (tri_str_ex==='GO') {threads[name][5].call(threads[name][0]);return changed;}
         if (tri_str_ex!=='UNDO') {
           if (hist) {
             if (triage_history.length>=pref.catalog_triage_hist*4) triage_history.splice(0,4);
@@ -6131,16 +6457,17 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
         }
       }
 
-      if (pref.catalog.embed && site.catalog) {  // for native catalog
+      if (embed_catalog || embed_page) {  // for native catalog
         pn12.style.display = 'none';
 //        var catalog_native_destroy = site2[site.nickname].catalog_native_prep0(threads,show_init_native,pn12_0_4,pn12_0_2,onchange_funcs['catalog.indexing']);
 //        for (var name in threads) init_native(name);
         var date = Date.now()
-        var ths = site2[site.nickname].catalog_native_prep(date,pn12_0_4,pn12_0_2,health_indicator.pn_hi);
+//        var ths = site2[site.nickname].catalog_native_prep(date,pn12_0_4,pn12_0_2,health_indicator.pn_hi);
+        var ths = site2[site.nickname].catalog_native_prep(date,pn12_0_4,pn12_0);
         for (var i=0;i<ths.length;i++) {
-          ths[i].exist = true;
+          if (embed_catalog) ths[i].exist = true;
 //          insert_thread_from_native(ths[i], site.nickname, site.board, false, date);
-          insert_thread_passed_test(ths[i], 'catalog_html', date);
+          insert_thread_passed_test(ths[i], (site.whereami==='catalog')? 'catalog_html' : 'page_html', date);
         }
         show_catalog();
         if (pref.catalog.filter.tag_scan_auto) scan_tags();
@@ -6161,7 +6488,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //        ch.addEventListener('mouseover', catalog_triage_in, false);
 //        ch.addEventListener('click', click_thread_native, true);
 //        catalog_attr_set(name,threads[name][0]);
-//        if (!(pref.catalog.embed && site.catalog)) {
+//        if (!embed_catalog) {
 //          ch.style.width  = pref.catalog_size_width + 'px';
 //          ch.style.height = pref.catalog_size_height + 'px';
 //          ch.style.float = 'left';
@@ -6170,10 +6497,10 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 //        }
 //        insert_thread_idx(name);
 //      }
-      function click_thread_native(){
-        var name = this.name;
-        open_new_thread(threads[name][7], name);
-      }
+//      function click_thread_native(){
+//        var name = this.name;
+//        open_new_thread(threads[name][7], name);
+//      }
 //      function show_init_native(){
 //        for (var name in threads) threads[name][9] = catalog_filter_query(name);
 //        show_catalog_native();
@@ -6220,7 +6547,7 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
       function insert_thread_with_test(th, type, date_load){
         var name = th.key;
         if (threads[name] && threads[name][8][0]>=th.time_bumped && threads[name][8][2]==th.nof_posts && threads[name][8][3]>=th.nof_files) {
-          if (threads[name] && pref.catalog_footer_show_page && threads[name][24][2]!=th.page) insert_footer3(threads[name][24],threads[name][19],threads[name][8],name,null,th.page);
+          if (threads[name] && pref.catalog_footer_show_page && threads[name][24] && threads[name][24][2]!=th.page) insert_footer3(threads[name][24],threads[name][19],threads[name][8],name,null,th.page);
           return false;
         }
 if (pref.test_mode['0']) {
@@ -6230,7 +6557,7 @@ if (pref.test_mode['0']) {
       }
       function insert_thread_passed_test(th, type, date_load){
         var date = [th.time_bumped, th.time_created, th.nof_posts, th.nof_files]; // temporal
-        th.search_obj = [ (th.com)? th.com : '', (th.sub)? th.sub : '', (th.name)? th.name : '', '', '', '', '', '']; // temporal
+//        th.search_obj = [ (th.com)? th.com : '', (th.sub)? th.sub : '', (th.name)? th.name : '', '', '', '', '', '']; // temporal
         var url;
         if (type==='thread_html' || type==='page_html') {
           url = site2[th.domain].get_thread_link(th.pn,th.board,pref.catalog_click!='expand',th.key);
@@ -6267,7 +6594,7 @@ if (pref.test_mode['0']) {
         if (format.contents)  site2[nickname].format_thread_contents(src);
         if (format.layout)    site2[nickname].format_thread_layout(src);
         if (format.style)     site2[nickname].format_thread_style(src);
-                        site2[nickname].format_thread_always(src);
+                              site2[nickname].format_thread_always(src);
         if (pref.catalog_localtime) site2[nickname].format_time(src);
 //        if (pref.catalog.filter.time_mark) site2[nickname].mark_newer_posts(src,date);
         var date = get_mark_time(name,pref.catalog.filter.time_mark,pref.catalog.filter.list_mark_time,pref.catalog.filter.watch_list_mark_time);
@@ -6305,7 +6632,7 @@ if (pref.test_mode['0']) {
 ////////        return insert_thread(src, nickname, page_no, date_load, name, html_org, date, src2, url, false, {board:boardname});
 ////////      }
 //      function convert_html(name,th){
-//        if (!(pref.catalog.embed && site.catalog) && pref.catalog.text_mode.mode==='text') {
+//        if (!embed_catalog && pref.catalog.text_mode.mode==='text') {
 //          var text = document.createElement('span');
 //          text.innerHTML = ((pref.catalog.text_mode.sub  && threads[name][4][1][0])? '&emsp;' + threads[name][4][1][0] : '') +
 //                           ((pref.catalog.text_mode.name && threads[name][4][2][0])? '&emsp;' + threads[name][4][2][0] : '') +
@@ -6335,19 +6662,20 @@ if (pref.test_mode['0']) {
           if (th && th.exist) ch = th.pn; // native on base board
           else ch = th.pn;
           ch.name = name;
-          if (!(pref.catalog.embed && site.catalog) || (th.domain!==site.nickname && !pref.catalog.mimic_base_site)) {
+          if (!embed_catalog || (th.domain!==site.nickname && !pref.catalog.mimic_base_site)) {
             ch.style.width  = ((pref.catalog.text_mode.mode==='text')? pref.catalog_size_text_width  : pref.catalog_size_width ) + 'px';
             ch.style.height = ((pref.catalog.text_mode.mode==='text')? pref.catalog_size_text_height : pref.catalog_size_height) + 'px';
             ch.style.float = 'left';
             ch.style.overflow = 'hidden';
-            ch.style.background = '#e5ecf9';
+//            ch.style.background = '#e5ecf9';
           }
           if (!ch.style) ch['style'] = {};
 //          threads[name] = [ch, false, (from_native)? [catalog_triage_in, null] : [func_in, func_pop_up],
           threads[name] = [ch, (th && th.exist), (from_native && !th.posts)? [catalog_triage_in, null] : [func_in, func_pop_up],
                            [html_org, nickname],
-                           (from_native)? src2 : null,
-                           (th.type_html==='catalog_html')? click_thread_native : click_thread, null, url, date, true,
+                           (th.posts)? th.posts : {sub:th.sub, com:th.com, name:th.name, trip:th.trip, filename:th.filename},
+                           click_thread, // 5, click function.
+                           null, url, date, true,
 //                           (from_native)? click_thread_native : click_thread, null, url, date, true,
                            null,
                            null, null, date_load, page_no, 0,
@@ -6370,8 +6698,13 @@ if (pref.test_mode['0']) {
           if (name in threads_last_deleted) threads[name][8][4] = threads_last_deleted[name].last_post_time;
           catalog_attr_set(name,ch);
           ch.addEventListener('mouseover', threads[name][2][0], false);
-          ch.addEventListener('click', threads[name][5], true);
-          if (!from_native && pref.catalog_expand_at_initial) expand_shrink_thread(name);
+          var click_area = (pref.catalog_click_area==='entire' || (th.domain==='KC' && th.type_html!=='catalog_html'))? ch : (ch.getElementsByTagName('img')[0] || ch); // patch
+          click_area.addEventListener('click', threads[name][5], true);
+          var click_area_style = click_area.getAttribute('style');
+          click_area_style = ((click_area_style)? click_area_style + ';' : '') + 'cursor:pointer';
+          click_area.setAttribute('style',click_area_style);
+          click_area.setAttribute('name',name); // for click_thread_native
+          if (pref.catalog_expand_at_initial) expand_shrink_thread(name);
           var dbt = cnst.name2domainboardthread(name,true);
           boards[dbt[0]+dbt[1]] = null;
 //          var date_mark_1 = catalog_obj_merge(name,pref.catalog.filter.watch_list_obj2,null);
@@ -6385,7 +6718,7 @@ if (pref.test_mode['0']) {
 //console.log(name+', '+threads[name][8]);
           if (threads[name][20]===true) site2[nickname].add_sticky_info(threads[name][0],th.type_html); // first time only.
 
-          if (!(pref.catalog.embed && site.catalog) && pref.catalog.text_mode.mode==='text') { // place after th.op_img_url.
+          if (!embed_catalog && pref.catalog.text_mode.mode==='text') { // place after th.op_img_url.
             var text = document.createElement('span');
             text.innerHTML = ((pref.catalog.text_mode.sub && th.sub)? '&emsp;' + th.sub : '') +
                              ((pref.catalog.text_mode.name && th.name)? '&emsp;' + th.name : '') +
@@ -6410,10 +6743,10 @@ if (pref.test_mode['0']) {
 //          for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
 //          if (pref.notify.desktop.use && pref.notify.desktop.reply && threads[name][8][2]!=date[2]) desktop_notifier_obj.show('New Reples in '+name,name);
           ch = threads[name][0];
-          if (!from_native) {
-            ch.innerHTML = src.innerHTML; // faster, but can't revise footer.
-//            threads[name][24] = prep_footer3(threads[name][0],th.board); // temporarily patch.
-          }
+////////          if (th.type_html==='page_html' || th.type_html==='thread_html') {
+////////            ch.innerHTML = src.innerHTML; // faster, but can't revise footer, because this re-create DOM and th.footer is abondoned.
+////////            threads[name][24] = prep_footer3(th.footer,th.board,th.domain,th.flags); // can't work 
+////////          }
 //          ch.innerHTML = src.innerHTML; // revise footer.
 //          if (threads[name][20]===true) site2[nickname].add_sticky_info(threads[name][0],threads[name][18],threads[name][20]);
         }
@@ -6464,7 +6797,7 @@ if (pref.test_mode['0']) {
 ////////          ch.name = name;
 //////////          if (from_native) th.init_func(ch);
 //////////          if (from_native) site2[nickname].catalog_from_native_init_elem_func(ch);
-////////          if (!(pref.catalog.embed && site.catalog) || !from_native) {
+////////          if (!embed_catalog || !from_native) {
 ////////            ch.style.width  = pref.catalog_size_width + 'px';
 ////////            ch.style.height = pref.catalog_size_height + 'px';
 ////////            ch.style.float = 'left';
@@ -6681,26 +7014,28 @@ if (footer) { // temporal
       function expand_shrink_thread(name){
         if (pref.catalog_click=='expand') {
           if (threads[name][0].style.width=='') {
+            if (pref.catalog_expand_with_hr) show_catalog_hr(name,'shrink');
             threads[name][0].style.width = pref.catalog_size_width + 'px';
             threads[name][0].style.height = pref.catalog_size_height + 'px';
           } else {
             threads[name][0].style.width = '';
             threads[name][0].style.height = '';
+            if (pref.catalog_expand_with_hr) show_catalog_hr(name,'add');
           }
         }
       }
-//      function click_thread(name){
-//        if (typeof(name)==='object') name= this.name;
-//        if (pref.catalog_click=='expand') {
-//          if (!(pref.catalog.filter.time && pref.catalog.filter.time_track)) expand_shrink_thread(name);
-//        } else open_new_thread(threads[name][7], name);
-//        if (pref.catalog.filter.time_track) set_time_str(threads[name][8][0]+pref.localtime_offset*3600000);
-//      }
-      function click_thread(name){
-        if (typeof(name)==='object') name= this.name;
-        if (pref.catalog_click=='expand') expand_shrink_thread(name);
+
+      function click_thread(){ // also called from triage 'GO'.
+        var name = this.name;
+        if (threads[name][18]!=='catalog_html' && pref.catalog_click=='expand') expand_shrink_thread(name);
         else open_new_thread(threads[name][7], name);
       }
+//      function click_thread(name){
+//        if (typeof(name)==='object') name= this.name;
+//        var name = this.name;
+//        if (pref.catalog_click=='expand') expand_shrink_thread(name);
+//        else open_new_thread(threads[name][7], name);
+//      }
 
       function add_open_new_thread_event(name,args){
         for (var i=0;i<args.length;i++) {
@@ -6789,7 +7124,7 @@ if (site.nickname==='8chan') { // patch.
 //          tgts = {};
 //          for (var i=0;i<tgts_in.length;i++) tgts[tgts_in[i]] = null;
         } else tgts = tgts_in;
-//        if (pref.catalog.embed && site.catalog) {show_catalog_native();return;}
+//        if (embed_catalog) {show_catalog_native();return;}
 //        if (tgts) for (var name in tgts) if (threads[name] && threads[name][0].parentNode) threads[name][0].parentNode.removeChild(threads[name][0]); // this is required when the thread is moved to later. // THIS CAUSES A BLINK.
         all_drawn = false;
         catalog_triage_out();
@@ -6797,7 +7132,7 @@ if (site.nickname==='8chan') { // patch.
         var drawn_y = 0;
         var ref_count = 0;
         var ref_height = (!pref.catalog_draw_on_demand)? 0
-                                                       : (pref.catalog.embed && site.catalog)? brwsr.document_body.scrollTop + window.innerHeight*1.5
+                                                       : (embed_catalog || embed_page)? brwsr.document_body.scrollTop + window.innerHeight*1.5
                                                                                              : triage_parent.scrollTop + triage_parent.clientHeight*1.5;
         var load_tgt = '';
         var appeared = [];
@@ -6822,12 +7157,19 @@ if (site.nickname==='8chan') { // patch.
                     ref_count = 0;
                     for (var j=0;j<i;j++) if (threads_idx[j].substr(0,4)!=='ODL:' && threads[threads_idx[j]][1]) ref_count++;
                   }
+                  if (pref.catalog_expand_with_hr) {
+                    var j = 0;
+                    var j_max = triage_parent.childNodes.length;
+                    while (j<=ref_count && j<j_max) if (triage_parent.childNodes[j++].tagName!=='DIV') ref_count++;
+                  }
                   var ref = triage_parent.childNodes[ref_count];
                   if (ref!==threads[name][0] || !threads[name][1]) {
+                    if (pref.catalog_expand_with_hr) show_catalog_hr(name,'remove');
 //                  if (ref!==threads[name][0] || !threads[name][1] || pref.test_mode['1']) {
                     if (ref==undefined) ch = triage_parent.appendChild(ch);
                     else ch = triage_parent.insertBefore(ch,ref);
 //console.log(name+', '+ref_count);
+                    if (pref.catalog_expand_with_hr) show_catalog_hr(name,'add');
                   }
                   var nickname = name.replace(/\/.*/,'');
                   if (pref.catalog.filter.list_mark_time && threads[name][9][1]) site2[nickname].mark_newer_posts(ch,threads[name][9][1]);
@@ -6854,6 +7196,7 @@ if (site.nickname==='8chan') { // patch.
                 } else if (threads[name][1] && !threads[name][9][0]) {
                   if (pop_up_status[name]) pop_down_event(name);
 //                  threads[name][11] = remove_open_new_thread_event(threads[name][11]);
+                  if (pref.catalog_expand_with_hr) show_catalog_hr(name,'remove');
                   ch = triage_parent.removeChild(ch);
                   threads[name][0] = ch;
                   threads[name][1] = false;
@@ -6889,13 +7232,43 @@ if (site.nickname==='8chan') { // patch.
 //var str_debug = '';
 //for (var d=0;d<threads_idx.length;d++) if (threads[threads_idx[d]][1] && threads[threads_idx[d]][9][0]) str_debug += threads_idx[d] + threads[threads_idx[d]][8][pref.catalog.indexing] + ',';
 //console.log(str_debug);
+        if (pref.catalog_expand_with_hr)
+          for (var i=triage_parent.childNodes.length-2;i>=0;i--)
+            if (triage_parent.childNodes[i].tagName==='HR' && triage_parent.childNodes[i+1].tagName==='HR') triage_parent.removeChild(triage_parent.childNodes[i+1]);
       }
       scroll_event_src.addEventListener('scroll', show_catalog_cont, false);
 
+      function show_catalog_hr(name,func){
+        var pn = threads[name][0];
+//        var sibls = ['previousSibling', 'nextSibling'];
+//        if (pn.style.width==='' && pn.style.height==='') {
+//          for (var i=0;i<sibls.length;i++)
+//            while (pn[sibls[i]] && pn[sibls[i]].tagName==='HR' && pn[sibls[i]][sibls[i]].tagName==='HR') pn.parentNode.removeChild(pn[sibls[i]]);
+        if (func==='add' && pn.style.width==='' && pn.style.height==='') {
+          if (pn.previousSibling && pn.previousSibling.tagName!=='HR') pn.parentNode.insertBefore(document.createElement('hr'),pn);
+          if (pn.nextSibling && pn.nextSibling.tagName!=='HR') pn.parentNode.insertBefore(document.createElement('hr'),pn.nextSibling);
+        }
+        if (func==='shrink' || func==='remove' && pn.style.width==='' && pn.style.height==='' || func==='add' && (pn.style.width!=='' || pn.style.height!=='')) {
+          var pn_test = (pn.previousSibling && pn.previousSibling.tagName==='HR')? pn.previousSibling.previousSibling : null;
+          if (pn_test && (pn_test.style.width!=='' || pn_test.style.height!=='')) pn.parentNode.removeChild(pn.previousSibling);
+          var pn_test = (pn.nextSibling && pn.nextSibling.tagName==='HR')? pn.nextSibling.nextSibling : null;
+          if (pn_test && (pn_test.style.width!=='' || pn_test.style.height!=='')) pn.parentNode.removeChild(pn.nextSibling);
+        }
+        if (func==='remove') {
+          if (pn.previousSibling && pn.previousSibling.tagName==='HR' && pn.nextSibling && pn.nextSibling.tagName==='HR') pn.parentNode.removeChild(pn.previousSibling);
+//          for (var i=0;i<sibls.length;i++) {
+//            var pn_test = pn[sibls[i]][sibls[i]];
+//            if (pn_test.tagName==='DIV' && pn_test.style && (pn_test.style.width!=='' || pn_test.style.height!=='')) pn.parentNode.removeChild(pn[sibls[i]]);
+//          }
+        }
+      }
+
       function catalog_attr_set(name,pn){
         var val = null;
-        if (pref.catalog.style_general_list) val = catalog_obj_merge(name,pref.catalog.style_general_list_obj2,val);
-        if (pref.catalog.filter.attr_list)   val = catalog_obj_merge(name,pref.catalog.filter.attr_list_obj2,val);
+        if (pref.catalog.filter.attr_list) {
+          if (pref.catalog.style_general_list) val = catalog_obj_merge(name,pref.catalog.style_general_list_obj2,val);
+          if (pref.catalog.filter.attr_list)   val = catalog_obj_merge(name,pref.catalog.filter.attr_list_obj2,val);
+        }
 //        if (val && val.style) {
 ////          var styles = val.style.split(';');
 ////          for (var i=0;i<styles.length;i++) {
@@ -6922,7 +7295,7 @@ if (site.nickname==='8chan') { // patch.
           }
         }
         for (var stl in rollback_info) {
-          if (!val.style || !(stl in val.style)) {
+          if (!val || !val.style || !(stl in val.style)) {
             if (rollback_info[stl]===undefined) delete pn.style[stl];
             else pn.style[stl] = rollback_info[stl];
             delete rollback_info[stl];
@@ -6958,33 +7331,72 @@ if (site.nickname==='8chan') { // patch.
         return val;
       }
 
-      function catalog_filter_query_keyword(str_in){
-        if (!pref.catalog.filter.kwd) return true;
-        var kwd = pref.catalog.filter.kwd_str;
-        if (kwd==='') return true;
-        var str = ((pref.catalog.filter.kwd_op       )? str_in[0]+'\n' : '')
-                + ((pref.catalog.filter.kwd_op_sub   )? str_in[1]+'\n' : '')
-                + ((pref.catalog.filter.kwd_op_name  )? str_in[2]+'\n' : '')
-                + ((pref.catalog.filter.kwd_op_file  )? str_in[3]+'\n' : '')
-                + ((pref.catalog.filter.kwd_post     )? str_in[4]+'\n' : '')
-                + ((pref.catalog.filter.kwd_post_sub )? str_in[5]+'\n' : '')
-                + ((pref.catalog.filter.kwd_post_name)? str_in[6]+'\n' : '')
-                + ((pref.catalog.filter.kwd_post_file)? str_in[7]+'\n' : '');
-        if (str==='') return true;
-
-        var flag = true;
-        var kwds = kwd.split(' ');
-        for (var i=0;i<kwds.length;i++) {
-          if (kwds[i]==='') continue;
-          kwd = kwds[i];
-          if (!pref.catalog.filter.kwd_re) kwd = kwd.replace(/[\.\(\)\[\]\+\?\^\$\{\}]/g,'\\$&').replace(/\*/g,'.*');
-          if (pref.catalog.filter.kwd_ci) kwd = new RegExp(kwd,'i');
-          var result = (str.search(kwd)!=-1);
-          if (pref.catalog.filter.kwd_match==='unmatch') result = !result;
-          flag = flag & result;
+      function filter_kwd_prep(kwd, init) {
+        var kwds = kwd.str.split(' ');
+        for (var i=kwds.length-1;i>=0;i--) {
+          if (kwds[i]==='') kwds.splice(i,1);
+          else {
+            if (!kwd.re) kwds[i] = kwds[i].replace(/[\.\(\)\[\]\+\?\^\$\{\}]/g,'\\$&').replace(/\*/g,'.*');
+            kwds[i] = new RegExp(kwds[i],(kwd.ci)? 'i' : '');
+          }
         }
-        return flag;
+        kwd.kwds = kwds;
+        if (!init && kwd.use) catalog_filter_changed();
       }
+// pref.catalog.filter.kwd: {use:true, op:true, posts:false, sub:true, name:true, trip:true, com:true, file:true, re:false, ci:true, match:true, str:'', kwds:[]}
+//                     posts: [sub:null, com:null, name:null, trip:null, filename:null]
+      function catalog_filter_query_keyword(kwd,posts){
+        if (!kwd.use || kwd.kwds.length==0) return true;
+        var post_array = Array.isArray(posts);
+        var start = (!post_array || kwd.op)? 0 : 1; // temporarily
+        var end   = ( post_array && kwd.post)? posts.length : 1; // tamporarily
+        var retval = kwd.match==='match';
+        for (var i=0;i<kwd.kwds.length;i++) {
+          for (var j=start;j<end;j++) {
+            var pst = (post_array)? posts[j] : (j==0)? posts : null;
+            if (pst!==null) {
+              if (kwd.sub)  if (pst.sub  && kwd.kwds[i].test(pst.sub )) return retval;
+              if (kwd.com)  if (pst.com  && kwd.kwds[i].test(pst.com )) return retval;
+              if (kwd.name) if (pst.name && kwd.kwds[i].test(pst.name)) return retval;
+              if (kwd.trip) if (pst.trip && kwd.kwds[i].test(pst.trip)) return retval;
+              if (kwd.file) {
+                if (pst.filename && kwd.kwds[i].test(pst.filename)) return retval;
+                if (pst.extra_files)
+                  for (var k=pst.extra_files.length-1;k>=0;k--) 
+                    if (pst.extra_files[k].filename && kwd.kwds[i].test(pst.extra_files[k].filename)) return retval;
+              }
+            }
+          }
+        }
+        return !retval;
+      }
+//      function catalog_filter_query_keyword(str_in){
+//        if (!pref.catalog.filter.kwd.use) return true;
+//        var kwd = pref.catalog.filter.kwd.str;
+//        if (kwd==='') return true;
+//        var str = ((pref.catalog.filter.kwd.op       )? str_in[0]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.op_sub   )? str_in[1]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.op_name  )? str_in[2]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.op_file  )? str_in[3]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.post     )? str_in[4]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.post_sub )? str_in[5]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.post_name)? str_in[6]+'\n' : '')
+//                + ((pref.catalog.filter.kwd.post_file)? str_in[7]+'\n' : '');
+//        if (str==='') return true;
+//
+//        var flag = true;
+//        var kwds = kwd.split(' ');
+//        for (var i=0;i<kwds.length;i++) {
+//          if (kwds[i]==='') continue;
+//          kwd = kwds[i];
+//          if (!pref.catalog.filter.kwd.re) kwd = kwd.replace(/[\.\(\)\[\]\+\?\^\$\{\}]/g,'\\$&').replace(/\*/g,'.*');
+//          if (pref.catalog.filter.kwd.ci) kwd = new RegExp(kwd,'i');
+//          var result = (str.search(kwd)!=-1);
+//          if (pref.catalog.filter.kwd.match==='unmatch') result = !result;
+//          flag = flag & result;
+//        }
+//        return flag;
+//      }
       function catalog_filter_query_tag(str){
 //        if (!pref.catalog.filter.tag || filter_tags.length==0) return true;
         if (!pref.catalog.filter.tag) return true;
@@ -6997,14 +7409,15 @@ if (site.nickname==='8chan') { // patch.
         return false;
       }
       function catalog_filter_query(name){
-        if (!catalog_filter_query_keyword(threads[name][4])) return [false];
-//        var kwd = pref.catalog.filter.kwd_str;
+        if (!catalog_filter_query_keyword(pref.catalog.filter.kwd, threads[name][4])) return [false];
+//        if (!catalog_filter_query_keyword(threads[name][4])) return [false];
+//        var kwd = pref.catalog.filter.kwd.str;
 //        if (pref.catalog.filter.kwd && kwd!=='') {
-//          if (!pref.catalog.filter.kwd_re) kwd = kwd.replace(/\*/g,'.*');
-//          if (pref.catalog.filter.kwd_ci) kwd = new RegExp(kwd,'i');
+//          if (!pref.catalog.filter.kwd.re) kwd = kwd.replace(/\*/g,'.*');
+//          if (pref.catalog.filter.kwd.ci) kwd = new RegExp(kwd,'i');
 //          var str = threads[name][4];
 //          var result = (str.search(kwd)!=-1);
-//          var match = (pref.catalog.filter.kwd_match==='match');
+//          var match = (pref.catalog.filter.kwd.match==='match');
 //          if ((match && !result) || (!match && result)) return [false];
 //        }
 //        if (pref.catalog.filter.tag) {
@@ -7041,8 +7454,9 @@ if (site.nickname==='8chan') { // patch.
 //        else if (pref.catalog.filter.list_mark_time) [true, get_mark_time(name)];
         else return [true];
       }
-      function catalog_filter_query_scan(kwd,tags){
-        if (!catalog_filter_query_keyword(kwd)) return false;
+      function catalog_filter_query_scan(str,tags){
+        if (!catalog_filter_query_keyword(pref.catalog.filter.kwd, str)) return false;
+//        if (!catalog_filter_query_keyword(str)) return false;
         if (!catalog_filter_query_tag(tags)) return false;
         return true;
       }
@@ -7082,7 +7496,7 @@ if (site.nickname==='8chan') { // patch.
       }
       function catalog_filter_changed(){
 //console.log('called');
-        if (pref.catalog.filter.kwd || pref.catalog.filter.tag || pref.catalog.filter.time || pref.catalog.filter.list) for (var th in threads) threads[th][9] = catalog_filter_query(th);
+        if (pref.catalog.filter.kwd.use || pref.catalog.filter.tag || pref.catalog.filter.time || pref.catalog.filter.list) for (var th in threads) threads[th][9] = catalog_filter_query(th);
 //        if (pref.catalog.filter.kwd || pref.catalog.filter.time || pref.catalog.filter.list || pref.catalog.filter.list_mark_time) for (var th in threads) threads[th][9] = catalog_filter_query(th); // cause error.
         else for (var th in threads) threads[th][9] = [true];
         show_catalog();
@@ -7092,11 +7506,11 @@ if (site.nickname==='8chan') { // patch.
       function catalog_attr_changed(){
 //        if (pref.catalog.filter.attr_list)
 //          for (var th in threads) catalog_attr_set(th,threads[th][0]);
-        if (pref.catalog.filter.attr_list) {
+//        if (pref.catalog.filter.attr_list) {
           pref_func.apply_prep(attr_list,true);
           for (var name in threads) catalog_attr_set(name,threads[name][0]);
-          show_catalog();
-        }
+//          show_catalog(); // don't require.
+//        }
       }
 
       var pop_up_delay_id = {};
@@ -7136,7 +7550,9 @@ if (site.nickname==='8chan') { // patch.
 //        trim_html(pn, threads[name][3][1], pref.catalog_format.hover, get_mark_time(name,pref.catalog.filter.time_mark,pref.catalog.filter.list_mark_time,pref.catalog.filter.watch_list_mark_time));
         trim_html(pn, threads[name][3][1], pref.catalog_format.hover, name);
         var nickname = name.replace(/\/.*/,'');
-        if (pref.catalog.filter.list_mark_time && threads[name][9][1]) site2[nickname].mark_newer_posts(pn,threads[name][9][1]);
+//        if (pref.catalog.filter.list_mark_time && threads[name][9][1]) site2[nickname].mark_newer_posts(pn,threads[name][9][1]);
+        var date = get_mark_time(name,pref.catalog.filter.time_mark,pref.catalog.filter.list_mark_time,pref.catalog.filter.watch_list_mark_time);
+        if (date>=0) site2[nickname].mark_newer_posts(pn,date);
         threads[name][12] = add_open_new_thread_event(name,site2[nickname].modify_thread_link(pn));
         pn.style.background = '#e5ecf9';
         catalog_attr_set(name,pn);
@@ -7213,12 +7629,14 @@ if (site.nickname==='8chan') { // patch.
             if (val.hit) tgts.splice(i,1);
           }
         }
-        if (pref.catalog.design==='catalog' || (pref.catalog.design==='auto' && pref.catalog.embed && site.catalog)) {
+        if (pref.catalog.design==='catalog' || (pref.catalog.design==='auto' && embed_catalog)) {
           for (var i=tgts.length-1;i>=0;i--) {
             var dbt = cnst.name2domainboardthread(tgts[i],true);
-            if (dbt[0]==='8chan' && tgts[i].search(/\/p[0-9]*/)!=-1) {
-//              if (tgts[i].search(/\/p0$/)!=-1) tgts[i][tgts[i].length-2]] = 'c';
-              if (tgts[i].search(/\/p0$/)!=-1 && (!embed_init || dbt[1]!=site.board)) tgts[i] = tgts[i].replace(/p0/,(pref.catalog.catalog_json)? 'j0' : 'c0');
+            if ((dbt[0]==='8chan' ||dbt[0]==='4chan') && tgts[i].search(/\/p[0-9]*/)!=-1) {
+//            if (dbt[0]==='8chan' && tgts[i].search(/\/p[0-9]*/)!=-1) {
+//              if (tgts[i].search(/\/p0$/)!=-1 && (!embed_init || dbt[1]!=site.board)) tgts[i] = tgts[i].replace(/p0/,(pref.catalog.catalog_json)? 'j0' : 'c0');
+              if (tgts[i].search(/\/p0$/)!=-1 && (!embed_init || dbt[1]!=site.board || dbt[0]!=site.nickname || dbt[0]==='4chan'))
+                tgts[i] = tgts[i].replace(/p0/,(pref.catalog.catalog_json || dbt[0]==='4chan')? 'j0' : 'c0');
               else tgts.splice(i,1);
             }
           }
@@ -7233,7 +7651,8 @@ if (site.nickname==='8chan') { // patch.
           if (threads[name][1]) {
 //            if (threads[name][12]) remove_open_new_thread_event(threads[name][12]);
             if (pop_up_status[name]) pop_down_op(name);
-            triage_parent.removeChild(threads[name][0]);
+//            triage_parent.removeChild(threads[name][0]);
+            if (threads[name][0].parentNode===triage_parent) triage_parent.removeChild(threads[name][0]); // for 4chan's native
           }
         }
         delete threads[name];
@@ -7310,10 +7729,10 @@ if (site.nickname==='8chan') { // patch.
 //        }
 //      }
       var flag_initial_refresh = pref.catalog.on_bt_page && pref.catalog.refresh.except_bt;
-      catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page, pref.catalog.embed && site.catalog, false);
+      catalog_refresh(pref.catalog.refresh.initial && !pref.catalog.on_bt_page, embed_catalog, false);
 
       function catalog_insert(key) {
-        if (pref.catalog.embed && site.catalog) return;
+        if (embed_catalog) return;
 //        if (cached_info==null) return;
         var dbt = cnst.name2domainboardthread(key,true);
         if (dbt[0]+dbt[1] in boards) brwsr.sw_cache.trygetItem(key,catalog_insert_snoop);
@@ -7648,6 +8067,7 @@ if (pref.test_mode['0']) {
       initialize_loop = false;
       pref_func.mirror_targets.pn12_0_2 = pn12_0_2;
       pref_func.mirror_targets.pn12_0_4 = pn12_0_4;
+
       return {
         destroy: function(){ // destructor
           pref_func.mirror_targets.pn12_0_2 = null;
@@ -7655,7 +8075,7 @@ if (pref.test_mode['0']) {
           catalog_clear_threads(0);
           if (brwsr.sw_cache) brwsr.sw_cache.subscribe(false);
           pref_func.health_indicator = null;
-//          if (pref.catalog.embed && site.catalog) if (catalog_native_destroy) catalog_native_destroy();
+//          if (embed_catalog) if (catalog_native_destroy) catalog_native_destroy();
           pref_func.board_sel = null;
           onchange_funcs.save_onleave();
           pref_func.tooltips.remove_hier(pn12_triage);
@@ -7678,7 +8098,9 @@ if (pref.test_mode['0']) {
         update_all_footers: update_all_footers,
         pn12_0_4: pn12_0_4,
         pn12_0_2: pn12_0_2,
-        catalog_resized: catalog_resized
+        catalog_resized: catalog_resized,
+        get_threads: function(){return threads;},
+        show_catalog: show_catalog
       }
     }
     return {
@@ -8588,7 +9010,9 @@ Statistics:<br>\
     var no;
     var on = false;
     var hidden_elements = [];
+    var activated = false;
     function show_hide(){
+      if (!activated && site2[site.nickname].postform_activation) {site2[site.nickname].postform_activation(); activated=true;}
       var tgt    = site.postform;
       if (!on) {
         if (pn10==null) {
@@ -9122,7 +9546,7 @@ Statistics:<br>\
   })();
   else brwsr.sw_cache = null;
 
-  if (pref.catalog.embed && site.catalog) catalog_obj.show_hide();
+  if ((pref.catalog.embed && site.whereami==='catalog') || (pref.catalog.embed_page && site.whereami==='page')) catalog_obj.show_hide();
 
 //  function test_sw_cache(){
 //    sw_cache.setItem('/int/','aaa');
