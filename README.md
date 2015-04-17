@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.04.18.0: Cleaned up and gave basic support for KC's native catalog.<br>
 v2015.04.11.1: Fixed a bug in 4chan's native catalog.<br>
 v2015.04.11.0: Cleaned up and gave basic support for 4chan's native catalog.<br>
 v2015.04.04.0: Cleaned up and added text mode.<br>
