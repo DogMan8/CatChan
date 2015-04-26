@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.04.18.0
+// @version 2015.04.26.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1201,7 +1201,7 @@ if (window.top != window.self && window.name!='KC' && window.name!='4chan' && wi
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.04.18.0<br>'+
+          'Version 2015.04.26.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2926,6 +2926,7 @@ if (pref.test_mode['0']) {
             var pn_child = ths[i].pn.getElementsByTagName('div')[0];
             pn_child.className = pn_child.className.replace(/grid\-size\-[a-z]*/,'grid-size-'+site2['8chan'].catalog_native_size);
           }
+          for (var i=0;i<ths.length;i++) ths[i].pn.getElementsByTagName('a')[0].removeAttribute('href');
           return ths;
 //          for (var i=mixs.length-1;i>=0;i--) if (mixs[i].tagName==='DIV') mixs[i]={pn:mixs[i]}; // CAN'T WRITE TO COLLECTION.
 //                                             else Array.prototype.splice.call(mixs,i,1);
