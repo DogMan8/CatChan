@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.05.13.0: Fixed a bug.(degrade in Tampermonkey)<br>
 v2015.05.03.0: Cleaned up.<br>
 v2015.04.26.0: Quick patch for recent change in 8chan.<br>
 v2015.04.18.0: Cleaned up and gave basic support for KC's native catalog.<br>
