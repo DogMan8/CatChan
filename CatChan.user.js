@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.05.03.0
+// @version 2015.05.13.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -10,7 +10,7 @@
 // @include http*://lainchan.org/*
 // @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
-// @grant none
+// @grant unsafeWindow
 // ==/UserScript==
 //
 //    Copyright 2014 DocMan8
@@ -1212,7 +1212,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.05.03.0<br>'+
+          'Version 2015.05.13.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
