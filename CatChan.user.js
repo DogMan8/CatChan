@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.05.14.0
+// @version 2015.05.16.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1226,7 +1226,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.05.14.0<br>'+
+          'Version 2015.05.16.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -7098,6 +7098,7 @@ if (!(brwsr.ff && embed_catalog && site.nickname==='4chan')) { // patch, but WHY
             pref_func.pref_overwrite(pref.catalog.filter,JSON.parse(localStorage.getItem(onchange_funcs.load_save_key(board_sel.selectedIndex))),true);
             pref_func.apply_prep(pn_filter,false);
             pref_func.apply_prep(pn_filter,true); // make obj2.
+            filter_kwd_prep(pref.catalog.filter.kwd);
             if (!initialize_loop) catalog_filter_changed();
             catalog_attr_changed();
           }
@@ -7115,6 +7116,7 @@ if (!(brwsr.ff && embed_catalog && site.nickname==='4chan')) { // patch, but WHY
 //          pref.catalog.filter.time_str = new Date().toLocaleString();
           pref_func.apply_prep(pn12_0_4,false);
           pref_func.apply_prep(pn12_0_4,true); // obj init.
+          filter_kwd_prep(pref.catalog.filter.kwd);
           catalog_filter_changed();
           catalog_attr_changed();
         },
@@ -7185,7 +7187,7 @@ if (!(brwsr.ff && embed_catalog && site.nickname==='4chan')) { // patch, but WHY
               http_req.get(key,site.nickname,site2[site.nickname].url_boards_json(),scan_boards_keyword_callback,pref.scan.lifetime*60,true,key);
               scan_progress('Loading boards\' information');
             } else {
-              if (!site3[site.nickname].boards_to_scan) site3[site.nickname].boards_to_scan = site2[site.nickname].enumerate_boards_to_scan();
+              site3[site.nickname].boards_to_scan = site2[site.nickname].enumerate_boards_to_scan();
               scan_boards_init(key, site3[site.nickname].boards_to_scan, {lifetime:pref.scan.lifetime*60, cache_write:true});
             }
           }
@@ -9044,7 +9046,7 @@ if (site.nickname==='8chan') { // patch.
         else for (var th in threads) threads[th][9] = [true];
         show_catalog();
 //console.log('filter_changed');
-        catalog_refresh_gather_info();
+//        catalog_refresh_gather_info();
       }
       function catalog_attr_changed(){
 //        if (pref.catalog.filter.attr_list)
