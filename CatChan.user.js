@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.05.16.0
+// @version 2015.05.19.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1226,7 +1226,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;pop up delay: <input type="text" name="tooltip.popup_delay" size="6" style="text-align: right;"> ms<br>'+
           '&emsp;pop down delay: <input type="text" name="tooltip.popdown_delay" size="6" style="text-align: right;"> ms<br>',
           'CatChan<br>'+
-          'Version 2015.05.16.0<br>'+
+          'Version 2015.05.19.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2363,7 +2363,7 @@ if (pref.test_mode['6']) proto = site4.parse_funcs_one_time; // one time parse f
           if (ths_col)
 //            if (site.nickname!==doc.domain) site2[doc.domain].absolute_link(doc.pn, doc.board);
             for (var i=ths_col.length-1;i>=0;i--) {
-              var page = (doc.page!=='?')? doc.page + '.' + ths.length : doc.page;
+              var page = (doc.page!=='?')? doc.page + '.' + i : doc.page;
               ths[i] = {
                 pn: ths_col[i],
                 type_html: 'page_html',
@@ -6426,7 +6426,8 @@ if (pref.debug_mode && posts_deleted!=='') console.log('uip_deleted '+posts_dele
 ////////    var myself_th = {pn:base_thread, post_no_last:-1,
 ////////      domain:site.nickname, board:site.board, parse_funcs:site2[site.nickname].parse_funcs['thread_html'], __proto__:site4.parse_funcs_on_demand};
     var site_live = site.nickname + ((site2[site.nickname+'_live'])? '_live' : '');
-    var myself_th = site2[site_live].wrap_to_parse.get(document, site_live, site.board, 'thread_html', {thread:site.myself})[0];
+    var myself_th = site2[site.nickname].wrap_to_parse.get(document, site.nickname, site.board, 'thread_html',
+                     {thread:site.myself, parse_funcs:site2[site_live].parse_funcs['thread_html']})[0];
 //    var parse_obj = {domain:site.nickname, board:site.board,
 //                     parse_funcs:site2[site_live].parse_funcs['thread_html'],
 //                     __proto__:site4.parse_funcs_on_demand};
