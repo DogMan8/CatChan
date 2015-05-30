@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>History</h1><br>
+v2015.05.30.0: Cleaned up.<br>
 v2015.05.26.0: Patched a bug.(degrade)<br>
 v2015.05.23.0: Cleaned up.<br>
 v2015.05.19.0: Fixed bugs.(degrade)<br>
