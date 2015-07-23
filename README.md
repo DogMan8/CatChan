@@ -13,12 +13,12 @@ Then click following link to install.<br>
 <h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
 <a href="https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js">[GET USERSCRIPT BETA]</a><br>
 
-<h1>Note</h1><br>
-Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.
-
 Copyright (c) 2014 DogMan8<br>
 See the LICENSE file for license rights and limitations (GPLv3).<br>
 
+
+<h1>Note</h1><br>
+Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.
 
 <h1>History</h1><br>
 v2015.06.13.0: Cleaned up.<br>
