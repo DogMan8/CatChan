@@ -21,6 +21,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.
 
 <h1>History</h1><br>
+v2015.10.18.0: Improved memory usage and added support for boards' tag in 8chan.<br>
 v2015.10.12.0: Improved robustness.<br>
 v2015.10.09.0: Added a virtual board function.<br>
 v2015.09.23.0: Cleaned up.<br>
