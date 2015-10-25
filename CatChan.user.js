@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.10.12.0
+// @version 2015.10.18.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -69,6 +69,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       if (this.id===null) this.id = setTimeout(this.do_tgt.bind(this),
         (typeof(this.delay)==='number')? this.delay: (this.hasFocus)? this.delay.fg : this.delay.bg);},
     cancel: function(){if (this.id!==null) {clearTimeout(this.id);this.id=null;}},
+    binded_delayed_do: function(){return this.delayed_do.bind(this);},
     hasFocus: true
   };
 
@@ -105,6 +106,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     },
     fire: function(){
       this.mutex = true;
+      cataLog.scan_boards.scan_init(this.name, {}, {});
       if (pref.debug_mode['7']) console.log('watchdog: '+this.name);
     },
     abort: function(){
@@ -340,7 +342,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                },
       liveTag: {
         use: true, max: 12, maxstr: 25, from:'post', lock_tags_in_op: true, ci: true,
-        inherit_board_name: true, lock_board_name: true, inherit_board_tags: true, lock_board_tags: false,
+        inherit_board_name: true, lock_board_name: true, inherit_board_tags: true, lock_board_tags: true,
         show_info_onmouseover: true, style: true,
         style_urtm_str:'color:lime;font-weight:bold', style_ur_str:'color:limegreen;font-weight:bold', style_in_str:'color:red',
         style_urtm_obj4:{},                           style_ur_obj4:{},                                style_in_obj4:{},
@@ -367,6 +369,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     threads: null,
     insert_footer3: null,
     catalog_liveTag_scan_threads: null,
+    scan_boards: null,
   }
 
   var pref_func = (function(){
@@ -1065,6 +1068,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
           'catalog.filter.time_watch': 'Watch: watch threads which have newer posts than the time.',
           'catalog.filter.time_watch_creation': 'Watch(creation time): watch threads which are created later than the time.',
+          'catalog.filter.tag_filter_str': 'Filter string for tag. (Regular expression search) For reducing memory usage, you must type something at first, then tags will appear. If you want to show all tags, just type \'.\'',
           'catalog_cross_domain_connection': 'Use \'direct\' if you could, because it\'s quite light, but it doesn\'t work in almost of all environments.\n\'indirect\' usually works well.',
           'debug_mode' : 'Debug mode.',
           'show_tooltip' : 'Show this tooltip.',
@@ -1676,7 +1680,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '<input type="checkbox" name="patch.delayed_invoke.use"> Delayed invoke for 4chan on FF, '+
           '<input type="text" name="patch.delayed_invoke.sec" size="2" style="text-align: right;">sec.<br>',
           'CatChan<br>'+
-          'Version 2015.10.12.0<br>'+
+          'Version 2015.10.18.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2108,7 +2112,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           }
         }
       }
-      function set(threads){
+      function set(){
         var sum = new CountUp();
         if (pref.liveTag.watch_all) {
           for (var d in liveTag.mems) {
@@ -2121,7 +2125,10 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 liveTag.mems[d][b].nr_dirty = false;
               }
               sum.count([0,liveTag.mems[d][b].nrtm, liveTag.mems[d][b].nr]);
-        }}} else for (var name in threads) sum.count(threads[name][19]);
+        }}} else {
+          var threads = cataLog.threads;
+          if (threads) for (var name in threads) sum.count(threads[name][19]);
+        }
         if (pref.notify.favicon) {
           var favicon_next = (sum.nrtm!=0)? 'reply_to_me' :
                              (sum.nr!=0)?   'reply' :
@@ -2144,8 +2151,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
       }
       return {
-        set : set,
-//        set : new DelayBuffer(set, 1000).delayed_do,
+//        set : set,
+        set : new DelayBuffer(set, 1000).binded_delayed_do(),
       }
     })();
     var desktop = (function(){
@@ -2531,6 +2538,10 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //        if (typeof(i)==='string' && Object.prototype.hasOwnProperty.call(obj,obj[i])) obj[i] = obj[obj[i]];
 //      return obj;
 //    },
+    set_value_to_root: function(leaf,key,val){
+      if (Object.prototype.hasOwnProperty.call(leaf,key)) leaf[key] = val;
+      else this.set_value_to_root(Object.getPrototypeOf(leaf),key,val);
+    },
     init_set_style: function(dom,src){
       dom.style = {};
       if (src) for (var i in src) dom.style[i] = src[i];
@@ -2653,11 +2664,24 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //    make_url : function(board,no,key){return ['_blank','raw'];}, // returns URL and type from board name and page number.
 //    make_url3: function(board,th){return '_blank';}, // returns URL from board name and thread number.
     make_url4: function(dbt){return '_blank';}, // returns URL from dbt.
-    enumerate_boards_to_scan:function(){ // 4chan
+////    enumerate_boards_to_scan:function(){ // 4chan // working code.
+////      var obj = [];
+////      var end = (site3[site.nickname].boards.length > pref.scan.max)? pref.scan.max : site3[site.nickname].boards.length;
+////      for (var i=0;i<end;i++) obj[obj.length] = '/'+site3[site.nickname].boards[i].board+'/';
+////      return obj;
+////    },
+    enumerate_boards_to_scan:function(){
       var obj = [];
       var end = (site3[site.nickname].boards.length > pref.scan.max)? pref.scan.max : site3[site.nickname].boards.length;
-      for (var i=0;i<end;i++) obj[obj.length] = '/'+site3[site.nickname].boards[i].board+'/';
+      for (var i=0;i<end;i++) obj[obj.length] = site3[site.nickname].boards[i];
       return obj;
+    },
+    postprocess_board: function(val){ // 4chan
+      site3[this.nickname].boards = [];
+      for (var i=0;i<val.boards.length;i++) {
+        var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val.boards[i].board+'/'});
+        site3[this.nickname].boards.push(bd);
+      }
     },
     show_boardlist_replaced: false,
     show_boardlist: function(pn){
@@ -2780,6 +2804,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       var own_posts_cb;
       var tag_ex_list;
       var str_rm_list;
+      var count_replies = 0; // for direct call to check_t1 from native catalog.
       function add_you(post){
         var as = post.pn.getElementsByTagName('a');
         for (var i=0;i<as.length;i++) {
@@ -2849,7 +2874,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 watch[9][watch[9].length] = tags[i];
               }
         }
-        watch[7]++;
+        count_replies++;
       }
       function prep_check_1(th){
         if (th.type_data==='html') {
@@ -2900,8 +2925,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             watch[10]= (th.omitted_posts)? th.omitted_posts+1 : 0; // number of replies so far, patch for 4chan catalog_json.
             init     = true;
           }
-          watch[4] = [];
-          watch[7] = 0;
+          common_func.set_value_to_root(watch,'4',[]);
+//          watch[4] = [];
+          count_replies = 0;
 
           prep_check_1(th);
 //console.log('start: '+dbt[0]+dbt[1]+dbt[2],watch[5]);
@@ -2912,7 +2938,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //            remake_own_posts = false;
 //          }
           if (i>=0) {
-            watch[9] = [];
+            common_func.set_value_to_root(watch,'9',[]); // patch
+//            watch[9] = [];
             var ur_old = (watch[0]<0)? -1 : (watch[1]>0)? 3 : (watch[2]>0)? 1 : 0;
             watch[3] = th.posts[i].time;
             if (th.parse_funcs.time_unit!=1) time_check /= th.parse_funcs.time_unit;
@@ -2929,10 +2956,10 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               if (watch[9].length!=0) var tags = liveTag.extract_tags(th);
               else if (pref.liveTag.style) {
                 var ur = (watch[0]<0)? -1 : (watch[1]>0)? 3 : (watch[2]>0)? 1 : 0;
-                if (ur_old!=ur) liveTag.update_ur(th.key,ur,ur!=0 && watch[6]!==watch[0]); // can choose faster function if ur==0.
+                if (ur_old!=ur) liveTag.update_ur(th.key,ur,ur_old!=0 && watch[6]!==watch[0]); // can choose faster function if ur==0.
               }
             }
-            watch[9] = null;
+//            watch[9] = null;
 
 ////          while (i>=0 && th.posts[i].time>time_check) { // working code.
 /////            check_1(th.posts[i], watch, make_pn, !watch[5] && th.posts[i].time>time_lastsaw, th);
@@ -2958,7 +2985,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             watch[3] *= th.parse_funcs.time_unit;
           }
           watch[6] = watch[0];
-          watch[10]+= watch[7];
+          common_func.set_value_to_root(watch,'7',count_replies); // patch
+          watch[10]+= count_replies;
 //console.log('end:   '+dbt[0]+dbt[1]+dbt[2]);
 //if (pref.debug_mode['3'] && watch[9].length!=0) console.log(th.key+': '+watch[9]);
           if (cataLog.threads && cataLog.threads[th.key]) cataLog.insert_footer3(th.key,null,null,tags);
@@ -3108,12 +3136,13 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //if (pref.test_mode['6']) proto = site4.parse_funcs_no_cache; // no cache parse to reduce memory consumption.
 //if (pref.test_mode['6']) proto = site4.parse_funcs_one_time; // one time parse for faster execution.
 if (pref.debug_mode.parse_error) proto = site4.parse_funcs_on_demand_debug;
-          var key = domain+board+type +'/'+pref.test_mode['6']+pref.debug_mode.parse_error;
+//          var key = domain+board+type +'/'+pref.test_mode['6']+pref.debug_mode.parse_error;
 //          var key = domain+board+type;
-          var parse_obj = parse_objs[key];
-          if (!parse_obj) {
-            parse_obj = {domain: domain,
-                         board: board,
+//          var parse_obj = parse_objs[key];
+          var key = type + ((pref.debug_mode.parse_error)? '_debug':'');
+          var pfunc_root = liveTag.mems.init({domain: domain}).pfunc;
+          if (!pfunc_root[key]) {
+            pfunc_root[key] = {domain: domain,
                          parse_funcs: site2[domain].parse_funcs[type],
                          parse_funcs_html: site2[domain].parse_funcs[type],
                          type_parse: type,
@@ -3126,8 +3155,8 @@ if (pref.debug_mode.parse_error) proto = site4.parse_funcs_on_demand_debug;
 //                         __proto__:site4.parse_funcs_on_demand
                          __proto__:proto
                         };
-            parse_objs[key] = parse_obj;
           }
+          var parse_obj = {board: board, __proto__:pfunc_root[key]};
           if (options) {
             if (options.thread!==undefined && th_regexp.test(options.thread)) options.thread = options.thread.substr(1);
             options.__proto__ = parse_obj;
@@ -3153,13 +3182,13 @@ if (pref.debug_mode.parse_error) proto = site4.parse_funcs_on_demand_debug;
 //            } else return {obj:doc_obj, __proto__:parse_obj}.ths;
           }
         },
-        clean: function(boards){
-          var keys = Object.keys(parse_objs);
-          for (var i=0;i<keys.length;i++) {
-            var key_split = keys[i].split('/');
-            if (boards[key_split[0]+key_split[1]]===undefined) parse_objs[keys[i]] = null;
-          }
-        }
+////        clean: function(boards){
+////          var keys = Object.keys(parse_objs);
+////          for (var i=0;i<keys.length;i++) {
+////            var key_split = keys[i].split('/');
+////            if (boards[key_split[0]+key_split[1]]===undefined) parse_objs[keys[i]] = null;
+////          }
+////        }
       }
     })(),
     parse_funcs: { // DEFAULT
@@ -3724,17 +3753,55 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         return false;
       }
     },
-    enumerate_boards_to_scan:function(){
-      var obj = [];
-      var end = (site3[site.nickname].boards.length > pref.scan.max)? pref.scan.max : site3[site.nickname].boards.length;
-      for (var i=0;i<end;i++) 
-        if (site3[site.nickname].boards[i].max) obj[obj.length] = '/'+site3[site.nickname].boards[i].uri+'/';
-      return obj;
+    postprocess_board: function(val){
+      site3[this.nickname].boards = [];
+      for (var i=0;i<val.length;i++) {
+        if (val[i].max) {
+          var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].uri+'/'});
+          site3[this.nickname].boards.push(bd);
+          Object.defineProperty(bd,'max',{value:parseInt(val[i].max,10), writable:true});
+          if (bd.read_max===undefined) Object.defineProperty(bd,'read_max',{value:0, writable:true});
+          if (val[i].tags) {
+            for (var j=0;j<val[i].tags.length;j++) val[i].tags[j] = '#'+val[i].tags[j];
+            var flag = bd.btag2 && bd.btag2.length===val[i].tags.length;
+            if (flag) for (var j=0;j<val[i].tags.length;j++) if (val[i].tags[j]!==bd.btag2[j]) {flag = false;break;}
+            if (!flag) {
+              Object.defineProperty(Object.getPrototypeOf(bd),'btag2',{value:val[i].tags, writable:true});
+              for (var j=0;j<val[i].tags.length;j++) {
+                var btag2_1 = val[i].tags[j];
+                var ref_tag = (liveTag.tags[btag2_1])? liveTag.tags[btag2_1].ref_tag : null;
+                if (btag2_1===ref_tag) { // force to use the same pointer to reduce memory consumption.
+                  val[i].tags[j] = ref_tag;
+                  btag2_1 = ref_tag;
+                }
+                liveTag.update_tags_in_th_sub([], {}, [btag2_1], {}, 1, bd, 0, null);
+//                liveTag.tags[btag].ref_tag = btag2_1; // set btag reference.
+                if (pref.liveTag.inherit_board_tags) liveTag.tags[btag2_1].mems.set(bd,btag2_1);
+//                liveTag.key_dirty[liveTag.tags_ci[(pref.liveTag.ci)? btag2_1.toLowerCase() : btag2_1].key] = null;
+              }
+              if (pref.liveTag.inherit_board_tags) {
+                for (var j in bd) {
+                  var th_key = this.nickname+'/'+val[i].uri+'/'+bd[j].no;
+                  liveTag.prep_tags({domain:this.nickname, board:'/'+val[i].uri+'/', no:bd[j].no, key:th_key}, bd[j].tag);
+                  if (cataLog.threads[th_key]) cataLog.insert_footer3(th_key,null,null,bd[j]);
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    make_site3_bds:function(){
-      var tgts = site3[site.nickname].boards;
-      for (var i=0;i<tgts.length;i++) site3[this.nickname].bds['/'+tgts[i].uri+'/'] = tgts[i].max;
-    },
+////    enumerate_boards_to_scan:function(){
+////      var obj = [];
+////      var end = (site3[site.nickname].boards.length > pref.scan.max)? pref.scan.max : site3[site.nickname].boards.length;
+////      for (var i=0;i<end;i++) 
+////        if (site3[site.nickname].boards[i].max) obj[obj.length] = '/'+site3[site.nickname].boards[i].uri+'/';
+////      return obj;
+////    },
+////    make_site3_bds:function(){ // working code.
+////      var tgts = site3[site.nickname].boards;
+////      for (var i=0;i<tgts.length;i++) site3[this.nickname].bds['/'+tgts[i].uri+'/'] = tgts[i].max;
+////    },
     catalog_frame_prep: function(pn12){
       document.getElementsByTagName('header')[0].style.display='none';
       document.getElementsByClassName('footer')[0].style.display = 'none';
@@ -6210,7 +6277,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //          site.root_body2 = document.getElementById('style-select');
         }
         pref.thread_reader.own_posts_tracker = true;
-        site3['lain'].boards = [{board:'cyb'}, {board:'tech'}, {board:'\u03bb'}, {board:'zzz'}, {board:'drg'}, {board:'lit'}, {board:'diy'}, {board:'art'}, {board:'w'}, {board:'rpg'}, {board:'r'}, {board:'layer'}, {board:'q'}];
+//        site3['lain'].boards = [{board:'cyb'}, {board:'tech'}, {board:'\u03bb'}, {board:'zzz'}, {board:'drg'}, {board:'lit'}, {board:'diy'}, {board:'art'}, {board:'w'}, {board:'rpg'}, {board:'r'}, {board:'layer'}, {board:'q'}];
+        setTimeout(function(){this.postprocess_board({boards:[{board:'cyb'}, {board:'tech'}, {board:'\u03bb'}, {board:'zzz'}, {board:'drg'}, {board:'lit'}, {board:'diy'}, {board:'art'}, {board:'w'}, {board:'rpg'}, {board:'r'}, {board:'layer'}, {board:'q'}]})}.bind(this),0);
 //        site.boardlist = document.getElementsByClassName('boardlist')[0];
         return true;
       } else return false;
@@ -6457,7 +6525,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 
   var site3 = {};
   for (var i in site2) if (i!=='DEFAULT' && i!=='common') {
-    site3[i] = {boards: null, tags: {cs:[], ci:[]}, own_posts:{}, bds:Object.create(null)};
+    site3[i] = {boards: null, tags: {cs:[], ci:[]}, own_posts:{}};
     if (site2[i].hasOwnProperty('check_func')) {
       site2[i].check_func();
       delete site2[i].check_func; // reduce memory consumption.
@@ -7601,7 +7669,8 @@ get_flag = true;}
     updated(true);
     pref.catalog_footer_ignore_my_own_posts = ignore_old;
 
-    threads[name][19][5] = false; // modified in check_reply
+//    threads[name][19][5] = false; // modified in check_reply
+    common_func.set_value_to_root(threads[name][19],'5',false);
 ////////    function remake_own_posts_flag(){remake_own_posts = true;}
 ////////    function add_event_to_submit(pn){pn.addEventListener('click', remake_own_posts_flag, false);}
 ////////    function remove_event_from_submit(pn){pn.addEventListener('click', remake_own_posts_flag, false);}
@@ -7863,7 +7932,9 @@ get_flag = true;}
     pn_board : null,
     pn_filter_rexp : null,
     active: {pk:0, in:0, ex:0},
-    tags : Object.create(null), // tags[TAG] = {key:, num;, mems:, cbx:{pk:, in:, ex:}, (tgts:,) pn:, pn_num:, // summary tree
+    tags_ci: null, // refers tags.__proto__
+    tags : Object.create(Object.create(null)),
+                                // tags[TAG] = {key:, num;, mems:, cbx:{pk:, in:, ex:}, (tgts:,) pn:, pn_num:, // summary tree
                                 //              ur:};
 //  mems : Object.create(null), // member tree : mems[domain][boards][no] = [[[],{},' '], [[],{}], threads_name_19];
                                 //   [0]:fixed, [1]:bumped, [x][0]:tags, [x][1]:keys, [0][2]:string,
@@ -7875,35 +7946,103 @@ get_flag = true;}
     mems : Object.create(null, {  //  CAUTION. USED ALWAYS EVEN IF pref.liveTag.use===false
       getFromName: {value: function(name) {
         var dbt = common_func.fullname2dbt(name);
-        return this[dbt[0]][dbt[1]][dbt[2]];}},
+        return (dbt[2])? this[dbt[0]][dbt[1]][dbt[2]] : this[dbt[0]][dbt[1]];}},
       init: {value: function(th) {
-        if (this[th.domain]===undefined) this[th.domain] = Object.create(null, {proto:{value:Object.create(this.acc, {domain:{value:th.domain}})}});
+////        if (this[th.domain]===undefined) this[th.domain] = Object.create(null, {proto:{value:Object.create(this.acc, {domain:{value:th.domain}})}, // working code.
+////                                                                                pfunc:{value:Object.create(null)}});
+////        if (!th.board) return this[th.domain];
+////
+////        if (this[th.domain][th.board]===undefined) {
+////          this[th.domain][th.board] = Object.create(this[th.domain].proto,
+////                                                     {proto:{value:Object.create(this[th.domain].proto,
+////                                                                                  {board:{value:th.board},
+////                                                                                   btag:{value:'#'+th.board.substr(1,th.board.length-2)}})},
+////                                                      nr:{value:0, writable:true}, nrtm:{value:0, writable:true}, nr_dirty:{value:false, writable:true},
+////                                                      u:{value:0, writable:true}, board:{value:th.board}, read_time:{value:0, writable:true},
+////                                                     });
+
+        if (this[th.domain]===undefined) this[th.domain] = Object.create(Object.create(this.acc, {domain:{value:th.domain}}), {pfunc:{value:Object.create(null)}});
+        if (!th.board) return this[th.domain];
+
         if (this[th.domain][th.board]===undefined) {
-          this[th.domain][th.board] = Object.create(this[th.domain].proto,
-                                                     {proto:{value:Object.create(this[th.domain].proto,
-                                                                                  {board:{value:th.board},
-                                                                                   btag:{value:'#'+th.board.substr(1,th.board.length-2)}})},
-                                                      nr:{value:0, writable:true}, nrtm:{value:0, writable:true}, nr_dirty:{value:false, writable:true},
-                                                     });
-          var btag = this[th.domain][th.board].proto.btag; // must be read after making btag to force to use the same reference.
-          liveTag.update_tags_in_th_sub([], {}, [btag], {}, 1, th, 0, btag);
+          this[th.domain][th.board] = Object.create(Object.create(Object.getPrototypeOf(this[th.domain]),
+                                                                  {board:{value:th.board},
+                                                                   btag:{value:'#'+th.board.substr(1,th.board.length-2)}}),
+                                                    {nr:{value:0, writable:true}, nrtm:{value:0, writable:true}, nr_dirty:{value:false, writable:true},
+                                                     u:{value:0, writable:true}, read_time:{value:0, writable:true},
+                                                    });
+          var btag = this[th.domain][th.board].btag; // must be read after making btag to force to use the same reference.
+          liveTag.update_tags_in_th_sub([], {}, [btag], {}, 1, th, 0, null);
           liveTag.tags[btag].ref_tag = btag; // set btag reference.
-          if (pref.liveTag.inherit_board_name && pref.liveTag.lock_board_name) liveTag.tags[btag].mems[th.domain+th.board] = btag;
+//          if (pref.liveTag.inherit_board_name) liveTag.tags[btag].mems[th.domain+th.board] = btag;
+          if (pref.liveTag.inherit_board_name) liveTag.tags[btag].mems.set(this[th.domain][th.board],btag);
         }
+        if (!th.no) return this[th.domain][th.board];
+
         if (this[th.domain][th.board][th.no]===undefined) {
-          this[th.domain][th.board][th.no] = {1:null, 2:[-1,0,0,0,null,true,-2, 0, true, [], 1], __proto__:this[th.domain][th.board].proto}; // init [10] as 1.
+//          this[th.domain][th.board][th.no] = {1:undefined, 2:[-1,0,0,0,null,true,-2, 0, true, [], 1],  // init [10] as 1.// working code.
+//                                              u:0, no:th.no,
+//                                              __proto__:Object.getPrototypeOf(this[th.domain][th.board])};
+          this[th.domain][th.board][th.no] = Object.create(Object.getPrototypeOf(this[th.domain][th.board]),{
+                                               '1':{value:undefined, writable:true},
+                                               '2':{value:Object.create(this.watch,{ // 4,5,7,9 are shared for reducing memory consumption.
+                                                 '0':{value:-1, writable:true},
+                                                 '1':{value:0, writable:true},
+                                                 '2':{value:0, writable:true},
+                                                 '3':{value:0, writable:true},
+                                                 '6':{value:-2, writable:true},
+                                                 '8':{value:true, writable:true},
+                                                 '10':{value:-1, writable:true}
+                                               })},
+                                               u:{value:0, writable:true}, // require 32Bytes/instance, 2.5% memory increase/instance.
+                                               no:{value:th.no, writable:true},
+                                             });
           var btag = this[th.domain][th.board][th.no].btag;
-          liveTag.key_dirty[liveTag.tags_ci[(pref.liveTag.ci)? btag.toLowerCase() : btag]] = null;
+          liveTag.key_dirty[(pref.liveTag.ci)? btag.toLowerCase() : btag] = null;
+          var btag2 = this[th.domain][th.board][th.no].btag2;
+          if (btag2) for (var i=0;i<btag2.length;i++) liveTag.key_dirty[(pref.liveTag.ci)? btag2[i].toLowerCase() : btag2[i]] = null;
         }
         return this[th.domain][th.board][th.no];}},
+      watch: {value: Object.create(null, {  //'1':{value:undefined, writable:true, configurable:true}, // default value of 1.
+                                          '4':{value:null, writable:true},
+                                          '5':{value:true, writable:true},
+                                          '7':{value:0, writable:true},
+                                          '9':{value:[], writable:true},
+                                         })},
       acc: {value: Object.create(null, {  // to reduce memory consumption.
         0: {
-          get: function() {return (pref.liveTag.inherit_board_name && pref.liveTag.lock_board_name)? [this.btag] : null;},
-          set: function(val) {if (!pref.liveTag.inherit_board_name || !pref.liveTag.lock_board_name || val.length>=2) // inherit and lock ensures val.length>=1
-                 Object.defineProperty(this,'0',{value:val, enumerable:true, configurable:true, writable:true}); // works.
-//                 this.mems[this.domain][this.board][this.no]  = [val, this[1], this[2]];
-               },
+////          get: function() {return (pref.liveTag.inherit_board_name && pref.liveTag.lock_board_name)? [this.btag] : null;}, // working code.
+////          set: function(val) {if (!pref.liveTag.inherit_board_name || !pref.liveTag.lock_board_name || val.length>=2) // inherit and lock ensures val.length>=1
+////                 Object.defineProperty(this,'0',{value:val, enumerable:true, configurable:true, writable:true}); // works.
+//////                 this.mems[this.domain][this.board][this.no]  = [val, this[1], this[2]];
+////               },
+////        },
+          get: function() {
+            var tag = this.btags;
+            if (this.tl) tag = (tag)? tag.concat(this.tl) : this.tl;
+            return tag;
+          },
+          set: function(val) {
+            var ref = this.btags;
+            if (ref) {
+              if (pref.liveTag.ci) for (var i=0;i<ref.length;i++) ref[i] = ref[i].toLowerCase();
+              for (var i=0;i<val.length;i++) if (ref.indexOf((pref.liveTag.ci)? val[i].toLowerCase() : val[i])!=-1) val.splice(i--,1);
+            }
+            if (val.length>0) this.tl = val;
+            else if (this.tl!==undefined) delete this.tl;
+          },
         },
+        key: {get: function(){return this.domain + this.board + ((this.no)? this.no : '');}},
+        tag: {get: function(){return (this[0] || []).concat(this[1] || []);}},
+//        tag: {get: function(){
+//          var tag0 = this[0];
+//          var tag1 = this[1];
+//          return (tag0 && tag1)? tag0.concat(tag1) : (tag0)? tag0 : (tag1)? tag1 : null;
+//        }},
+        btags: {get: function(){
+          var tag = (pref.liveTag.inherit_board_name && pref.liveTag.lock_board_name)? [this.btag] : null;
+          if (pref.liveTag.inherit_board_tags && pref.liveTag.lock_board_tags && this.btag2) tag = (tag)? tag.concat(this.btag2) : this.btag2;
+          return tag;}},
       })}
     }),
 //    mems_obj_accessors: { // to reduce memory consumption.
@@ -7920,8 +8059,9 @@ get_flag = true;}
         for (var d in this.mems) for (var b in this.mems[d]) for (var t in this.mems[d][b]) {
           var tag = this.mems[d][b][t];
           if (this.exclude_tags(d+b+t, tag, true)) {
-            if (liveTag.list_nup[d+b+t]===undefined) liveTag.list_nup[d+b+t] = 3;
-            tag[2][9] = 'retag';
+            liveTag.list_nup.add(d+b+t);
+//            tag[2][9] = 'retag';
+            common_func.set_value_to_root(tag[2],'9','retag');
           }
 ////          if (liveTag.list_nup[th.key]===undefined) {
 ////            var ex_list = pref_func.merge_obj5(d+b+t,pref.liveTag.ex_list_obj5,null);
@@ -7965,45 +8105,122 @@ get_flag = true;}
       return flag;
     },
     key_dirty: Object.create(null),
-    tags_mems: Object.create(null, {
-      keys_obj: {get: function(){ // working code.
-        var keys = Object.create(null);
-        for (var i in this) {
-////////if (!pref.test_mode['23']) { // test_mode['23'] is meaningless, because String is handled by reference.
-////////          var val = this[i];
-////////} else {
-////////          var val = this.search_from_dic(this[i]);
-////////}
-          if (i[i.length-1]==='/') {
-            var dbt = common_func.fullname2dbt(i);
-            for (var j in liveTag.mems[dbt[0]][dbt[1]]) keys[i+j] = this[i];
-          } else keys[i] = this[i];
-        }
-        return keys;
-      }},
-      keys_length: {get: function(){
-        var len = 0;
-        for (var i in this) {
-          if (i[i.length-1]==='/') {
-            var dbt = common_func.fullname2dbt(i);
-            len += Object.keys(liveTag.mems[dbt[0]][dbt[1]]).length;
-          } else len++;
-        }
-        return len;
-      }},
-////////      search_from_dic: {value: function(no){for (var i in this.dic) if (this.dic[i]==no) return i;}},
-////////      clean_up_dic: {value: function(){
-////////        var keys = {};
-////////        for (var i in this) keys[this[i]] = null;
-////////        for (var i in this.dic) if (keys[this.dic[i]]!==null) delete this.dic[i];
-////////      }},
-    }),
-    tags_ci: Object.create(null), // dictionary for case insensitive.
+////    tags_mems: Object.create(null, { // working code.
+////      keys_obj: {get: function(){ // working code.
+////        var keys = Object.create(null);
+////        for (var i in this) {
+////////////if (!pref.test_mode['23']) { // test_mode['23'] is meaningless, because String is handled by reference.
+////////////          var val = this[i];
+////////////} else {
+////////////          var val = this.search_from_dic(this[i]);
+////////////}
+////          if (i[i.length-1]==='/') {
+////            var dbt = common_func.fullname2dbt(i);
+////            for (var j in liveTag.mems[dbt[0]][dbt[1]]) keys[i+j] = this[i];
+////          } else keys[i] = this[i];
+////        }
+////        return keys;
+////      }},
+////      keys_length: {get: function(){
+////        var len = 0;
+////        for (var i in this) {
+////          if (i[i.length-1]==='/') {
+////            var dbt = common_func.fullname2dbt(i);
+////            len += Object.keys(liveTag.mems[dbt[0]][dbt[1]]).length;
+////          } else len++;
+////        }
+////        return len;
+////      }},
+////////////      search_from_dic: {value: function(no){for (var i in this.dic) if (this.dic[i]==no) return i;}},
+////////////      clean_up_dic: {value: function(){
+////////////        var keys = {};
+////////////        for (var i in this) keys[this[i]] = null;
+////////////        for (var i in this.dic) if (keys[this.dic[i]]!==null) delete this.dic[i];
+////////////      }},
+////    }),
     tags_array_old : [],
     tags_boardlist: [],
-    tags_proto: {pk:false, in:false, ex:false},
-    list_nup_boards : Object.create(null), // list of next updates of boards.
-    list_nup : Object.create(null), // list of next updates.
+    tags_proto: {pk:false, in:false, ex:false,
+      mems_keys_obj: function(){
+        var keys = {};
+        for (var i of this.mems.keys())
+          if (i.no===undefined) for (var j in i) keys[i[j].key] = this.mems.get(i);
+          else keys[i.key] = this.mems.get(i);
+        return keys;
+      },
+      mems_keys_length: function(){
+        var len = 0;
+        for (var i of this.mems.keys())
+//          if (i.no===undefined) len += Object.keys(i).length; // slow???
+          if (i.no===undefined) for (var j in i) ++len;
+          else ++len;
+        return len;
+      },
+      mems_keys_length_and_set_top: function(){
+        var len = 0;
+        var keys = {};
+        for (var i of this.mems.keys()) {
+          var key = this.mems.get(i);
+          if (keys[key]===undefined) keys[key] = 0;
+          if (i.no===undefined) for (var j in i) {++keys[key];++len;}
+          else {++keys[key];++len;}
+        }
+        for (var j in keys) if (keys[j]>keys[this.key] || (keys[j]==keys[this.key] && j<this.key)) this.key = j;
+        return len;
+      },
+    },
+////    list_nup_boards : Object.create(null), // list of next updates of boards.
+////    list_nup : Object.create(null), // list of next updates.
+    list_nup : {
+      // th.u: 0:ready, >0:requested, <0:blacklisted
+      add: function(th){
+        if (typeof(th)==='string') th = this.get_th(th);
+        if (th.u===0) th.u = 3;
+      },
+      issued: function(th){
+        if (typeof(th)==='string') th = this.get_th(th);
+        if (th) th.u = (th.u===1)? -1 : (th.u===0)? 2 : th.u-1;
+      },
+      got_200: function(th){
+        if (typeof(th)==='string') th = this.get_th(th);
+        th.u = 0;
+      },
+      got_404: function(th){
+        if (typeof(th)==='string') th = this.get_th(th);
+        if (th) th.u = -1;
+      },
+      get_th: function(key){
+        var dbt = common_func.fullname2dbt(key);
+        if (dbt[2].search(/p[0-9]+$/)!=-1) return null; // prevent board to be blacklisted when over page loading.
+        if (dbt[2].search(/^[0-9]/)==-1) dbt[2] = '';
+        return liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]});
+      },
+      get_list_thread: function(){
+        var list = [];
+        for (var d in liveTag.mems)
+          for (var b in liveTag.mems[d])
+            for (var t in liveTag.mems[d][b])
+              if (liveTag.mems[d][b][t].u>0) list[list.length] = liveTag.mems[d][b][t];
+        return list;
+      },
+      add_board: function(bd, time){
+        if (typeof(bd)==='string') bd = this.get_th(bd);
+//        if (bd.u===0) bd.u = 3;
+        bd.u = 3;
+        if (bd.max) bd.read_max = bd.max;
+        bd.read_time = time;
+      },
+      get_list_board: function(query_members){
+        var list = [];
+        var time_th = Date.now()-pref.liveTag.pickup_interval*1000;
+        for (var d in liveTag.mems)
+          for (var b in liveTag.mems[d]) {
+            var tgt = liveTag.mems[d][b];
+            if (tgt.u>0) if (query_members || (tgt.read_time<time_th && (tgt.max===undefined || tgt.read_max<tgt.max))) list[list.length] = tgt;
+          }
+        return list;
+      },
+    },
 ////    list_nup : {
 ////      list_req: [], // to reduce memory consumption
 ////      list_req_old: [],
@@ -8037,62 +8254,97 @@ get_flag = true;}
 ////      }
 ////    },
     scan_regex : /#[^#, \.:;\n\|"<>]+(?=[#, \.:;\n\|"<>]|$)/g, // ATTENTION. REFER function prep_tag_str();
-    update_tags_in_th_sub: function(tags, keys, src, keys_fix, num, th, ur, btag){ // working code.
+////    update_tags_in_th_sub: function(tags, keys, src, keys_fix, num, th, ur, btag){ // working code for obj.
+////      var count = tags.length;
+////      var i = 0;
+////      while (count<num && i<src.length) {
+////        var k = src[i++];
+////        var k_ci = (pref.liveTag.ci)? k.toLowerCase() : k;
+////        if (k_ci===k) k_ci=k; // to reduce memory consumption.
+////        if (keys_fix[k_ci]===undefined) {
+////          if (keys[k_ci]===undefined) {
+////            keys[k_ci] = k; // discarded every time, so needless to think about reference of 'k'.
+//////            tags[count++] = k;
+////            if (this.tags[k]===undefined) {
+////              if (this.tags_ci[k_ci]===undefined) {
+////////////if (!pref.test_mode['23']) {
+////                this.tags_ci[k_ci] = {key:k, mems:Object.create(this.tags_mems), ref_tag:k,
+//////                                    pk:false, in:false, ex:false, // moved to prototype
+////                                      pn:null, pn_num:0, ur:ur, __proto__:this.tags_proto};
+////////////} else {
+////////////                this.tags[k] = {key:k, mems:Object.create(this.tags_mems, {dic:{value:{}, writable:true}, dic_no:{value:0, writable:true}}),
+////////////                                cbx:{pk:false, in:false, ex:false}, pn:null, pn_num:0, ur:ur};
+////////////}
+////                if (this.tags[k]===undefined) this.tags[k] = this.tags_ci[k_ci];
+////              } else this.tags[k] = this.tags_ci[k_ci];
+//////              this.tags[k].tgts[k] = null;
+////            }
+////////            this.tags[k].mems[name] = k;
+////            var mems = this.tags[k].mems;
+////////////if (!pref.test_mode['23']) {
+////////////            var val = k;
+////////////} else {
+////////////            if (mems.dic[k]===undefined) {mems.dic[k]=mems.dic_no++;} // to reduce memory consumption, use dictionary.
+////////////            var val = mems.dic[k];
+////////////}
+////            if (k===this.tags[k].ref_tag) k = this.tags[k].ref_tag; // get the same reference to reduce memory consumption. This makes major of members see 'btag'.
+////            else for (var j in mems) if (k===mems[j]) {k=mems[j]; break;}
+////            if (k!==btag) {
+////              if (mems[th.key]!==k) this.key_dirty[k_ci] = null; // cases are changed or a new tag is added. 'if (keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
+////              mems[th.key] = k; // write always to force to use the same reference to reduce memory.
+////            }
+////            tags[count++] = k;
+////          }  // else if (keys[k_ci]!==k) this.tags[this.tags_ci[k_ci]].key_dirty = true; // case is changed. 'if (keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
+////        }
+////      }
+////      return i;
+////    },
+    update_tags_in_th_sub: function(tags, keys, src, keys_fix, num, th, ur, bd){
       var count = tags.length;
       var i = 0;
       while (count<num && i<src.length) {
         var k = src[i++];
         var k_ci = (pref.liveTag.ci)? k.toLowerCase() : k;
+        if (k_ci===k) k_ci=k; // to reduce memory consumption.
         if (keys_fix[k_ci]===undefined) {
           if (keys[k_ci]===undefined) {
             keys[k_ci] = k; // discarded every time, so needless to think about reference of 'k'.
-//            tags[count++] = k;
             if (this.tags[k]===undefined) {
               if (this.tags_ci[k_ci]===undefined) {
-////////if (!pref.test_mode['23']) {
-                this.tags[k] = {key:k, mems:Object.create(this.tags_mems), ref_tag:k,
-//                                pk:false, in:false, ex:false, // moved to prototype
-                                pn:null, pn_num:0, ur:ur, __proto__:this.tags_proto};
-////////} else {
-////////                this.tags[k] = {key:k, mems:Object.create(this.tags_mems, {dic:{value:{}, writable:true}, dic_no:{value:0, writable:true}}),
-////////                                cbx:{pk:false, in:false, ex:false}, pn:null, pn_num:0, ur:ur};
-////////}
-                this.tags_ci[k_ci] = k;
-              } else this.tags[k] = this.tags[this.tags_ci[k_ci]];
-//              this.tags[k].tgts[k] = null;
+                this.tags_ci[k_ci] = {key:k, mems: new Map(), ref_tag:k,
+                                      pn:null, pn_num:0, ur:ur, __proto__:this.tags_proto};
+                if (this.tags[k]===undefined) this.tags[k] = this.tags_ci[k_ci];
+                this.key_dirty[k_ci] = null; // for pickup in 'update_pn'
+//                if (pref.debug_mode['3']) console.log('Added: '+k);
+              } else this.tags[k] = this.tags_ci[k_ci];
             }
-////            this.tags[k].mems[name] = k;
             var mems = this.tags[k].mems;
-////////if (!pref.test_mode['23']) {
-////////            var val = k;
-////////} else {
-////////            if (mems.dic[k]===undefined) {mems.dic[k]=mems.dic_no++;} // to reduce memory consumption, use dictionary.
-////////            var val = mems.dic[k];
-////////}
             if (k===this.tags[k].ref_tag) k = this.tags[k].ref_tag; // get the same reference to reduce memory consumption. This makes major of members see 'btag'.
-            else for (var j in mems) if (k===mems[j]) {k=mems[j]; break;}
-            if (k!==btag) {
-              if (mems[th.key]!==k) this.key_dirty[k_ci] = null; // cases are changed or a new tag is added. 'if (keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
-              mems[th.key] = k; // write always to force to use the same reference to reduce memory.
+            else for (var j in mems) if (k===mems.get(j)) {k=mems.get(j); break;}
+//            if (k!==btag) {
+            if (bd!==null && !mems.has(bd)) {
+              var me = this.mems[th.domain][th.board][th.no];
+              if (mems.get(me)!==k) this.key_dirty[k_ci] = null; // cases are changed or a new tag is added. 'if (keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
+              mems.set(me,k); // write always to force to use the same reference to reduce memory.
             }
             tags[count++] = k;
-          }  // else if (keys[k_ci]!==k) this.tags[this.tags_ci[k_ci]].key_dirty = true; // case is changed. 'if (keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
+          }
         }
       }
       return i;
     },
-    update_tags_in_th: function(src_new, src_old, keys_fix, num, th, ur, btag){
+    update_tags_in_th: function(src_new, src_old, keys_fix, num, th, ur, bd){
       var tags = [];
       var keys = {};
-      this.update_tags_in_th_sub(tags, keys, src_new, keys_fix, num, th, ur, btag);
+      this.update_tags_in_th_sub(tags, keys, src_new, keys_fix, num, th, ur, bd);
       if (src_old) {
-        var i = this.update_tags_in_th_sub(tags, keys, src_old, keys_fix, num, th, ur, btag);
+        var i = this.update_tags_in_th_sub(tags, keys, src_old, keys_fix, num, th, ur, bd);
         while (i<src_old.length) {
           var k = src_old[i++];
           var k_ci = (pref.liveTag.ci)? k.toLowerCase() : k;
           if (keys_fix[k_ci]===undefined) {
-            if (keys[k_ci]!==k) this.key_dirty[this.tags_ci[k_ci]] = null; // case is changed, or removed. 'if ((k_ci in keys) && keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
-            if (keys[k_ci]===undefined) if (this.tags[k]) this.delete_tags(k,th.key);
+            if (keys[k_ci]!==k) this.key_dirty[k_ci] = null; // case is changed, or removed. 'if ((k_ci in keys) && keys[k_ci]!==k)' ensures (pref.liveTag.ci===true).
+            if (keys[k_ci]===undefined) this.delete_tags(k,th.key);
           }
         }
       }
@@ -8109,23 +8361,36 @@ get_flag = true;}
       var name = dbt[0]+dbt[1]+dbt[2];
       var tags = this.mems[dbt[0]][dbt[1]][dbt[2]];
       for (var j=0;j<2;j++) if (tags[j]) for (var i=tags[j].length-1;i>=0;i--) this.delete_tags(tags[j][i],name);
-      var btag = this.mems[dbt[0]][dbt[1]][dbt[2]].btag;
-      this.key_dirty[this.tags_ci[(pref.liveTag.ci)? btag.toLowerCase() : btag]] = null;
+//      var btag = this.mems[dbt[0]][dbt[1]][dbt[2]].btag;
+//      this.key_dirty[this.tags_ci[(pref.liveTag.ci)? btag.toLowerCase() : btag].key] = null;
+      var btags = this.mems[dbt[0]][dbt[1]][dbt[2]].btags;
+      if (btags) for (var i=0;i<btags.length;i++) this.key_dirty[(pref.liveTag.ci)? btags[i].toLowerCase() : btags[i]] = null;
       delete this.mems[dbt[0]][dbt[1]][dbt[2]];
       this.update_pn_buf.delayed_do();
 //      if (pref.debug_mode['3']) console.log('remove: '+name);
+//      if (pref.debug_mode['3']) {
+////        var th_count = 0;
+////        for (var d in this.mems) for (var b in this.mems[d]) for (var t in this.mems[d][b]) th_count++;
+////        console.log('remove: '+name+', '+tags.tag+', tags_ci+tags: '+Object.keys(this.tags_ci).length+'+'+Object.keys(this.tags).length+', threads:'+th_count);
+//        for (var i in this.tags_ci) for (var j of this.tags_ci[i].mems.keys()) if (j===tags) console.log('ERROR: tags_ci['+i+'].mems has a reference to a deleted thread.');
+//      }
     },
     delete_tags: function(tag,name){
-      delete this.tags[tag].mems[name];
+//      delete this.tags[tag].mems[name];
+      this.key_dirty[(pref.liveTag.ci)? tag.toLowerCase() : tag] = null;
+      this.tags[tag].mems.delete(this.mems.getFromName(name));
       if (pref.liveTag.style) this.update_ur_1(tag);
-      if (Object.keys(this.tags[tag].mems).length==0) {
+//      if (Object.keys(this.tags[tag].mems).length==0) {
+      if (this.tags[tag].mems.size==0) {
 //        if (this.tags[tag].pn!==null) this.pn.removeChild(this.tags[tag].pn); // CAUSE ERROR, WHY???
         if (this.tags[tag].pn!==null) if (this.tags[tag].pn.parentNode===this.pn) this.pn.removeChild(this.tags[tag].pn);
 //        delete this.tags[tag].tgts[tag];
         for (var i in this.active) if (this.tags[tag][i]) this.active[i]--;
         delete this.tags[tag];
-        delete this.tags_ci[(pref.liveTag.ci)? tag.toLowerCase() : tag];
-        if (pref.liveTag.ci) for (var i in this.tags) if (!this.tags[i]) delete this.tags[i]; // tags are not removed in 'update_tags_in_th_sub' if cases are changed.
+//        if (pref.liveTag.ci) for (var i in this.tags) if (!this.tags[i]) delete this.tags[i]; // tags are not removed in 'update_tags_in_th_sub' if cases are changed.
+        var tag_ci = (pref.liveTag.ci)? tag.toLowerCase() : tag;
+        for (var i in this.tags) if (this.tags[i]===this.tags_ci[tag_ci]) delete this.tags[i];
+        delete this.tags_ci[tag_ci];
         if (pref.debug_mode['3']) console.log('Remove: '+tag);
       }
     },
@@ -8163,7 +8428,9 @@ get_flag = true;}
       } else {
         var tag = this.getAttribute('name');
         str = tag + ':<br>';
-        for (var i in liveTag.tags[tag].mems) str += i + ', ';
+//        for (var i in liveTag.tags[tag].mems) str += i + ', ';
+        var myDomain = new RegExp('^'+site.nickname);
+        for (var i of liveTag.tags[tag].mems.keys()) str += i.key.replace(myDomain,'') + ', ';
       }
       pref_func.tooltips.show_1.call(this,e,str);
     },
@@ -8176,9 +8443,9 @@ get_flag = true;}
       if (this.tags[tag].pn!==null) {
         this.tags[tag].pn.childNodes[0].checked = this.tags[tag]['pk'];
         this.tags[tag].pn.childNodes[1].checked = this.tags[tag]['in'];
-        this.cbx_onchange(this.tags[tag].pn.childNodes[0]);
-        this.cbx_onchange(this.tags[tag].pn.childNodes[1]);
       }
+      this.cbx_onchange(tag,'pk');
+      this.cbx_onchange(tag,'in');
 //      if (this.tags[tag]['pk']) {
 ////        sender.style = pref.liveTag.style_in_obj4; // doesn't work.
 //        common_func.init_set_style(sender,pref.liveTag.style_in_obj4);
@@ -8196,10 +8463,11 @@ get_flag = true;}
         if (!all_case) {if (this.tags[tag[j][i]]) this.check_update_tags_color(tag[j][i],ur);}
         else this.update_ur_1(tag[j][i]);
     },
-    update_ur_1: function(tag){ // subfunc of 'cout_ur'
+    update_ur_1: function(tag){ // subfunc of 'count_ur'
       var ur_old = this.tags[tag].ur;
       var ur = 0;
-      for (var i in this.tags[tag].mems.keys_obj) {
+      var mems_objs = this.tags[tag].mems_keys_obj();
+      for (var i in mems_objs) {
         var info = this.mems.getFromName(i)[2];
         ur |= (info[1]!=0)? 3 : (info[2]!=0)? 1 : 0;
       }
@@ -8229,7 +8497,8 @@ get_flag = true;}
     count_ur: function(tag){
       var nums = [0,0,0,0,0];
       var bds = {};
-      for (var i in this.tags[tag].mems.keys_obj) {
+      var mems_objs = this.tags[tag].mems_keys_obj();
+      for (var i in mems_objs) {
         var dbt = common_func.fullname2dbt(i);
         var info = this.mems[dbt[0]][dbt[1]][dbt[2]][2];
         nums[0] += info[1];
@@ -8237,7 +8506,7 @@ get_flag = true;}
         if (info[2]!=0) nums[2]++;
         bds[dbt[0]+dbt[1]] = null;
       }
-      nums[3] = this.tags[tag].mems.keys_length;
+      nums[3] = this.tags[tag].mems_keys_length();
       nums[4] = Object.keys(bds).length;
 //      this.tags[tag].ur = (nums[0]!=0)? 3 : (nums[1]!=0)? 1 : 0;
       return nums;
@@ -8255,28 +8524,25 @@ get_flag = true;}
       var in_old = this.tags[tag]['in'];
       if (pref.liveTag.click_func==='in' || (pref.liveTag.click_func==='inex' && !(this.tags[tag]['in']===false && this.tags[tag]['ex']===true))) {
         this.tags[tag]['in'] = !this.tags[tag]['in'];
-        if (this.tags[tag].pn!==null) {
-          this.tags[tag].pn.childNodes[1].checked = this.tags[tag]['in'];
-          this.cbx_onchange(this.tags[tag].pn.childNodes[1]);
-        }
+        if (this.tags[tag].pn!==null) this.tags[tag].pn.childNodes[1].checked = this.tags[tag]['in'];
+        this.cbx_onchange(tag,'in');
       }
       if (pref.liveTag.click_func==='ex' || (pref.liveTag.click_func==='inex' && !(in_old===false && this.tags[tag]['ex']===false))) {
         this.tags[tag]['ex'] = !this.tags[tag]['ex'];
-        if (this.tags[tag].pn!==null) {
-          this.tags[tag].pn.childNodes[2].checked = this.tags[tag]['ex'];
-          this.cbx_onchange(this.tags[tag].pn.childNodes[2]);
-        }
+        if (this.tags[tag].pn!==null) this.tags[tag].pn.childNodes[2].checked = this.tags[tag]['ex'];
+        this.cbx_onchange(tag,'ex');
       }
     },
 //    filter_onchange_entry : function(e){liveTag.filter_onchange(this, e);},
     filter_onchange : function(sender, e){
       this.pn_filter_rexp = (pref.catalog.filter.tag_filter_str==='')? null : new RegExp(pref.catalog.filter.tag_filter_str, (pref.liveTag.ci)? 'i': undefined);
-      for (var i in this.tags)
-        if (this.tags[i].pn!==null) this.tags[i].pn.style.display = (this.pn_filter_rexp===null || this.pn_filter_rexp.test(i))? '' : 'none';
+////      for (var i in this.tags) // working code.
+////        if (this.tags[i].pn!==null) this.tags[i].pn.style.display = (this.pn_filter_rexp===null || this.pn_filter_rexp.test(i))? '' : 'none';
+      this.update_pn(true);
     },
     sort_func: function(a,b){return (a.num!=b.num)? b.num - a.num : (b.key > a.key)? -1:1;},
     update_pn_buf: null,
-    update_pn : function(){
+    update_pn : function(from_filter){
       if (this.pn===0) return; // trap for thread_reader.
       if (this.pn===null) {
         this.pn = document.getElementsByName('catalog.filter.tag_list')[0];
@@ -8292,42 +8558,74 @@ get_flag = true;}
           return;
         }
       }
-      var tags_array = [];
-//      var keys = {};
-//      for (var i in this.tags) // patch, this can be removed if this.tags is fully overlayed at pref.liveTag.ci. // PATCHES CAN BE REMOVED
-//        if (keys[i]!==null) {
-//          keys[i] = null;
-//          tags_array[tags_array.length] = {key:i, num:Object.keys(this.tags[i].mems).length};
-//        }
-//      if (pref.liveTag.ci) {
-//        for (var i=0;i<tags_array.length;i++) { // search major key
-//          keys = {};
-//          var mems = this.tags[tags_array[i].key].mems;
-//          for (var j in mems) keys[mems[j]] = (keys[mems[j]] || 0) +1;
-//          for (var j in keys) if (keys[j]>keys[tags_array[i].key]) tags_array[i].key = j;
-//        }
-//      }
-      if (pref.liveTag.ci) {
-        for (var i in this.key_dirty) { // set major key
-          var tag_obj = this.tags[this.tags_ci[(pref.liveTag.ci)? i.toLowerCase() : i]];
-          if (tag_obj) {
-            var keys = {};
-            var mems = tag_obj.mems;
-            for (var j in mems) keys[mems[j]] = (keys[mems[j]] || 0) +1;
-            var key_old = tag_obj.key;
-////////if (!pref.test_mode['23']) {
-            for (var j in keys) if (keys[j]>keys[tag_obj.key]) tag_obj.key = j;
-////////} else {
-////////            for (var j in keys) if (keys[j]>keys[tag_obj.key]) tag_obj.key = tag_obj.mems.search_from_dic(j);
-////////            mems.clean_up_dic();
-////////}
-            if (key_old!==tag_obj.key) if (tag_obj.pn) tag_obj.pn.childNodes[3].textContent = Object.keys(tag_obj.mems).length + ': ' + tag_obj.key;
+
+////      var tags_array = []; // working code.
+//////      var keys = {};
+//////      for (var i in this.tags) // patch, this can be removed if this.tags is fully overlayed at pref.liveTag.ci. // PATCHES CAN BE REMOVED
+//////        if (keys[i]!==null) {
+//////          keys[i] = null;
+//////          tags_array[tags_array.length] = {key:i, num:Object.keys(this.tags[i].mems).length};
+//////        }
+//////      if (pref.liveTag.ci) {
+//////        for (var i=0;i<tags_array.length;i++) { // search major key
+//////          keys = {};
+//////          var mems = this.tags[tags_array[i].key].mems;
+//////          for (var j in mems) keys[mems[j]] = (keys[mems[j]] || 0) +1;
+//////          for (var j in keys) if (keys[j]>keys[tags_array[i].key]) tags_array[i].key = j;
+//////        }
+//////      }
+////
+////      if (pref.liveTag.ci) {
+////        for (var i in this.key_dirty) { // set major key
+////          var tag_obj = this.tags_ci[(pref.liveTag.ci)? i.toLowerCase() : i];
+////          if (tag_obj) {
+////            var keys = {};
+////            var mems = tag_obj.mems;
+////            for (var j in mems) keys[mems[j]] = (keys[mems[j]] || 0) +1;
+////            var key_old = tag_obj.key;
+////////////if (!pref.test_mode['23']) {
+////            for (var j in keys) if (keys[j]>keys[tag_obj.key]) tag_obj.key = j;
+////////////} else {
+////////////            for (var j in keys) if (keys[j]>keys[tag_obj.key]) tag_obj.key = tag_obj.mems.search_from_dic(j);
+////////////            mems.clean_up_dic();
+////////////}
+////            if (key_old!==tag_obj.key) if (tag_obj.pn) tag_obj.pn.childNodes[3].textContent = Object.keys(tag_obj.mems).length + ': ' + tag_obj.key;
+////          }
+////        }
+////      }
+////      this.key_dirty = Object.create(null);
+////      for (var i in this.tags_ci) tags_array[tags_array.length] = {key:this.tags_ci[i].key, num:this.tags_ci[i].mems_keys_length(),
+////                                                                   disp: (this.pn_filter_rexp===null || !this.pn_filter_rexp.test(this.tags_ci[i].key))? 0 : 1};
+////      tags_array.sort(this.sort_func);
+
+      var tags_array = this.tags_array_old;
+      for (i=0;i<tags_array.length;i++) {
+        var key = tags_array[i].key;
+        var k_ci = (pref.liveTag.ci)? key.toLowerCase() : key;
+        if (this.key_dirty[k_ci]===null) {
+          delete this.key_dirty[k_ci];
+          if (this.tags_ci[k_ci]) {
+            tags_array[i].num = (pref.liveTag.ci)? this.tags_ci[k_ci].mems_keys_length_and_set_top() : this.tags_ci[k_ci].mems_keys_length();
+            if (key!==this.tags_ci[k_ci].key) {
+              if (this.tags_ci[k_ci].pn) this.tags_ci[k_ci].pn.childNodes[3].textContent = tags_array[i].num + ': ' + this.tags_ci[k_ci].key;
+              tags_array[i].key = this.tags_ci[k_ci].key;
+            }
+          } else {
+            tags_array.splice(i--,1);
+            continue;
           }
         }
+        if (from_filter) tags_array[i].disp = (this.pn_filter_rexp===null || !this.pn_filter_rexp.test(tags_array[i].key))? 0 : 1;
       }
-      this.key_dirty = Object.create(null);
-      for (var i in this.tags_ci) tags_array[tags_array.length] = {key:this.tags[this.tags_ci[i]].key, num:this.tags[this.tags_ci[i]].mems.keys_length};
+      for (var i in this.key_dirty)
+        if (this.tags_ci[i]) {
+          var tags_ary_num = (pref.liveTag.ci)? this.tags_ci[i].mems_keys_length_and_set_top() : this.tags_ci[i].mems_keys_length(); // sets key
+          tags_array[tags_array.length] = {key:this.tags_ci[i].key, num:tags_ary_num,
+                                           disp: (this.pn_filter_rexp===null || !this.pn_filter_rexp.test(this.tags_ci[i].key))? 0 : 1};
+        }
+
       tags_array.sort(this.sort_func);
+      this.key_dirty = Object.create(null);
 
 ////      for (var i in this.tags) tags_array[tags_array.length] = {key:i, num:Object.keys(this.tags[i].mems).length, mems:{}}; // working code.
 //////      for (var i in this.tags) { // working code, moved to 'delete_tags'.
@@ -8369,30 +8667,32 @@ get_flag = true;}
 ////      }
 //////      if (pref.debug_mode['3']) console.log(JSON.stringify(tags_array));
 
-      var j=0;
-      var num_of_skip =0;
+//      var j=0;
+      var pos_insert=0;
       for (var i=0;i<tags_array.length;i++) {
         var key = tags_array[i].key;
         var num = tags_array[i].num;
         var num_old = this.tags[key].pn_num;
-        if (num!==num_old) {
+        if (num!==num_old || from_filter) {
           var str = num + ': ' + key;
           this.tags[key].pn_num = num;
           var pn = this.tags[key].pn;
           if (pn!==null) {
-            if (tags_array[i].num==0) {
+            if (tags_array[i].num===0 || tags_array[i].disp===0) {
               this.pn.removeChild(pn);
               this.tags[key].pn = null;
             } else {
               this.tags[key].pn.childNodes[3].textContent = str;
-              if (this.tags_array_old[j] && key===this.tags_array_old[j].key) j++;
-              else {
-                this.pn.insertBefore(pn, this.pn.childNodes[i+num_of_skip] || null);
+//              if (this.tags_array_old[j] && key===this.tags_array_old[j].key) j++;
+//              else {
+              if (this.pn.childNodes[pos_insert]!==pn) this.pn.insertBefore(pn, this.pn.childNodes[pos_insert] || null);
+              pos_insert++;
+//                this.pn.insertBefore(pn, this.pn.childNodes[pos_insert++] || null);
 //                if (pref.debug_mode['3']) console.log('Insert: '+((num>num_old)?'promote: ':'demote: ')+key+', '+num_old+' -> '+num+', '+i+', '+j+', '+num_of_skip);
-                if (num<num_old) num_of_skip--;
-              }
+//                if (num<num_old) num_of_skip--;
+//              }
             }
-          } else if (tags_array[i].num!=0) {
+          } else if (tags_array[i].num!=0 && tags_array[i].disp==1) {
             pn = document.createElement('span');
             pn.innerHTML = '<input type="checkbox" name="' + key + '.pk" ' + ((this.tags[key]['pk'])? 'checked' : '') + '>' + 
                            '<input type="checkbox" name="' + key + '.in" ' + ((this.tags[key]['in'])? 'checked' : '') + '>' + 
@@ -8405,24 +8705,25 @@ get_flag = true;}
             pn.childNodes[1].onmouseover = this.tooltip;
             pn.childNodes[2].onmouseover = this.tooltip;
             pn.childNodes[3].onmouseover = this.tooltip;
-            pn.style = {};
-            pn.style.display = (this.pn_filter_rexp===null || this.pn_filter_rexp.test(key))? '' : 'none';
-            this.pn.insertBefore(pn, this.pn.childNodes[i+num_of_skip] || null);
+//            pn.style = {};
+//            pn.style.display = (this.pn_filter_rexp===null || this.pn_filter_rexp.test(key))? '' : 'none';
+            this.pn.insertBefore(pn, this.pn.childNodes[pos_insert++] || null);
             this.tags[key].pn = pn;
 //            for (var j in this.tags[key].tgts) this.tags[j].pn = pn;  // PATCHES CAN BE REMOVED
           }
-        } else { // tracking
-          while (j<this.tags_array_old.length && key!==this.tags_array_old[j].key) {
-            if (this.tags[this.tags_array_old[j].key] && this.tags[this.tags_array_old[j].key].pn_num==this.tags_array_old[j].num) num_of_skip++; // removed(to be 0) while waiting or not processed yet(demote)
-//            if (pref.debug_mode['3']) {
-//              var debug_str = this.tags_array_old[j].key+', '+this.tags_array_old[j].num+', '+num_of_skip;
-//              if (this.tags[this.tags_array_old[j].key]===undefined) console.log('Removed: '+debug_str);
-//              else if (this.tags[this.tags_array_old[j].key].pn_num==this.tags_array_old[j].num) console.log('Skip: '+debug_str);
-//            }
-            j++;
-          }
-          j++;
-        }
+        } else if (tags_array[i].disp==1) pos_insert++;
+////        } else { // tracking // working code.
+////          while (j<this.tags_array_old.length && key!==this.tags_array_old[j].key) {
+////            if (this.tags[this.tags_array_old[j].key] && this.tags[this.tags_array_old[j].key].pn_num==this.tags_array_old[j].num) num_of_skip++; // removed(to be 0) while waiting or not processed yet(demote)
+//////            if (pref.debug_mode['3']) {
+//////              var debug_str = this.tags_array_old[j].key+', '+this.tags_array_old[j].num+', '+num_of_skip;
+//////              if (this.tags[this.tags_array_old[j].key]===undefined) console.log('Removed: '+debug_str);
+//////              else if (this.tags[this.tags_array_old[j].key].pn_num==this.tags_array_old[j].num) console.log('Skip: '+debug_str);
+//////            }
+////            j++;
+////          }
+////          j++;
+////        }
       }
       this.tags_array_old = tags_array;
 
@@ -8467,18 +8768,23 @@ get_flag = true;}
 //        item.childNodes[3].onmouseover = pref_func.tooltips.show;
 //        this.pn.appendChild(item);
 //      }
-      if (pref.virtualBoard.show) this.update_boardlist();
+      if (pref.virtualBoard.show && !from_filter) this.update_boardlist();
     },
-    cbx_onchange_entry : function(e){liveTag.cbx_onchange(this, e, true);},
-    cbx_onchange : function(sender, e, from_cbx){
-      var prop = sender.name.substr(-2,2);
-//      var val = e.target.checked;
-      var val = sender.checked;
+////    cbx_onchange_entry : function(e){liveTag.cbx_onchange(this, e, true);},
+////    cbx_onchange : function(sender, e, from_cbx){ // working code.
+////      var prop = sender.name.substr(-2,2);
+//////      var val = e.target.checked;
+////      var val = sender.checked;
+////      var tag = sender.name.substr(0,sender.name.length-3);
+    cbx_onchange_entry : function(e){
+      var tag = this.name.substr(0,this.name.length-3);
+      var prop = this.name.substr(-2,2);
+      liveTag.tags[tag][prop] = this.checked;
+      liveTag.cbx_onchange(tag, prop, true);
+    },
+    cbx_onchange : function(tag, prop, from_cbx){
+      var val = this.tags[tag][prop];
       this.active[prop] += (val)? 1 : -1;
-      var tag = sender.name.substr(0,sender.name.length-3);
-      if (from_cbx) this.tags[tag][prop] = val;
-//      if (pref.liveTag.ci) for (var i in this.tags[tag].ci) if (this.tags[i]) this.tags[i][prop] = val;
-//      for (var i in this.tags[tag].tgts) if (this.tags[i]) this.tags[i][prop] = val;
       if (prop==='pk') {
         if (val && !this.tags[tag]['in']) {
           this.tags[tag]['in'] = true;
@@ -8495,7 +8801,8 @@ get_flag = true;}
 //            for (var j in this.tags[i].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null;
 //          }
 //        if (val) for (var i in this.tags[tag].tgts) for (var j in this.tags[i].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null; // working code.
-        if (val) for (var j in this.tags[tag].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null;
+//        if (val) for (var j in this.tags[tag].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null;
+        if (val) for (var j of this.tags[tag].mems.keys()) tgts[j.key.substr(0,j.key.lastIndexOf('/')+1)]=null;
         if (Object.keys(tgts).length!=0 && catalog_obj && catalog_obj.catalog_func()!=null)
           catalog_obj.catalog_func().scan_boards.scan_init('refresh_tag',tgts, {});
       }
@@ -8521,23 +8828,27 @@ get_flag = true;}
 //      return retval;
 //    },
     keys_fix: null, // to reduce memory consumption.
-    prep_tags : function(th){ // prepare tag holder and extract tags in op
-      if (this.mems[th.domain] && this.mems[th.domain][th.board] && this.mems[th.domain][th.board][th.no]) return this.mems[th.domain][th.board][th.no];
-      else {
-        var tag = this.mems.init(th);
+    prep_tags : function(th, tags_old){ // prepare tag holder and extract tags in op. 'tags_old' for retag.
+//      if (this.mems[th.domain] && this.mems[th.domain][th.board] && this.mems[th.domain][th.board][th.no]) return this.mems[th.domain][th.board][th.no];
+//      else {
+      var tag = this.mems.init(th);
+      if (tag[2][10]===-1 || tags_old) {
         var watch = tag[2];
-        if (pref.liveTag.watch_all) watch[0] = catalog_obj.catalog_func().get_watch_time_of_a_thread(th.key, th.time_created);
+        if (pref.liveTag.watch_all && th.time_created) watch[0] = catalog_obj.catalog_func().get_watch_time_of_a_thread(th.key, th.time_created);
+        if (tag[2][10]===-1) tag[2][10]=1; // patch. This may be redundant.
 
         var tags_b = [[],[]]; // first time only.
         var tag_idx;
-        if (pref.liveTag.inherit_board_name) {
+        if (pref.liveTag.inherit_board_name) { // working code.
           tag_idx = (pref.liveTag.lock_board_name)? 0 : 1;
           tags_b[tag_idx][0] = '#'+th.board.replace(/\//g,'');
         }
-//        if (pref.liveTag.inherit_board_tags) {
-//          tag_idx = (pref.liveTag.lock_board_tags)? 0 : 1;
-//          tags_b[tag_idx] = tags_b[tag_idx].concat(site3[th.domain][th.board].tags);
-//        }
+        if (pref.liveTag.inherit_board_tags && tag.btag2) {
+          tag_idx = (pref.liveTag.lock_board_tags)? 0 : 1;
+          tags_b[tag_idx] = tags_b[tag_idx].concat(tag.btag2);
+        }
+
+        common_func.set_value_to_root(watch,'9',[]); // patch
         site2[th.domain].check_reply.check_t1(th, watch);
         if (watch[9].length!=0) {
           tag_idx = (pref.liveTag.lock_tags_in_op)? 0 : 1;
@@ -8545,11 +8856,16 @@ get_flag = true;}
 //          tags_b[tag_idx] = watch[9].concat(tags_b[tag_idx]);
         }
         this.exclude_tags(th.key, tags_b);
-        if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, 0, tag.btag); // update this.keys_fix
+        if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, 0, this.mems[th.domain][th.board]); // update this.keys_fix
+        if (tags_old) tags_b[1] = tags_b[1].concat(tags_old);
         if (tags_b[1].length!=0) {
-          watch[9] = tags_b[1];
+          common_func.set_value_to_root(watch,'9',tags_b[1]); // patch
+//          watch[9] = tags_b[1];
           this.extract_tags(th, this.keys_fix);
-        } else this.update_pn_buf.delayed_do();
+        } else {
+          if (tag[1]!==null) tag[1] = null;
+          this.update_pn_buf.delayed_do();
+        }
       }
       return tag;
     },
@@ -8565,7 +8881,8 @@ get_flag = true;}
           else for (var i=0;i<t0.length;i++) this.keys_fix[t0[i]] = t0[i];
         }
       }
-      tag[1] = this.update_tags_in_th(info[9], tag[1], this.keys_fix, pref.liveTag.max-tag[0].length, th, ur, tag.btag);
+      var tag_1 = this.update_tags_in_th(info[9], tag[1], this.keys_fix, pref.liveTag.max-tag[0].length, th, ur, this.mems[th.domain][th.board]);
+      if (tag_1.length!=0) tag[1] = tag_1;
       this.update_pn_buf.delayed_do();
       this.keys_fix = null;
 //      else if (ur>=0) {
@@ -8577,10 +8894,10 @@ get_flag = true;}
       return tag;
     },
     update_boardlist: function(force_redraw){
-      if (!site3[site.nickname].bds && site3[site.nickname].boards) {
-//        site3[site.nickname].bds = {};
-        for (var i=0;i<site3[site.nickname].boards.length;i++) site3[site.nickname].bds['/'+site3[site.nickname].boards[i].board+'/'] = null;
-      }
+////      if (!site3[site.nickname].bds && site3[site.nickname].boards) { // working code.
+//////        site3[site.nickname].bds = {};
+////        for (var i=0;i<site3[site.nickname].boards.length;i++) site3[site.nickname].bds['/'+site3[site.nickname].boards[i].board+'/'] = null;
+////      }
 //      if (site.boardlist && site3[site.nickname].bds) {
       if (site.boardlist) {
         var i=0;
@@ -8590,7 +8907,7 @@ get_flag = true;}
         var p_remove = pref.virtualBoard.p_board==='both' && pref.virtualBoard.p_remove;
         while (i<pref.virtualBoard.max+p && i<this.tags_array_old.length) {
           var key = this.tags_array_old[i].key;
-          if (p_remove && (('/'+key.substr(1)+'/') in site3[site.nickname].bds)) p++; // site3[domain].bds may contain integer.(num of posts in the board in 8chan)
+          if (p_remove && (('/'+key.substr(1)+'/') in this.mems[site.nickname])) p++;
           else {
             if (this.tags_boardlist[j]!==key) {
               this.tags_boardlist[j] = key;
@@ -8618,12 +8935,12 @@ get_flag = true;}
 //    },
     update_tag_node: function(tag, node_in_boardlist){
       if (cataLog.threads!==null) {
-        var keys = liveTag.tags[tag].mems.keys_obj; // runs getter only 1 time.
+        var keys = liveTag.tags[tag].mems_keys_obj(); // runs getter only 1 time.
         for (var name in keys)
           if (cataLog.threads[name] && cataLog.threads[name][24] && cataLog.threads[name][24][3])
             this.update_tag_node_1(cataLog.threads[name][24][3].getElementsByClassName(pref.script_prefix+'_tag'),keys[name]);
       }
-      tag = this.tags[this.tags_ci[(pref.liveTag.ci)? tag.toLowerCase() : tag]].key;
+      tag = this.tags_ci[(pref.liveTag.ci)? tag.toLowerCase() : tag].key;
       if (node_in_boardlist) this.color_tag_node(node_in_boardlist, tag);
       else if (this.tags_boardlist.indexOf(tag)!=-1) this.update_tag_node_1(site.boardlist.getElementsByClassName(pref.script_prefix+'_tag'), tag);
     },
@@ -8683,6 +9000,7 @@ get_flag = true;}
 //  liveTag.cbx_onchange_entry = liveTag.cbx_onchange_entry(liveTag);
 //  liveTag.update_pn_buf = new DelayBuffer(liveTag.update_pn.bind(liveTag), 500);
   liveTag.update_pn_buf = new DelayBuffer(liveTag.update_pn.bind(liveTag), pref.liveTag.disp_delay);
+  liveTag.tags_ci = Object.getPrototypeOf(liveTag.tags);
   thread_reader_init();
 
 ////  function LiveTag(tags, mems){ // I want to use 'Tag', but this brings difficulty into search...
@@ -9434,18 +9752,13 @@ if (!(brwsr.ff && embed_catalog && site.nickname==='4chan')) { // patch, but WHY
               http_req.get(key,site.nickname,site2[site.nickname].url_boards_json(),scan_boards_keyword_callback,pref.scan.lifetime*60,true,key);
               scan_progress('Loading boards\' information');
             } else {
-              site3[site.nickname].boards_to_scan = site2[site.nickname].enumerate_boards_to_scan(); // must remake to evaluate change of preference.
-              scan_boards_init(key, site3[site.nickname].boards_to_scan, {lifetime:pref.scan.lifetime*60, cache_write:true,
-                                                                          callback:(pref.liveTag.use)? catalog_liveTag_scan_threads : null, callback_args:'scan'});
+              var tgts = site2[site.nickname].enumerate_boards_to_scan(); // must remake to evaluate change of preference.
+              scan_boards_init(key, tgts, {lifetime:pref.scan.lifetime*60, cache_write:true,
+                                           callback:(pref.liveTag.use)? catalog_liveTag_scan_threads : null, callback_args:'scan'});
             }
           }
         }
         function scan_boards_keyword_callback(key,value,scan_key){
-//          if (value.status==200) {
-//            site3[site.nickname].boards = value.response.boards || value.response; // patch for 8chan. WHY DO THEY CHANGE THE SPEC REPEATEDLY WITHOUT A PARTICULAR REASON???
-//            site3[site.nickname].boards_to_scan = null;
-//            if (site2[site.nickname].make_site3_bds) site2[site.nickname].make_site3_bds();
-//          }
           catalog_refresh_boards_callback(key,value);
           if (value.status==200) keyword_load(scan_key);
           else scan_progress('Error at loading board\'s infomation.');
@@ -9521,7 +9834,6 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
                 watchdog: null,
                 spawn_crawler: function(){scan_boards_spawn_crawler(key);},
                 crawler_watchdog: null,
-                blacklist: null,
           };
           for (var i in args) scan_boards.args[key][i] = args[i];
           var sb = scan_boards.args[key];
@@ -9603,17 +9915,19 @@ if (pref.debug_mode['5']) console.log('crawler_spawn: '+sb.key+', '+(sb.crawler+
 if (pref.debug_mode['5'] && sb.idx!=0 && sb.idx%1000==0) console.log('request_progress: '+sb.key+', '+sb.idx+'/'+sb.max+', '+sb.found_threads+'/'+sb.max_threads+', '+status);
           if (sb.idx<sb.max && (sb.refresh || sb.found_threads<sb.max_threads) && status<500) {
             if (sb.watchdog) sb.watchdog();
-//            var tgt_db = site.nickname+'/'+sb.obj[sb.idx].uri+'/';
-//            var tgt    = tgt_db + ((pref.catalog.catalog_json)? 'j0' : 'c0');
-            var dbt = cnst.name2domainboardthread(sb.obj[sb.idx],true);
-            var tgt = (sb.tgt_raw)? sb.obj[sb.idx]
-                    : (dbt[2]==='')? (sb.obj[sb.idx] + ((pref.catalog.catalog_json | sb.force_json)? 'j0' : 'c0'))
-                                   :                   ((pref.catalog.catalog_json && dbt[2][0].search(/[0-9]/)!=-1)? dbt[0]+dbt[1]+'t'+dbt[2] : sb.obj[sb.idx]);
+            var tgt = (typeof(sb.obj[sb.idx])==='string')? sb.obj[sb.idx] : sb.obj[sb.idx].key;
+            var dbt = cnst.name2domainboardthread(tgt,true);
+////            var tgt = (sb.tgt_raw)? sb.obj[sb.idx] // working code.
+////                    : (dbt[2]==='')? (sb.obj[sb.idx] + ((pref.catalog.catalog_json | sb.force_json)? 'j0' : 'c0'))
+////                                   :                   ((pref.catalog.catalog_json && dbt[2][0].search(/[0-9]/)!=-1)? dbt[0]+dbt[1]+'t'+dbt[2] : sb.obj[sb.idx]);
+            tgt = (sb.tgt_raw)? tgt
+                : (dbt[2]==='')? (tgt + ((pref.catalog.catalog_json | sb.force_json)? 'j0' : 'c0'))
+                               :        ((pref.catalog.catalog_json && dbt[2][0].search(/[0-9]/)!=-1)? dbt[0]+dbt[1]+'t'+dbt[2] : tgt);
             sb.idx++;
-            scan_progress(sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.idx+'/'+sb.max+', ' + sb.obj[sb.idx-1]);
+            scan_progress(sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.idx+'/'+sb.max+', ' + tgt);
             var val = pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,{hit:false});
             if (!val.hit) {
-              if (sb.blacklist && sb.blacklist[sb.obj[sb.idx-1]]) sb.blacklist[sb.obj[sb.idx-1]]--;
+              liveTag.list_nup.issued(sb.obj[sb.idx-1]);
               http_req.get(sender,tgt,'',scan_boards_keyword_callback2,sb.lifetime,sb.cache_write,args); 
               if (sb.idx<sb.max && pref.scan.crawler_adaptive) scan_boards_spawn_crawler_timer(sb);
             } else scan_boards_keyword(sender,200);
@@ -9693,11 +10007,11 @@ if (pref.test_mode['22']) {
                     if (ths[i].type_source==='thread' ||
                       (ths[i].parse_funcs.has_posts && ths[i].last_replies && ths[i].last_replies.length>=ths[i].nof_posts-watch[10])) {
                         update_thread(dbt[0]+dbt[1]+ths[i].no, ths[i], watch);
-                        delete liveTag.list_nup[ths[i].key];
+                        liveTag.list_nup.got_200(ths[i].key);
 //                        if (pref.debug_mode['3']) console.log('Check tags: '+ths[i].key+', '+watch[10]);
                     } else if (!(ths[i].parse_funcs.has_posts && !ths[i].last_replies)) {
 //                      liveTag.list_nup[ths[i].key] = 1; // for debug, ths[i].last_replies.length+','+ths[i].nof_posts+','+watch[10];
-                      if (liveTag.list_nup[ths[i].key]===undefined) liveTag.list_nup[ths[i].key] = 3; // patch for 8chan. 8chan has a inconsistensy between catalog and threads, some threads are there in catalog, but returns 404 if it gets as a thread. However, 8chan doesn't return 404, but fails at send(null), so system like watchdog is required.
+                      liveTag.list_nup.add(ths[i].key); // patch for 8chan. 8chan has a inconsistensy between catalog and threads, some threads are there in catalog, but returns 404 if it gets as a thread. However, 8chan doesn't return 404, but fails at send(null), so system like watchdog is required.
                       flag_skip = true;
 //                      if (pref.debug_mode['3']) console.log('Schedule to check tags: '+ths[i].key+', '+watch[10]);
                     }
@@ -9708,8 +10022,8 @@ if (pref.test_mode['22']) {
               if (sb.refresh || (filter_active && catalog_filter_query_scan(ths[i].posts, ths[i].tags))) { // probably work, but not tested yet.
 //              if (sb.refresh || threads[ths[i].key] || (filter_active && catalog_filter_query_scan(ths[i], ths[i].tags))) {
 //              if (sb.refresh || (filter_active && catalog_filter_query_scan(ths[i], ths[i].tags))) {
-                if (insert_thread_with_test(ths[i], dbt[3], value.date))  // RUNS A REDUNDANT POST CHECK AT FIRST TIME....
-                  if (!flag_skip) delete liveTag.list_nup[ths[i].key];
+                if (insert_thread_with_test(ths[i], dbt[3], value.date)) // RUNS A REDUNDANT POST CHECK AT FIRST TIME....
+                  if (!flag_skip) liveTag.list_nup.got_200(ths[i].key);
                 tgts[ths[i].key] = true;
                 sb.found_threads++;
               }
@@ -9718,7 +10032,7 @@ if (pref.test_mode['22']) {
             if (sb.scan_tag && from_catalog) tag_scan_board(ths, sb);
 }
             if (dbt[3]==='catalog_json' || dbt[3]==='catalog_html') {
-              if (pref.liveTag.use) liveTag.list_nup_boards[dbt[0]+dbt[1]] = {time:value.date, max:site3[dbt[0]].bds[dbt[1]]};
+              if (pref.liveTag.use) liveTag.list_nup.add_board(dbt[0]+dbt[1], value.date);
               rm_items_404_check(dbt[0],dbt[1],ths);
             }
             if (Object.keys(tgts).length!=0) {
@@ -9762,7 +10076,7 @@ if (pref.test_mode['22']) {
             if (value.status==404 && (dbt[3]==='thread_json' || dbt[3]==='thread_html') && threads[dbt[0]+dbt[1]+dbt[2]]) {
               remove_thread(dbt[0] + dbt[1] + dbt[2]);
               if (pref.liveTag.use) liveTag.remove_tags_in_th(dbt);
-              delete liveTag.list_nup[dbt[0] + dbt[1] + dbt[2]];
+              liveTag.list_nup.got_404(dbt[0] + dbt[1] + dbt[2]);
             }
             if (sb.found_threads<sb.max_threads) {
               sb.error += ((sb.error==='')? '' : ', ') + key;
@@ -9947,6 +10261,7 @@ if (pref.test_mode['22']) {
 //          update_thread: update_thread,
         }
       }());
+      cataLog.scan_boards = scan_boards;
 
       function catalog_resized(myself) {
         var tgt;
@@ -10706,6 +11021,7 @@ if (pref.test_mode['19']) { // stability test.
 //          if (name in threads_last_deleted) threads[name][8][4] = threads_last_deleted[name].last_post_time;
           threads[name][17] = liveTag.prep_tags(th);
           threads[name][19] = liveTag.mems[th.domain][th.board][th.no][2];
+          common_func.set_value_to_root(threads[name][19],'5',true);
 ////          if (pref.liveTag.use) {
 ////            var tags_b = [[],[]];
 ////            var tag_idx;
@@ -10818,7 +11134,7 @@ if (pref.test_mode['19']) { // stability test.
 //        threads[name][4] = src2[brwsr.innerText];
         if (!date[4]) date[4] = date[0]; // last post
         if (threads[name][8][4] && threads[name][8][4]>date[4]) date[4] = threads[name][8][4]; // last post
-        date[5] = (threads[name][19][5])? 1 : threads[name][8][2]; // patch for native catalog. // 1 is a patch for 4chan catalog, which doesn't contain OP in last_replies.
+//        date[5] = (threads[name][19][5])? 1 : threads[name][8][2]; // patch for native catalog. // 1 is a patch for 4chan catalog, which doesn't contain OP in last_replies.
         threads[name][8] = date;
 //if (pref.debug_mode['4']) console.log('insert_thread: time: '+th.key+', '+threads[name][8][4]);
 //        threads[name][8][4] = (from_native)? -1 : threads[name][8][0]; // last post
@@ -10848,7 +11164,7 @@ if (pref.test_mode['19']) { // stability test.
 if (!pref.test_mode['20']) {
         if (threads[name][21]) {
           if (th.type_source==='thread' ||
-            (th.parse_funcs.has_posts && th.last_replies && th.last_replies.length>=threads[name][8][2]-threads[name][8][5])) {
+            (th.parse_funcs.has_posts && th.last_replies && th.last_replies.length>=threads[name][8][2]-threads[name][19][2][10])) {
               update_thread(name, th, threads[name][19]);
               threads[name][21] = false; // must be here, refer function 'update_thread'.
           } else if (th.parse_funcs.has_posts && !th.last_replies) threads[name][21] = false;
@@ -10915,12 +11231,13 @@ if (pref.test_mode['5']) {
                                 //            tgt_th[21] is used to update thread's info, so tgt_th[21] must be cleared after 'insert_thread_with_test'.
                                 //            To resolve this, almost of all descriptions to update thread info in 'insert_thread' must be moved to here.
 
-          if (tgt_th19[0]>=0) {
+          if (!tgt_th19[5] && tgt_th19[0]>=0) {
             if (tgt_th19[4] && tgt_th19[4].length!=0 && th.parse_funcs.add_op_img_url) th.parse_funcs.add_op_img_url(tgt_th19[4],th.board,th.domain);
             notifier.changed(name,threads);
           }
-          tgt_th19[5] = false;
-          tgt_th19[4] = null; // for GC.
+//          tgt_th19[5] = false;
+//          tgt_th19[4] = null; // for GC.
+          common_func.set_value_to_root(threads[name][19],'5',false); // patch
           reorder_thread_idx(name);
         }
         if (pref.debug_mode.unread_count===name) console.log(debug_str + '\n19: ' + tgt_th19.toString() +'\n 8: '+((tgt_th)? tgt_th[8].toString():''));
@@ -12148,18 +12465,22 @@ if (pref.test_mode['22'])
       }
 
       function catalog_refresh_boards() { // patch for 8chan
-        var flag = false;
-        for (var i in liveTag.list_nup_boards) if (i.split('/')[0]==='8chan') {flag=true; break;}
-        if (flag) http_req.get('refresh_watch','8chan,boards_json,boards_json,boards_json',site2['8chan'].url_boards_json(),catalog_refresh_boards_callback,0,true,catalog_liveTag_scan_boards);
-        else catalog_liveTag_scan_boards();
+        if (liveTag.mems['8chan']) {
+          var tgts = liveTag.list_nup.get_list_board(true);
+          var flag = false;
+          for (var i=0;i<tgts.length;i++) if (tgts[i].key.split('/')[0]==='8chan') {flag=true; break;}
+          if (flag) http_req.get('refresh_watch','8chan,boards_json,boards_json,boards_json',site2['8chan'].url_boards_json(),catalog_refresh_boards_callback,0,true,catalog_liveTag_scan_boards);
+          else catalog_liveTag_scan_boards();
+        } catalog_liveTag_scan_boards();
       }
       function catalog_refresh_boards_callback(key,value,callback){
 //if (pref.debug_mode['7']) console.log('boards_json:');
         if (value.status==200) {
           var dbt = key.split(',');
-          site3[dbt[0]].boards = value.response.boards || value.response; // patch for 8chan. WHY DO THEY CHANGE THE SPEC REPEATEDLY WITHOUT A PARTICULAR REASON???
-          site3[dbt[0]].boards_to_scan = null;
-          if (site2[dbt[0]].make_site3_bds) site2[dbt[0]].make_site3_bds();
+          site2[dbt[0]].postprocess_board(value.response);
+////          site3[dbt[0]].boards = value.response.boards || value.response; // patch for 8chan. WHY DO THEY CHANGE THE SPEC REPEATEDLY WITHOUT A PARTICULAR REASON??? // working code.
+////          site3[dbt[0]].boards_to_scan = null;
+////          if (site2[dbt[0]].make_site3_bds) site2[dbt[0]].make_site3_bds();
         }
         if (callback) callback();
       }
@@ -12169,16 +12490,17 @@ if (pref.test_mode['22'])
         if (pref.liveTag.use) {
           if (!mutex_wd_liveTag_scan_boards.get()) {catalog_refresh_end();return;}
           if (pref.debug_mode['7']) var d_str = '';
-          var tgts = [];
-          var time_th = Date.now()-pref.liveTag.pickup_interval*1000;
-//          for (var i in liveTag.list_nup_boards) if (liveTag.list_nup_boards[i]<time_th) tgts[tgts.length] = i;
-          for (var i in liveTag.list_nup_boards) {
-            var dbt = common_func.fullname2dbt(i);
-            if (liveTag.list_nup_boards[i].time<time_th && (!liveTag.list_nup_boards[i].max || liveTag.list_nup_boards[i].max<site3[dbt[0]].bds[dbt[1]])) {
-              tgts[tgts.length] = i;
-              if (pref.debug_mode['7']) d_str += i + ':' +liveTag.list_nup_boards[i].max+'/'+site3[dbt[0]].bds[dbt[1]]+', ';
-            }
-          }
+          var tgts = liveTag.list_nup.get_list_board();
+////          var tgts = []; // working code.
+////          var time_th = Date.now()-pref.liveTag.pickup_interval*1000;
+////          for (var i in liveTag.list_nup_boards) {
+////            var dbt = common_func.fullname2dbt(i);
+////            if (liveTag.list_nup_boards[i].time<time_th && (!liveTag.list_nup_boards[i].max || liveTag.list_nup_boards[i].max<liveTag.mems[dbt[0]][dbt[1]].max)) {
+////              tgts[tgts.length] = i;
+////              if (pref.debug_mode['7']) d_str += i + ':' +liveTag.list_nup_boards[i].max+'/'+liveTag.mems[dbt[0]][dbt[1]].max+', ';
+////            }
+////          }
+          if (pref.debug_mode['7']) for (var i=0;i<tgts.length;i++) d_str += tgts[i].key + ':' +tgts[i].read_max+'/'+tgts[i].max+', ';
           if (Object.keys(tgts).length!=0) {
             scan_boards.scan_init('scan', tgts, {callback: catalog_liveTag_scan_boards_cont,
                                                  watchdog: mutex_wd_liveTag_scan_boards.restart.bind(mutex_wd_liveTag_scan_boards),
@@ -12226,18 +12548,18 @@ if (pref.test_mode['22'])
       var mutex_wd_liveTag_scan_threads = new MutexWithWatchdog('scan_threads');
       function catalog_liveTag_scan_threads() {
         if (!mutex_wd_liveTag_scan_threads.get()) {catalog_refresh_end();return;} // multi entry.
-        var tgts = [];
-        for (var i in liveTag.list_nup)
-////          if (liveTag.list_nup[i]!==null) {
-////            liveTag.list_nup[i] = null;
-////            tgts[tgts.length] = i;
-////          } else delete liveTag.list_nup[i];
-//          if (--liveTag.list_nup[i]>=0) tgts[tgts.length] = i; // leave nodes of <0 as black listed, patch for 8chan.
-          if (liveTag.list_nup[i]>0) tgts[tgts.length] = i;
+////        var tgts = []; // working code.
+////        for (var i in liveTag.list_nup)
+////////          if (liveTag.list_nup[i]!==null) {
+////////            liveTag.list_nup[i] = null;
+////////            tgts[tgts.length] = i;
+////////          } else delete liveTag.list_nup[i];
+//////          if (--liveTag.list_nup[i]>=0) tgts[tgts.length] = i; // leave nodes of <0 as black listed, patch for 8chan.
+////          if (liveTag.list_nup[i]>0) tgts[tgts.length] = i;
+        var tgts = liveTag.list_nup.get_list_thread();
         if (Object.keys(tgts).length!=0) scan_boards.scan_init('scan_threads', tgts, {callback: catalog_liveTag_scan_threads_cont,
                                                                                       watchdog: mutex_wd_liveTag_scan_threads.restart.bind(mutex_wd_liveTag_scan_threads),
-                                                                                      crawler_watchdog: true,
-                                                                                      blacklist: liveTag.list_nup});
+                                                                                      crawler_watchdog: true});
         else {
           mutex_wd_liveTag_scan_threads.stop();
           catalog_refresh_end();
@@ -12279,7 +12601,16 @@ if (pref.test_mode['22'])
         re_sort_thread();
         if (pref.notify.favicon || pref.notify.title.notify) notifier.favicon.set(threads);
 //        if (pref.liveTag.style) liveTag.refresh_end_proc();
-if (pref.debug_mode['9']) for (var i in liveTag.list_nup) if (liveTag.list_nup[i]<=0) console.log('list_nup: '+i+', '+liveTag.list_nup[i]);
+//if (pref.debug_mode['9']) for (var i in liveTag.list_nup) if (liveTag.list_nup[i]<=0) console.log('list_nup: '+i+', '+liveTag.list_nup[i]);
+        common_func.set_value_to_root(liveTag.mems.watch,'9',null);
+        common_func.set_value_to_root(liveTag.mems.watch,'4',null);
+        if (pref.debug_mode['3']) {
+          var th_count = 0;
+          for (var d in liveTag.mems) for (var b in liveTag.mems[d]) for (var t in liveTag.mems[d][b]) th_count++;
+          var ths = {};
+          for (var i in liveTag.tags_ci) for (j of liveTag.tags_ci[i].mems.keys()) ths[j.key] = null;
+          console.log('refresh_end: tags_ci+tags: '+Object.keys(liveTag.tags_ci).length+'+'+Object.keys(liveTag.tags).length+', threads:'+th_count+', '+Object.keys(ths).length);
+        }
       }
 
 //      function catalog_refresh_gather_info() {
