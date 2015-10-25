@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.10.25.0
+// @version 2015.10.25.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1748,7 +1748,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '<input type="checkbox" name="patch.delayed_invoke.use"> Delayed invoke for 4chan on FF, '+
           '<input type="text" name="patch.delayed_invoke.sec" size="2" style="text-align: right;">sec.<br>',
           'CatChan<br>'+
-          'Version 2015.10.25.0<br>'+
+          'Version 2015.10.25.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12393,8 +12393,8 @@ if (footer) { // temporal
         if (pref.catalog_click_area==='entire') click_thread(this.name);
       }
       function click_thread(name){
-        if (threads[name][18]!=='catalog_html' && pref.catalog_click==='expand') expand_shrink_thread(name);
-        else if (pref.catalog_click==='open') open_new_thread(threads[name][7], name);
+        if (pref.catalog_click==='open' || embed_catalog) open_new_thread(threads[name][7], name);
+        else if (threads[name][18]!=='catalog_html' && pref.catalog_click==='expand') expand_shrink_thread(name);
       }
 //      function click_thread(name){
 //        if (typeof(name)==='object') name= this.name;
