@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.11.08.0
+// @version 2015.11.22.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1819,7 +1819,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '<input type="checkbox" name="features.debug"> Debug<br>'+
           '',
           'CatChan<br>'+
-          'Version 2015.11.08.0<br>'+
+          'Version 2015.11.22.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -9197,7 +9197,7 @@ get_flag = true;}
     delete_tags: function(tag,name){
 //      delete this.tags[tag].mems[name];
       this.key_dirty[(pref.liveTag.ci)? tag.toLowerCase() : tag] = null;
-      this.tags[tag].mems.delete(this.mems.getFromName(name));
+      if (this.tags[tag]) this.tags[tag].mems.delete(this.mems.getFromName(name));
       if (pref.liveTag.style) this.update_ur_1(tag);
 //      if (Object.keys(this.tags[tag].mems).length==0) {
       if (this.tags[tag].mems.size==0) {
@@ -9288,8 +9288,12 @@ get_flag = true;}
 if (!pref.test_mode['24']) {
       var mems_objs = this.tags[tag].mems_keys_obj(); // working code.
       for (var i in mems_objs) {
-        var info = this.mems.getFromName(i)[2];
-        ur |= (info[1]!=0)? 3 : (info[2]!=0)? 1 : 0;
+//        var info = this.mems.getFromName(i)[2];
+        var info = this.mems.getFromName(i);
+        if (info) {
+          info = info[2];
+          ur |= (info[1]!=0)? 3 : (info[2]!=0)? 1 : 0;
+        }
       }
 } else {
       for (var i of this.tags[tag].mems_keys()) {
