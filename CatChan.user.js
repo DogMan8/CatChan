@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.11.22.0
+// @version 2015.11.29.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1819,7 +1819,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '<input type="checkbox" name="features.debug"> Debug<br>'+
           '',
           'CatChan<br>'+
-          'Version 2015.11.22.0<br>'+
+          'Version 2015.11.29.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -9152,7 +9152,8 @@ get_flag = true;}
       }
       return i;
     },
-    update_tags_in_th: function(src_new, src_old, keys_fix, num, th, ur, bd){
+    update_tags_in_th: function(src_new, src_old, keys_fix, num, th, watch, bd){
+      var ur = (watch[1]!=0)? 3 : (watch[2]!=0)? 1 : 0; // moved to here from 'extract_tags' because 'prep_tags' needs this when it has tags_old.
       var tags = [];
       var keys = {};
       this.update_tags_in_th_sub(tags, keys, src_new, keys_fix, num, th, ur, bd);
@@ -9698,7 +9699,7 @@ if (!pref.test_mode['24']) {
         }
         this.exclude_tags(th.key, tags_b);
         if (tags_old) for (var i=0;i<2;i++) if (tags_old[i]) tags_b[i] = tags_b[i].concat(tags_old[i]);
-        if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, 0, this.mems[th.domain][th.board]); // update this.keys_fix
+        if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, watch, this.mems[th.domain][th.board]); // update this.keys_fix
         if (tags_b[1].length!=0) {
           common_func.set_value_to_root(watch,'9',tags_b[1]); // patch
 //          watch[9] = tags_b[1];
@@ -9712,8 +9713,6 @@ if (!pref.test_mode['24']) {
     },
     extract_tags : function(th, keys_fix){
       var tag = this.mems[th.domain][th.board][th.no];
-      var info = tag[2];
-      var ur = (info[1]!=0)? 3 : (info[2]!=0)? 1 : 0;
       if (!keys_fix) {
         this.keys_fix = {};
         var t0 = tag[0]; // runs getter 1 times only.
@@ -9722,7 +9721,7 @@ if (!pref.test_mode['24']) {
           else for (var i=0;i<t0.length;i++) this.keys_fix[t0[i]] = t0[i];
         }
       }
-      var tag_1 = this.update_tags_in_th(info[9], tag[1], this.keys_fix, pref.liveTag.max-tag[0].length, th, ur, this.mems[th.domain][th.board]);
+      var tag_1 = this.update_tags_in_th(tag[2][9], tag[1], this.keys_fix, pref.liveTag.max-tag[0].length, th, tag[2], this.mems[th.domain][th.board]);
       if (tag_1.length!=0) tag[1] = tag_1;
       this.update_pn_buf.delayed_do();
       this.keys_fix = null;
@@ -9804,11 +9803,14 @@ if (!pref.test_mode['24']) {
 //      else if (this.tags_boardlist.indexOf(tag)!=-1) this.update_tag_node_1(site.boardlist.getElementsByClassName(pref.script_prefix+'_tag'), tag);
 //    },
     update_tag_node_1: function(pns, tag){
-      for (var j=0;j<pns.length;j++) 
-        if (pns[j].textContent===tag) {
+      var tag_ci = tag.toLowerCase();
+      for (var j=0;j<pns.length;j++) {
+        var txt = pns[j].textContent;
+        if (txt===tag || (pref.liveTag.ci && txt.toLowerCase()===tag_ci)) {
           this.color_tag_node(pns[j],tag);
           break;
         }
+      }
     },
     color_tag_node : function(node, tag){
       if (this.tags[tag]['in']) common_func.init_set_style(node,pref.liveTag.style_in_obj4);
@@ -15710,5 +15712,6 @@ if (pref.test_mode['17']) {
 // OPTIONS TO HERE
 
 })();
+
 
 
