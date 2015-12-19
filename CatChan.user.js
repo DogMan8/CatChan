@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.11.29.0
+// @version 2015.12.06.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1819,7 +1819,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '<input type="checkbox" name="features.debug"> Debug<br>'+
           '',
           'CatChan<br>'+
-          'Version 2015.11.29.0<br>'+
+          'Version 2015.12.06.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3932,7 +3932,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         for (var i=1;i<th.posts.length;i++) {
           if (th.posts[i].no>th_old.posts[th_old.posts.length-1].no) {
             this.update_posts_insert(th,th_old,i,pnode);
-            this.format_pn(th.posts[i].pn, thq[th.posts[i].no]);
+            this.format_pn(th.posts[i].pn, (thq)? thq[th.posts[i].no] : null);
 //            this.format_pn(th.posts[i].pn, th_old.q[th.posts[i].no]); // WILL BE THIS.
             th_old.posts[th_old.posts.length] = th.posts[i];
           }
@@ -15712,6 +15712,5 @@ if (pref.test_mode['17']) {
 // OPTIONS TO HERE
 
 })();
-
 
 
