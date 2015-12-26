@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.12.06.0
+// @version 2015.12.20.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1819,7 +1819,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '<input type="checkbox" name="features.debug"> Debug<br>'+
           '',
           'CatChan<br>'+
-          'Version 2015.12.06.0<br>'+
+          'Version 2015.12.20.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3010,7 +3010,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           var to_me = false;
           var txt = as[i].textContent;
           if (regexp_anchor_txt.test(txt) && own_posts && own_posts[txt.substr(2)]===null) to_me = true; // SHOULD USE SEARCH INSTEAD OF TEST TO KEEP CONSISTENCY.
-          if (!to_me && regexp_anchor_cb_txt.test(txt)) {
+          if (!to_me && own_posts_cb && regexp_anchor_cb_txt.test(txt)) {
             var tgt = txt.split('/');
             var bd = '/'+tgt[1]+'/';
             if (own_posts_cb[bd] && own_posts_cb[bd][tgt[2]]===null) to_me = true;
@@ -6752,10 +6752,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //          }
 //          return ret_obj;
 //        },
-        time_bumped: function(th){
-          return (th.bumplimit)? undefined :
-                 (th.last_replies)? th.last_replies[th.last_replies.length-1].time*1000 : th.time*1000;
-        },
+        time_posted: function(th){return (th.last_replies)? th.last_replies[th.last_replies.length-1].time*1000 : th.time_created;},
+        time_bumped: function(th){return (th.bumplimit)? undefined : th.time_posted;},
         time_created : function(th){return th.time*1000;},
         nof_posts: function(th){return th.replies+1;}, // same as 8chan
         nof_files: function(th){return th.images+1;},
@@ -6766,7 +6764,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         op_img_url: function(th) {
           return site2['4chan'].catalog_json2html3_thumbnail(th, th.board);},
         //        footer: function(th){return th.pn.getElementsByClassName('meta')[0];},
-        posts: function(th){return th.last_replies;}, // can't show icon in desktop notification.
+        posts: function(th){return [{sub:th.sub, com:th.com, name:th.name, trip:th.trip, filename:th.filename}].concat(th.last_replies);},
+//        posts: function(th){return th.last_replies;}, // can't show icon in desktop notification.
 //        posts: function(th){ // work, but parse redundantly
 //          if (th.last_replies) for (var i=0;i<th.last_replies.length;i++)
 //            th.last_replies[i].op_img_url = site2['4chan'].catalog_json2html3_thumbnail(th.last_replies[i], th.board);
@@ -8401,6 +8400,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
     threads[name] = [];
 ////////    threads[name][8]  = [0,0,0,0];
     threads[name][19] = liveTag.mems.init({domain:site.nickname, board:site.board, no:site.myself})[2]; // prepare data structures.
+    threads[name][19][0] = 1; // start watching.
 //    threads[name][19] = [1,0,0,0,null,true,-1,0,true];
     var favicon_obj = [];
     var buf_id = null;
@@ -9258,14 +9258,16 @@ get_flag = true;}
       liveTag.boardlist_click(this.textContent, this);
     },
     boardlist_click: function(tag, sender){
-      this.tags[tag]['pk'] = !this.tags[tag]['pk'];
-      this.tags[tag]['in'] =  this.tags[tag]['pk'];
-      if (this.tags[tag].pn!==null) {
-        this.tags[tag].pn.childNodes[0].checked = this.tags[tag]['pk'];
-        this.tags[tag].pn.childNodes[1].checked = this.tags[tag]['in'];
+      if (this.tags[tag]['pk'] !== !this.tags[tag]['in']) {
+        this.tags[tag]['pk'] = !this.tags[tag]['in'];
+        if (this.tags[tag].pn!==null) this.tags[tag].pn.childNodes[0].checked = this.tags[tag]['pk'];
+        this.cbx_onchange(tag,'pk'); // 'in' is upped automatically when pk goes 0 -> 1.
       }
-      this.cbx_onchange(tag,'pk');
-      this.cbx_onchange(tag,'in');
+      if (this.tags[tag]['in'] !== this.tags[tag]['pk']) {
+        this.tags[tag]['in'] = this.tags[tag]['pk'];
+        if (this.tags[tag].pn!==null) this.tags[tag].pn.childNodes[1].checked = this.tags[tag]['in'];
+        this.cbx_onchange(tag,'in');
+      }
 //      if (this.tags[tag]['pk']) {
 ////        sender.style = pref.liveTag.style_in_obj4; // doesn't work.
 //        common_func.init_set_style(sender,pref.liveTag.style_in_obj4);
@@ -9631,7 +9633,7 @@ if (!pref.test_mode['24']) {
         if (val && !this.tags[tag]['in']) {
           this.tags[tag]['in'] = true;
           this.active['in'] += 1;
-          this.tags[tag].pn.childNodes[1].checked = true;
+          if (this.tags[tag].pn!==null) this.tags[tag].pn.childNodes[1].checked = true;
 //          this.update_pn_buf.delayed_do();
         }
         var tgts = {};
