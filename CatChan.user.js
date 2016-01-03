@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2015.12.20.0
+// @version 2015.12.27.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1819,7 +1819,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '<input type="checkbox" name="features.debug"> Debug<br>'+
           '',
           'CatChan<br>'+
-          'Version 2015.12.20.0<br>'+
+          'Version 2015.12.27.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -13542,10 +13542,11 @@ if (pref.test_mode['22'])
         if (callback) callback();
       }
 
+      var liveTag_scan_boards_req = false;
       var mutex_wd_liveTag_scan_boards = new MutexWithWatchdog('scan_boards');
       function catalog_liveTag_scan_boards() {
         if (pref.liveTag.use) {
-          if (!mutex_wd_liveTag_scan_boards.get()) {catalog_refresh_end();return;}
+          if (!mutex_wd_liveTag_scan_boards.get()) {liveTag_scan_boards_req=true; catalog_refresh_end(); return;}
           if (pref.debug_mode['7']) var d_str = '';
           var tgts = liveTag.list_nup.get_list_board();
 ////          var tgts = []; // working code.
@@ -13571,7 +13572,10 @@ if (pref.test_mode['22'])
       }
       function catalog_liveTag_scan_boards_cont() {
         mutex_wd_liveTag_scan_boards.stop();
-        catalog_liveTag_scan_boards();
+        if (liveTag_scan_boards_req) {
+          liveTag_scan_boards_req = false;
+          catalog_liveTag_scan_boards();
+        } else catalog_liveTag_scan_threads();
       }
       function catalog_liveTag_scan_cancel() {
         mutex_wd_liveTag_scan_boards.abort();
