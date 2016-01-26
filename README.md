@@ -20,7 +20,7 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 <h1>Note</h1><br>
 Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.<br>
 <br>
-Chrome 49 has a bug around ChannelMessage, memory will leak when you access other sites with CatChan. The tab will hang up after 3-7 days. When you use CatChan in a site and you don't access to other sites, memory won't leak. I'll report this bug.<br>
+Chrome 49 has a bug around ChannelMessage, memory will leak when you access other sites with CatChan. The tab will hang up after 3-7 days. When you use CatChan in a site and you don't access to other sites, memory won't leak. I reported this, https://code.google.com/p/chromium/issues/detail?id=581335 <br>
 <br>
 How to reproduce the bug: (49.0.2623.0 canary)<br>
 1. Install ChannelMessage.user.js. <br>
