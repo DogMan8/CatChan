@@ -18,7 +18,20 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>Note</h1><br>
-Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.
+Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.<br>
+<br>
+Chrome 49 has a bug around ChannelMessage, memory will leak when you access other sites with CatChan. The tab will hang up after 3-7 days. When you use CatChan in a site and you don't access to other sites, memory won't leak. I'll report this bug.<br>
+<br>
+How to reproduce the bug: (49.0.2623.0 canary)<br>
+1. Install ChannelMessage.user.js. <br>
+2. Open any page, for example, https://developer.mozilla.org/en-US/docs/Web/API/Channel_Messaging_API/Using_channel_messaging<br>
+3. Check amount of JS Heap using DeveloperTool. It's about 6-8MB probably. Don't forget to do GC before check.<br>
+4. Click "START". Then messages are send and received continuously.<br>
+5. Re-check amount of JS Heap. It's increasing. Don't forget to do GC before check.<br>
+6. It will increase up to 2GB or more and the tab will hang up after 3-7 days. However, usage of virtual memory in system<br> DOESN'T increase. You can see this fact using process explorer.<br>
+7. If you decrease size of messages to 100KB, memory doesn't leak so much. I tested cases of 200KB or 400KB, they behave about the same as the case of 100KB, it doesn't leak so much. I haven't found threshold.<br>
+8. Now I tested version 50.0.2630.1 canary SyzyASan, the bug seems to be reproduced so far.<br>
+<br> 
 
 <h1>History</h1><br>
 v2016.01.17.0: Fixed bugs.<br>
