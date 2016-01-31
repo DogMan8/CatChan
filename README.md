@@ -24,6 +24,7 @@ Chrome 48 may have a memory leak. Use chrome 50 or 47 instead of 48 if you can. 
 - No leaks on chrome 47.0.2526.111 m.<br>
 You can test these using CatChan with the same setting 'active virtual boards in 4chan' in EasySetting.
 <br>
+
 Chrome 49 has a bug around ChannelMessage, memory will leak when you access other sites with CatChan. The tab will hang up after 3-7 days. When you use CatChan in a site and you don't access to other sites, memory won't leak. I reported this, https://code.google.com/p/chromium/issues/detail?id=581335 <br>
 <br>
 How to reproduce the bug: (49.0.2623.0 canary)<br>
