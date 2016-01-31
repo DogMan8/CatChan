@@ -41,7 +41,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2016.01.31.0: Added style setter and recovery function, which recovers editting message when browser was crashed.<br>
+v2016.01.31.0: Added style setter and recovery function, which recovers editing message when browser was crashed.<br>
 v2016.01.17.0: Fixed bugs.<br>
 v2016.01.10.0: Fixed bugs, added meguca support and passive mode.<br>
 v2016.01.03.0: Added functions of importing from meguca and mixing index pages from supported sites in lainchan.<br>
