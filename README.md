@@ -18,7 +18,11 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>Note</h1><br>
-Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.<br>
+Chrome 48 may have a memory leak. Use chrome 50 or 47 instead of 48 if you can. In my environment,<br>
+- No leaks on Chrome 50.0.2630.1 canary SyzyASan.<br>
+- Leaks 1-2MB/hour on 48.0.2564.97 m.<br>
+- No leaks on chrome 47.0.2526.111 m.<br>
+You can test these using CatChan with the same setting 'active virtual boards in 4chan' in EasySetting.
 <br>
 Chrome 49 has a bug around ChannelMessage, memory will leak when you access other sites with CatChan. The tab will hang up after 3-7 days. When you use CatChan in a site and you don't access to other sites, memory won't leak. I reported this, https://code.google.com/p/chromium/issues/detail?id=581335 <br>
 <br>
@@ -32,8 +36,11 @@ How to reproduce the bug: (49.0.2623.0 canary)<br>
 7. If you decrease size of messages to 100KB, memory doesn't leak so much. I tested cases of 200KB or 400KB, they behave about the same as the case of 100KB, it doesn't leak so much. I haven't found threshold.<br>
 8. Now I tested version 50.0.2630.1 canary SyzyASan, the bug seems to be reproduced so far.<br>
 <br> 
+Chrome43 has a bug around DesktopNotification. If you encounter this bug, use canary version of chrome(chrome46) or stop using DesktopNotification. You can check this by pasting chrome_crasher.user.js to your console. Chrome will be crashed around 3275th DesktopNotificaton by the script.<br>
+<br>
 
 <h1>History</h1><br>
+v2016.01.31.0: Added style setter and recovery function, which recovers editting message when browser was crashed.<br>
 v2016.01.17.0: Fixed bugs.<br>
 v2016.01.10.0: Fixed bugs, added meguca support and passive mode.<br>
 v2016.01.03.0: Added functions of importing from meguca and mixing index pages from supported sites in lainchan.<br>
