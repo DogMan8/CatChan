@@ -18,9 +18,10 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 
 <h1>Note</h1><br>
-Chrome 48 may have a memory leak. Use chrome 50 or 47 instead of 48 if you can. In my environment,<br>
+Chrome 48 may have a memory leak. Use chrome 50, 49 or 47 instead of 48 if you can. In my environment,<br>
 - No leaks on Chrome 50.0.2630.1 canary SyzyASan.<br>
-- Leaks 1-2MB/hour on 48.0.2564.97 m.<br>
+- No leaks on Chrome 49.0.2623.28 beta-m.<br>
+- Leaks 1-2MB/hour on Chrome 48.0.2564.97 m.<br>
 - No leaks on chrome 47.0.2526.111 m.<br>
 You can test these using CatChan with the same setting 'active virtual boards in 4chan' in EasySetting.
 <br>
