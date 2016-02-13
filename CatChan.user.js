@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.02.07.0
+// @version 2016.02.14.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2107,7 +2107,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.02.07.0<br>'+
+          'Version 2016.02.14.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2773,7 +2773,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     debug_parse_funcs_all: function(str) {
       var domains = ['DEFAULT','4chan','vichan','lain','8chan','KC','meguca'];
       var types = ['','_json','_html'];
-      var srcs = ['common','catalog','thread','page'];
+      var srcs = ['common','thread','page','catalog'];
       var objs = {};
       for (var d=0;d<domains.length;d++)
         for (var t=0;t<types.length;t++) {
@@ -2799,14 +2799,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               if (obj_root) {
                 var obj = obj_root[str];
                 var flag = true;
-//                for (var i in objs) if (objs[i]===obj) {strs[strs.length] = '(==='+i+')'; flag=false; break;}
+                for (var i in objs) if (objs[i][0]===obj) {strs[strs.length] = ' (==='+i+')'; flag=false; objs[i][1]++; break;}
 //                if (flag) objs[domains[d]+':'+src_type] = obj;
-                for (var i in objs) if (objs[i]===obj) {
-                  strs[strs.length] = ' (==='+i+')';
-                  flag=false;
-                  break;
-                }
-                if (flag) objs[hier_str] = obj;
+                if (flag) objs[hier_str] = [obj,1];
               }
               if ((typeof(obj_root[str])==='string' || typeof(obj_root[str])==='number')) strs[str.length] = ', '+obj_root[str];
               console.log(strs.join(''));
@@ -2814,7 +2809,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           }
         }
       var num = 0;
-      if (pref.debug_mode.pfunc_all_expand) for (var i in objs) console.log((num++)+': '+i + ': '+objs[i]);
+      if (pref.debug_mode.pfunc_all_expand) for (var i in objs) console.log((num++)+'('+objs[i][1]+'): '+ i +': '+objs[i][0]);
     },
     debug_site2func: function(name) {
       for (var i in site2) if(site2[i].hasOwnProperty(name)) site2[i]['debug____'+name] = i;
@@ -3255,7 +3250,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
       }
       function check_1(post, watch){
-        if (!pref.catalog_footer_ignore_my_own_posts || !own_posts || !(post.post_no in own_posts)) {
+        if (!pref.catalog_footer_ignore_my_own_posts || !own_posts || !(post.no in own_posts)) {
           var com = post.com;
           if (com) {
             var to_me  = false;
@@ -4045,7 +4040,7 @@ if (pref.debug_mode.parse_error) proto = site4.parse_funcs_on_demand_debug;
         time_unit: 1,
         has_posts: true,
         last_replies: function(th){return th.posts.slice(1);},
-        post_no: function(post){return post.no;},
+////        post_no: function(post){return post.no;},
         txt: function(th){
           site2['DEFAULT'].parse_pn_dummy.innerHTML = th.com;
           return site2['DEFAULT'].parse_pn_dummy[brwsr.innerText];
@@ -4526,7 +4521,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       get tn_as() {return this.exe_sub2('tn_as');},  // CAUTION. ADDED AFTER TUNING.
       get tn_imgs() {return this.exe_sub2('tn_imgs');},  // CAUTION. ADDED AFTER TUNING.
       get op_img_url() {return this.exe_sub('op_img_url');},
-      get post_no() {return this.exe_sub('post_no');},
+////      get post_no() {return this.exe_sub('post_no');},
       get last_replies() {return this.exe_sub('last_replies');},   // CAUTION. ADDED AFTER TUNING.
       get txt() {return this.exe_sub('txt');},   // CAUTION. ADDED AFTER TUNING.
     },
@@ -5751,7 +5746,7 @@ if (!pref.test_mode['0']) {
 //          return ths;
 //        },
         no : function(th){return parseInt(th.pn.id.substring(th.pn.id.indexOf('_')+1),10);},
-        post_no: 'page_html.no',
+////        post_no: 'page_html.no',
         time: function(post){return Date.parse(post.pn.getElementsByTagName('time')[0].getAttribute('datetime'));},
 ////////        time_posted: function(th){
 ////////if (pref.test_mode['0']) {
@@ -6785,7 +6780,7 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
 //          return url;
           return site2[th.domain].protocol + '//' + site2[th.domain].domain_url + url; // patch
         },
-        post_no: function(post){return parseInt(post.pn.getElementsByClassName('quotelink')[1][brwsr.innerText],10);},
+////        post_no: function(post){return parseInt(post.pn.getElementsByClassName('quotelink')[1][brwsr.innerText],10);},
         get_op_src: 'thread_html',
         get_thread_links : function(th){
           var as = th.pn.getElementsByClassName('postheader')[0].getElementsByTagName('a');
@@ -7543,8 +7538,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 ////          }
 ////          return false;
 ////        },
-//        post_no: function(post){return parseInt(post.pn.id.substr(3),10);},
-        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
+//////        post_no: function(post){return parseInt(post.pn.id.substr(3),10);},
+////        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
         get_op_src: 'thread_json',
         proto: 'page_html',
       },
@@ -9967,14 +9962,14 @@ get_flag = true;}
           var my_posts = [];
           if (!init) {
             my_posts[0] = posts[posts.length-1];
-            own_posts[own_posts.length] = my_posts[0].post_no;
+            own_posts[own_posts.length] = my_posts[0].no;
             localStorage[key] = JSON.stringify(own_posts);
           } else {
             var i = 0;
             var j = posts.length-1;
             while (i<own_posts.length) {
-              while (j>0 && own_posts[i]>posts[j].post_no) j--;
-              if (own_posts[i]===posts[j].post_no) my_posts[my_posts.length] = posts[j];
+              while (j>0 && own_posts[i]>posts[j].no) j--;
+              if (own_posts[i]===posts[j].no) my_posts[my_posts.length] = posts[j];
               i++;
             }
           }
@@ -11622,21 +11617,35 @@ if (!pref.test_mode['24']) {
     }
 //    function clear(){if (localStorage) delete localStorage[key];}
     var src = null;
-    function save(){
+    var com = '';
+    function com_changed(){
       src = this;
+      delayed_check();
+    }
+    var delayed_check = new DelayBuffer(check_com,1000).get_binded_delayed_do();
+    function check_com(){
+      var com_new;
+      if (src) com_new = src.value;
+      if (com.length<=com_new.length) com = com_new;
+      src = null;
       delayed_save();
     }
-    var delayed_save = new DelayBuffer(
-      function(){
-        if (localStorage) {
-          if (src.value) localStorage[key] = JSON.stringify(src.value);
-          else delete localStorage[key];
-          src = null;
-        }
-      }, pref.recovery.interval*1000).get_binded_delayed_do();
+    var delayed_save = new DelayBuffer(save, pref.recovery.interval*1000).get_binded_delayed_do();
+    function save(){
+      if (localStorage) {
+        if (com) localStorage[key] = JSON.stringify(com);
+        else delete localStorage[key];
+        com = '';
+      }
+    }
+    function save_at_exit(){
+      if (src) com = src.value;
+      src = null;
+      save();
+    }
     function setup(rec_inst,postform_comment,postform_submit){
       if (!rec_inst && pref.recovery.comment && postform_comment) {
-        var func = save.bind(postform_comment);
+        var func = com_changed.bind(postform_comment);
         postform_comment.addEventListener('change',func,false);
         postform_comment.addEventListener('keyup',func,false);
         postform_submit.addEventListener('click',func,false);
@@ -11651,6 +11660,7 @@ if (!pref.test_mode['24']) {
     }
     var rec_inst = setup(null, site.components.postform_comment, site.components.postform_submit);
     var rec_inst2 = null;
+    window.addEventListener('beforeunload', save_at_exit, false);
     return {
       setup: function(){
         rec_inst  = setup(rec_inst, site.components.postform_comment, site.components.postform_submit);
