@@ -42,7 +42,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2016.02.14.0: Modified recovery function and cleaned up.<br>
+(v2016.02.14.0: Modified recovery function and cleaned up. BUT THIS HAS A BUG, WILL BE UPDATED SOON)<br>
 v2016.02.07.0: Prioritized requests, fixed bugs in 4chan.<br>
 v2016.01.31.0: Added style setter and recovery function, which recovers editing message when browser was crashed.<br>
 v2016.01.17.0: Fixed bugs.<br>
