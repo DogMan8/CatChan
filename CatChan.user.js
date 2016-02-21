@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.02.21.0
+// @version 2016.02.21.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2111,7 +2111,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.02.21.0<br>'+
+          'Version 2016.02.21.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5943,7 +5943,9 @@ if (pref.test_mode['0']) {
 //                (th_old.posts[th_old.posts.length-1].pn.parentNode.nextSibling &&
 //                 th_old.posts[th_old.posts.length-1].pn.parentNode.nextSibling.nextSibling || null);
       var ref = th_old.posts[(j<th_old.posts.length)? j : th_old.posts.length-1].pn;
-      if (j>=1 && (!merge || ref.parentNode!==pnode)) ref = ref.parentNode;
+      var ref_pnode = (j>=1)? ref.parentNode : null;
+      if (ref_pnode!==pnode) ref = ref_pnode; // remove container
+//      if (j>=1 && (!merge || ref.parentNode!==pnode)) ref = ref.parentNode; // remove container
       if (j>=th_old.posts.length) ref = ref.nextSibling && ref.nextSibling.nextSibling || null;
       if (!th.posts[i].pn) th.posts[i].pn = this.post_json2html(th.posts[i],th.board);
 //      pnode.insertBefore(this.post_container(th.posts[i].pn,th.posts[i].no), ref); // working code.
