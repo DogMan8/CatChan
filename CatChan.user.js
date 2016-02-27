@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.02.21.2
+// @version 2016.02.21.3
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2111,7 +2111,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.02.21.2<br>'+
+          'Version 2016.02.21.3<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12639,6 +12639,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
           if (sb.indicator) sb.indicator.report({start:Date.now(), prog:sb}); // make reference loop.
           if (sb.obj.length===0) {
             if (sb.indicator) sb.indicator.report({end:'0'}); // test patch
+            delete scan_boards.args[sb.key];
             return;
           }
           while (sb.crawler<pref.scan.crawler) {
