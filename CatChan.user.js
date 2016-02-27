@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.02.21.1
+// @version 2016.02.21.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2111,7 +2111,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.02.21.1<br>'+
+          'Version 2016.02.21.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12530,7 +12530,7 @@ if (!pref.test_mode['24']) {
             } else {
 ////////              if (scan_boards.args[key].crawler_watchdog) scan_boards.args[key].crawler_watchdog.stop();
               crawler.watchdog.abort(key);
-              if (scan_boards.args[key].indicator) scan_boards.args[key].indicator.report({abort_str:'aborted'});
+              if (scan_boards.args[key].indicator) scan_boards.args[key].indicator.report({abort_str:'aborted', end:Date.now()});
               delete scan_boards.args[key];
 //              if (button_cap) scan_button.innerHTML = 'scanSite';
             }
@@ -12611,7 +12611,6 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////////          if (sb.crawler_watchdog) sb.crawler_watchdog = new CrawlerWatchdog(sb);
 //          while (obj[sb.max-1].max===null) sb.max--;
           if (sb.load_on_demand) {
-            if (load_on_demand.get()) sb.callback = (sb.callback)? (function(func_old){return function(){load_on_demand.release();func_old();}})(sb.callback) : load_on_demand.release; // First access may not have mutex.
 ////            sb.max = 1; // working code.
 ////            for (var i=obj.length-1;i>=1;i--) {
 ////              var name = 'ODL:'+ sb.obj[i];
@@ -12627,14 +12626,21 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
                 sb.obj.splice(i--,1);
               }
             }
-            sb.max = sb.obj.length;
-            drawn_idx = 0;
+            if (sb.obj.length!==0) {
+              if (load_on_demand.get()) sb.callback = (sb.callback)? (function(func_old){return function(){load_on_demand.release();func_old();}})(sb.callback) : load_on_demand.release; // First access may not have mutex.
+              sb.max = sb.obj.length;
+              drawn_idx = 0;
+            }
           }
 //if (pref.debug_mode['5']) {
 //  console.log('scan_boards: '+key+', '+scan_boards.args[key].obj.length);
 //  console.log(scan_boards.args[key].obj);
 //}
           if (sb.indicator) sb.indicator.report({start:Date.now(), prog:sb}); // make reference loop.
+          if (sb.obj.length===0) {
+            if (sb.indicator) sb.indicator.report({end:'0'}); // test patch
+            return;
+          }
           while (sb.crawler<pref.scan.crawler) {
 ////////            scan_boards_spawn_crawler(key, true);
             crawler.spawn(key, true);
@@ -15248,7 +15254,6 @@ function threads_idx_debug(idx,y,count, threads_idx){
           call: function(tgts){
             if (this.get()) {
               threads_index.delete_odl(tgts);
-              timer = setTimeout(release, pref.catalog_load_on_demand_timeout*1000);
               scan_boards.scan_init('on_demand_load', tgts, {refresh:true, crawler_max:1, callback:load_on_demand.release_draw});
               return true;
             } else return false;
@@ -15257,6 +15262,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
           release_draw: function(){release();show_catalog();},
           get: function(){
             var retval = mutex;
+            if (retval) timer = setTimeout(release, pref.catalog_load_on_demand_timeout*1000);
             mutex = false;
             return retval;
           }
