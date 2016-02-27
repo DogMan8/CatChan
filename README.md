@@ -42,6 +42,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.02.21.2: Fixed a bug.(degrade in infinite scroll)<br>
 v2016.02.21.1: Fixed a bug.(degrade)<br>
 v2016.02.21.0: Cleaned up.<br>
 v2016.02.14.1: Modified recovery function and cleaned up. (v2016.02.14.0 had a bug and was discarded.)<br>
