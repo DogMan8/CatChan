@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.03.06.0
+// @version 2016.04.13.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2161,7 +2161,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.03.06.0<br>'+
+          'Version 2016.04.13.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -14170,9 +14170,9 @@ if (pref.test_mode['22']) {
             changed.watch = true;
           }
 //          if (tri_str_ex.search(/KILL|TIME|NONE/)!=-1) {
-          if (['KILL','TIME','NONE','DELETE'].indexOf(tri_str_ex)!=-1) {
+          if (['KILL','TIME','NONE','DELETE','UNWATCH'].indexOf(tri_str_ex)!=-1) {
             var ex_str = search_ex_list.value.replace(key,',');
-            if (tri_str_ex!=='NONE' && tri_str_ex!=='DELETE') ex_str = ex_str + ',' + name + ((tri_str_ex.search(/TIME/)!=-1)? time_str : '') +'\n';
+            if (tri_str_ex==='KILL' || tri_str_ex==='TIME') ex_str = ex_str + ',' + name + ((tri_str_ex==='TIME')? time_str : '') +'\n';
             search_ex_list.value = ex_str.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,'');
             changed.ex = true;
           }
