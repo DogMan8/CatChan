@@ -8,6 +8,7 @@ Functions:<br>
 3. Show statistics<br>
 4. Unique IP tracker for 4chan<br>
 5．Reader Support for Slower Threads/Boards<br>
+<br>
 This is a userscript. You need Greasemonkey (Firefox) or Tampermonkey (Chrome) beforehand.<br>
 Then click following link to install.<br>
 <h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
@@ -42,6 +43,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.04.13.0: Fixed a bug in triage system.<br>
 v2016.03.06.0: Cleaned up.<br>
 v2016.02.28.0: Fixed bugs and Cleaned up.<br>
 v2016.02.21.3, v2016.02.21.2: Fixed a bug in infinite scroll.(degrade)<br>
