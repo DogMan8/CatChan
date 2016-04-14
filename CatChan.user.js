@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.04.13.0
+// @version 2016.04.13.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2161,7 +2161,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.04.13.0<br>'+
+          'Version 2016.04.13.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12984,7 +12984,7 @@ if (!pref.test_mode['24']) {
 //      site2[site.nickname].prep_own_posts();
       site2[site.nickname].check_reply.make_own_posts(); // prevent from calling twice.
       function window_beforeunload() {
-        if (pref.catalog.auto_save_filter) onchange_funcs.save();
+        if (pref.catalog.auto_save_filter && embed_mode!=='thread') onchange_funcs.save();
         window.removeEventListener('beforeunload', window_beforeunload, false);
       }
       if (initialize_loop && pref.virtualBoard.scan && embed_mode!=='thread')
