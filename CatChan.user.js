@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.04.13.1
+// @version 2016.04.13.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2161,7 +2161,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.04.13.1<br>'+
+          'Version 2016.04.13.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -16978,7 +16978,7 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
           if (threads_candidates_of_deletion===null) threads_candidates_of_deletion = {};
           while (threads_idx.length>num) {
             var name = threads_idx[num++];
-            if (name.substr(0,4)==='ODL:') {remove(name);num--;}
+            if (name.substr(0,4)==='ODL:') {remove_thread(name);num--;}
             else threads_candidates_of_deletion[name] = (threads[name][8][0]>threads[name][8][4])? threads[name][8][0] : (threads[name][8][4] || threads[name][8][0]);
           }
         }
