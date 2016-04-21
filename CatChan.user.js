@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.04.17.0
+// @version 2016.04.17.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2214,7 +2214,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.04.17.0<br>'+
+          'Version 2016.04.17.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -16753,7 +16753,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
           if ((val && val.cmd && val.cmd['show']) ^ !!tgt_th[16].icon_show_always) { // show
             tgt_th[16].icon_show_always = site2[site.nickname].add_icon(tgt_th[0],tgt_th[16].type_html, 'show_always', tgt_th[16]);
             tgt_th[9] = catalog_filter_query(name);
-            show_catalog(name);
+            if (show_catalog) show_catalog(name);
           }
         }
       }
@@ -17007,7 +17007,7 @@ if (pref.test_mode['22']) {
           for (var th in threads) threads[th][9] = [true];
           drawn_idx = 0;
         }
-        show_catalog();
+        if (show_catalog) show_catalog();
 //console.log('filter_changed');
 //        catalog_refresh_gather_info(); // cut at 2015.05.15.
       }
