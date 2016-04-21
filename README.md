@@ -43,6 +43,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.04.17.1, v2016.03.13.3: Fixed a critical bug.(degrade)<br>
 v2016.04.17.0: Added expander in page viewer.<br>
 v2016.04.13.2: Fixed a bug at refresh.<br>
 v2016.04.13.1: Fixed a bug in thread viewer.<br>
