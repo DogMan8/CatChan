@@ -43,6 +43,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.04.24.1: Changed link of Chart.js in header.<br>
 v2016.04.24.0: Tuned up.<br>
 v2016.04.17.1, v2016.03.13.3: Fixed a critical bug.(degrade)<br>
 v2016.04.17.0: Added expander in page viewer.<br>
