@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.04.24.0
+// @version 2016.04.24.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -9,7 +9,7 @@
 // @include http*://8ch.net/*
 // @include http*://lainchan.org/*
 // @include http*://meguca.org/*
-// @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
+// @require https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.0.1/Chart.min.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
 // @grant unsafeWindow
 // ==/UserScript==
@@ -1488,6 +1488,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         },
         'easy.light': {
           catalog:{embed_page:true, auto_load_filter:true, auto_save_filter:true,
+                   draw_on_demand: true,
                    filter:{time_watch:false, time_watch_creation:false},
                   },
           liveTag:{use:false},
@@ -2232,7 +2233,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.04.24.0<br>'+
+          'Version 2016.04.24.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
