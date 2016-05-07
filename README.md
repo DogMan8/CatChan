@@ -3,14 +3,13 @@ CatChan
 
 Cross Domain Catalog for Imageboards<br>
 Functions:<br>
-1. Cross Board/Domain Catalog<br>
-2. Tagging Support<br>
-3. Show statistics<br>
-4. Unique IP tracker for 4chan<br>
-5．Reader Support for Slower Threads/Boards<br>
+1. Cross domain catalog
+2. Virtual board system
+3. Statistics
+4. Other functions
+5. Misc.
 <br>
-This is a userscript. You need Greasemonkey (Firefox) or Tampermonkey (Chrome) beforehand.<br>
-Then click following link to install.<br>
+This is a userscript. You need [Greasemonkey](https://addons.mozilla.org/ja/firefox/addon/greasemonkey/) (for Firefox) or [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) (for Chrome) beforehand. Then click following link to install.<br>
 <h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
 <a href="https://raw.github.com/Dogman8/CatChan/develop/CatChan.user.js">[GET USERSCRIPT BETA]</a><br>
 
