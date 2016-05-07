@@ -1,4 +1,4 @@
-CatChan
+[CatChan](https://github.com/DogMan8/CatChan/wiki)
 =======
 
 Cross Domain Catalog for Imageboards<br>
