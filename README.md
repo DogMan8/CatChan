@@ -3,11 +3,11 @@ CatChan
 
 Cross Domain Catalog for Imageboards<br>
 Functions:<br>
-1. Cross domain catalog
-2. Virtual board system
-3. Statistics
-4. Other functions
-5. Misc.
+1. Cross domain catalog<br>
+2. Virtual board system<br>
+3. Statistics<br>
+4. Other functions<br>
+5. Misc.<br>
 <br>
 This is a userscript. You need [Greasemonkey](https://addons.mozilla.org/ja/firefox/addon/greasemonkey/) (for Firefox) or [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) (for Chrome) beforehand. Then click following link to install.<br>
 <h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
