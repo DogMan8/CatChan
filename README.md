@@ -5,7 +5,7 @@ Cross Domain Catalog for Imageboards<br>
 Functions:<br>
 1. Cross domain catalog<br>
 2. Virtual board system<br>
-3. Statistics<br>
+3. [Statistics](https://github.com/DogMan8/CatChan/wiki/Statistics)<br>
 4. Other functions<br>
 5. Misc.<br>
 <br>
@@ -42,6 +42,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.05.08.0: Re-implemented statistics function.<br>
 v2016.04.24.2-v2016.04.24.1: Changed link of Chart.js in header.<br>
 v2016.04.24.0: Tuned up.<br>
 v2016.04.17.1, v2016.03.13.3: Fixed a critical bug.(degrade)<br>
