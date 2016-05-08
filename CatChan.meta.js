@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.04.13.3
+// @version 2016.04.24.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -9,7 +9,7 @@
 // @include http*://8ch.net/*
 // @include http*://lainchan.org/*
 // @include http*://meguca.org/*
-// @require https://raw.githubusercontent.com/nnnick/Chart.js/master/Chart.js
+// @require https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1-beta.4/Chart.min.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
 // @grant unsafeWindow
 // ==/UserScript==
