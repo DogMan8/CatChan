@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.05.08.0
+// @version 2016.05.08.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2266,7 +2266,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.05.08.0<br>'+
+          'Version 2016.05.08.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -19200,6 +19200,7 @@ if (!pref.test_mode['42']) {
       cnst.auto_shrink_selector(pns['chart.inst.time_sel']);
       this.pn_board_sel = pns['chart.inst.board_sel'];
       cnst.auto_shrink_board_selector.setup(this.pn_board_sel, pref.catalog_board_list_sel);
+      this.board_sel = pref.catalog_board_list_sel;
       this.pn_canvas = document.createElement('canvas');
       this.pn_canvas_root = pn2.childNodes[1];
       this.pn_canvas_root.appendChild(this.pn_canvas);
