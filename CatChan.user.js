@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.05.08.1
+// @version 2016.05.08.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2266,7 +2266,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.05.08.1<br>'+
+          'Version 2016.05.08.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3492,7 +3492,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       var regexp_anchor      = '';
       var regexp_anchor_len  = 0;
       var regexp_anchor_cb   = '';
+      var regexp_anchor_txt_1  = /^>>[0-9]+/; // RegExp.test executes RegExp.exec once.
       var regexp_anchor_txt    = />>[0-9]+/g;
+      var regexp_anchor_cb_txt_1 = /^>>>\/[0-9A-z_\+]+\/[0-9]+/;
       var regexp_anchor_cb_txt = />>>\/[0-9A-z_\+]+\/[0-9]+/g;
       var regexp_anchor_com    = /&gt;&gt;[0-9]+/g;
       var regexp_anchor_cb_com = /&gt;&gt;&gt;\/[0-9A-z_\+]+\/[0-9]+/g;
@@ -3507,8 +3509,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         for (var i=0;i<as.length;i++) {
           var to_me = false;
           var txt = as[i].textContent;
-          if (own_posts && regexp_anchor_txt.test(txt) && own_posts[txt.substr(2)]===null) to_me = true; // SHOULD USE SEARCH INSTEAD OF TEST TO KEEP CONSISTENCY.
-          if (!to_me && own_posts_cb && regexp_anchor_cb_txt.test(txt)) {
+          if (own_posts && own_posts[txt.substr(2)]===null && regexp_anchor_txt_1.test(txt)) to_me = true; // SHOULD USE SEARCH INSTEAD OF TEST TO KEEP CONSISTENCY.
+          if (!to_me && own_posts_cb && regexp_anchor_cb_txt_1.test(txt)) {
             var tgt = txt.split('/');
             var bd = '/'+tgt[1]+'/';
             if (own_posts_cb[bd] && own_posts_cb[bd][tgt[2]]===null) to_me = true;
