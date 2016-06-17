@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.05.22.0
+// @version 2016.06.12.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2275,7 +2275,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.05.22.0<br>'+
+          'Version 2016.06.12.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4092,11 +4092,14 @@ if (pref.test_mode['47']) {
     },
     popups_add_backlink: function(thq, no, key, th){
       if (thq[no]===undefined) thq[no] = [key];
-      else if (Array.isArray(thq[no])) thq[no][thq[no].length] = key;
-      else {
+      else if (Array.isArray(thq[no])) {
+        if (thq[no].indexOf(key)==-1) thq[no][thq[no].length] = key;
+      } else {
         if (!thq[no].backlinks) thq[no].backlinks = [];
-        thq[no].backlinks[thq[no].backlinks.length] = key;
-        if (thq[no].pn) site2[th.domain_html].add_backlinks(thq[no].pn,thq[no].backlinks,thq[no].backlinks.length-1, th);
+        if (thq[no].backlinks.indexOf(key)==-1) {
+          thq[no].backlinks[thq[no].backlinks.length] = key;
+          if (thq[no].pn) site2[th.domain_html].add_backlinks(thq[no].pn,thq[no].backlinks,thq[no].backlinks.length-1, th);
+        }
       }
     },
     popups_remove_backlink: function(thq, no, key){
