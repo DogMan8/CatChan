@@ -42,7 +42,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2016.06.19.1: Fixed a bug.(degrade)<br>
+v2016.06.19.2-1: Fixed a bug.(degrade)<br>
 v2016.06.19.0: Fixed a bug.<br>
 v2016.06.12.0: Fixed a bug.<br>
 v2016.05.22.0: Tuned up.<br>
