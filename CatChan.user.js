@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.06.19.1
+// @version 2016.06.19.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -799,7 +799,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         return function(parent,key,str, keep, obj2_only){
           if (!keep) parent[key] = {};
           tgt = parent[key];
-          var fields = str.replace(/\/\/.*/mg,'').replace(/\n/g,',').split(',');
+          var fields = str.replace(/\/\/.*/mg,'').replace(/\n/g,',').split(/\s*,\s*/);
           for (var i=0;i<fields.length;i++) {
             if (fields[i]=='') continue;
             var name = fields[i].replace(/[@\^!].*/,'') || 'DEFAULT';
@@ -2288,7 +2288,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.06.19.1<br>'+
+          'Version 2016.06.19.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -8860,6 +8860,9 @@ if (pref.test_mode['35']) return;
         get fsize() {return (this.image)? this.image.size : undefined;},
         get ext() {return (this.image)? this.image.ext : undefined;},
         domain:'meguca',
+//        type_html: site.whereami,
+        get domain_html() {return site.nickname}, // mimic always
+        get parse_funcs_html() {return site2[site.nickname].parse_funcs[site.whereami+'_html'];},
         anchor_regex: /(>>)([0-9]+)/g,
         pn: undefined, // stop prototype chain.
       },
@@ -15486,8 +15489,8 @@ if (pref.test_mode['19']) { // stability test.
           site2[th.domain].wrap_to_parse.posts(th);
           if (th.parse_funcs.posts_full) th.parse_funcs.posts_full(th);
           var mimic = ((th.domain!==site.nickname || site.whereami+'_html'!==th.type_parse) && pref.catalog.mimic_base_site);
+          var mimic_tgt = ((embed_mode==='page' || embed_mode==='thread') && site2[site.nickname].page_json2html3)? 'page' : 'catalog'; // temporal, remove '&& site2[site.nickname].page_json2html3' later.
           if (init_new || !mimic) {
-            var mimic_tgt = ((embed_mode==='page' || embed_mode==='thread') && site2[site.nickname].page_json2html3)? 'page' : 'catalog'; // temporal, remove '&& site2[site.nickname].page_json2html3' later.
             if (mimic_tgt==='page' && th.type_data==='html') {
               if (th.parse_funcs.filename) {
                 for (var i=0;i<th.posts.length;i++) th.posts[i].filename = th.parse_funcs.filename(th.posts[i]);
@@ -15512,7 +15515,12 @@ if (pref.test_mode['19']) { // stability test.
               tgt_th[16].domain_html = th.domain_html;
               tgt_th[16].parse_funcs_html = th.parse_funcs_html;
             }
-          } else {  
+          } else {
+            if (mimic) {
+              th.type_html = mimic_tgt;
+              th.domain_html = site.nickname;
+              th.parse_funcs_html = site2[site.nickname].parse_funcs[th.type_html+'_html']; // overwrite.
+            }
             var pfunc_pn = site2[th.domain_html].parse_funcs['post_json'].pn;
             for (var i=1;i<th.posts.length;i++)
               if (!th.posts[i].pn) {
