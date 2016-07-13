@@ -7,6 +7,7 @@ Functions:<br>
 2. Virtual board system<br>
 3. [Statistics](https://github.com/DogMan8/CatChan/wiki/Statistics)<br>
 4. Other functions<br>
+&emsp;&emsp;[Incremental search from posts in entire sites](https://github.com/DogMan8/CatChan/wiki/Search)<br>
 5. Misc.<br>
 <br>
 This is a userscript. You need [Greasemonkey](https://addons.mozilla.org/ja/firefox/addon/greasemonkey/) (for Firefox) or [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) (for Chrome) beforehand. Then click following link to install.<br>
