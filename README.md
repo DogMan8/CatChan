@@ -43,6 +43,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.07.24.0: Added historical lazy control to posts search.<br>
 v2016.07.17.0: Tuned and cleaned up, added stored search function.<br>
 v2016.06.19.2-1: Fixed a bug.(degrade)<br>
 v2016.06.19.0: Fixed a bug.<br>
