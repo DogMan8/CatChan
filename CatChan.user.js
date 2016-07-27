@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.07.17.0
+// @version 2016.07.24.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -517,7 +517,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       proto: proto, // for overwrite from pref_default.
     };
     for (var i=0;i<20;i++) pref_new.debug_mode[i] = false;
-    for (var i=0;i<60;i++) pref_new.test_mode[i] = false;
+    for (var i=0;i<70;i++) pref_new.test_mode[i] = false;
     if (site) {
       if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref_new,site2[site.nickname].pref_default);
     }
@@ -2460,7 +2460,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.07.17.0<br>'+
+          'Version 2016.07.24.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12629,9 +12629,11 @@ if (!pref.test_mode['24']) {
 ////        if (val) for (var i in this.tags[tag].tgts) for (var j in this.tags[i].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null; // working code.
 ////        if (val) for (var j in this.tags[tag].mems) tgts[j.substr(0,j.lastIndexOf('/')+1)]=null;
 //        if (val) for (var j of this.tags[tag].mems.keys()) tgts[j.key.substr(0,j.key.lastIndexOf('/')+1)]=null; // working code.
-        var tgts = this.tags[tag].mems_boards();
-        if (!no_scan && Object.keys(tgts).length!=0 && catalog_obj && catalog_obj.catalog_func()!=null)
-          scan.scan_ui('refresh_tag', {tgts: tgts, options:{callback:function(){scan.scan('t');}, priority:6}});
+        if (val) {
+          var tgts = this.tags[tag].mems_boards();
+          if (!no_scan && Object.keys(tgts).length!=0 && catalog_obj && catalog_obj.catalog_func()!=null)
+            scan.scan_ui('refresh_tag', {tgts: tgts, options:{callback:function(){scan.scan('t');}, priority:6}});
+        }
       }
       if (prop==='in' || prop==='pk') {
         if (this.active['in']===1) pref.catalog.filter.tag = true;
@@ -14017,7 +14019,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       }
       var hide_target = (pref.catalog.text_mode.mode==='text')? 'catalog.text_mode.mode.graphic' : 'catalog.text_mode.mode.text';
       pn12_0_4.getElementsByTagName('span')[hide_target].style.display = 'none';
-      filter_kwd_prep(pref.catalog.filter.kwd,true); // prep kwd.kwds
+      filter_kwd_prep_init(null, pref.catalog.filter.kwd,true); // prep kwd.kwds
 
       pref_func.tooltips.add_hier(pn12_0_4);
       pref_func.apply_prep(pn12_0_4,false);
@@ -14034,12 +14036,12 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var oninput_funcs = {
         'catalog.filter.kwd.str': (function(){
           var pn_use = pn_filter.getElementsByTagName('*')['catalog.filter.kwd.use'];
-          return function(){
+          return function(e){
             if ((!pref.catalog.filter.kwd.use && this.value!=='') || (pref.catalog.filter.kwd.use && this.value==='')) {
               pref.catalog.filter.kwd.use = !pref.catalog.filter.kwd.use;
               pref_func.apply_prep(pn_use,false);
             }
-            filter_kwd_prep(pref.catalog.filter.kwd);
+            filter_kwd_prep(e, pref.catalog.filter.kwd);
           }
         })(),
         'catalog.filter.list_str'  : function(){catalog_filter_changed();if (pref[embed_mode].mark_new_posts) format_html.time_filter_changed();},
@@ -14083,7 +14085,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             pref_func.pref_overwrite(pref.catalog.filter,JSON.parse(localStorage.getItem(onchange_funcs.load_save_key(board_sel.selectedIndex))),true);
             pref_func.apply_prep(pn_filter,false);
             pref_func.apply_prep(pn_filter,true); // make obj2.
-            filter_kwd_prep(pref.catalog.filter.kwd, initialize_loop);
+            filter_kwd_prep_init(null, pref.catalog.filter.kwd, initialize_loop);
             catalog_attr_changed();
           }
         },
@@ -14100,7 +14102,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //          pref.catalog.filter.time_str = new Date().toLocaleString();
           pref_func.apply_prep(pn12_0_4,false);
           pref_func.apply_prep(pn12_0_4,true); // obj init.
-          filter_kwd_prep(pref.catalog.filter.kwd);
+          filter_kwd_prep(null, pref.catalog.filter.kwd);
           catalog_attr_changed();
         },
         'load_save_key'       : function(num){return pref.script_prefix + '.catalog.filter.' + pref.catalog_board_list_obj[num][0].key;},
@@ -15711,7 +15713,8 @@ if (pref.test_mode['19']) { // stability test.
                            [], // 5, click source
                            null,
                            null, // (!pref.test_mode['49'])? th : undefined, // 7, th, // test
-                           date, true,
+                           date,
+                           [true,0,true,0], // filter result
 //                           (from_native)? click_thread_native : click_thread, null, url, date, true,
                            null, // not used.
                            null, null, date_load, th.page, 0,
@@ -15806,7 +15809,9 @@ if (pref.test_mode['19']) { // stability test.
         if (!init_new) tgt_th[16].th = th;
         if (!pref.test_mode['49'] && (pref[embed_mode].t2h_sel!=='no' && pref[embed_mode].t2h_sel!=='chart')) tgt_th[7] = th;
 //        if (!pref.test_mode['49'] && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && !flag_posts_stored) tgt_th[7] = th; // BUG at catalog.
-        tgt_th[9] = (pref.filter.disable_list_when_kwd_active && picked_up_by_kwd_filter)? [true] : catalog_filter_query(name);
+        threads[name][9][2] = null;
+//        tgt_th[9] = (pref.filter.disable_list_when_kwd_active && picked_up_by_kwd_filter)? [true] : catalog_filter_query(name);
+        tgt_th[9] = catalog_filter_query(name); // slightly redundant.
 
         catalog_attr_set(th.key,tgt_th[0]); // for cmd '!show'.
         if (insert_thread_from_native || (tgt_th[16].expand_posts && tgt_th[1] && !pref.catalog.filter.kwd.posts_active) || pref.test_mode['36']) insert_thread_prepare_html_lazy(tgt_th, init_new, insert_thread_from_native);
@@ -16957,7 +16962,8 @@ if (pref.test_mode['23']) drawn_idx = 0;
             if (draw_on_demand && drawn_y>=ref_height) break;
             if (tgts==='END') break;
             if (i>=i_start) {
-              if (tgts===undefined || name in tgts || draw_on_demand) {
+              if (draw_on_demand || tgts===undefined || name in tgts) {
+                if (threads[name][9][0]===null) threads[name][9] = catalog_filter_query(name, true);
                 if (threads[name][9][0] && embed_mode==='page' && !pref.test_mode['52']) format_html.replace_posts_by_search(threads[name]); // may change threads[name][9][0]
                 if (threads[name][9][0]) {
                   if (!threads[name][0] || threads[name][16].th) {
@@ -17385,7 +17391,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
           if ((val && val.cmd && val.cmd['show']) ^ !!tgt_th[16].icon_show_always) { // show
             tgt_th[16].icon_show_always = site2[site.nickname].add_icon(tgt_th[0],tgt_th[16].type_html, 'show_always', tgt_th[16]);
             tgt_th[16].show_always = val.cmd['show']; // for lazy pn generation.
-            tgt_th[9] = catalog_filter_query(name, true);
+            tgt_th[9] = catalog_filter_query(name);
             if (show_catalog) show_catalog(name); // 'if (show_catalog)' is a patch.
           }
         }
@@ -17419,7 +17425,13 @@ function threads_idx_debug(idx,y,count, threads_idx){
 ////        return val;
 ////      }
 
-      function filter_kwd_prep(kwd, init) {
+      function filter_kwd_prep_init(e, kwd, init) {
+        kwd.str_old = '';
+        kwd.fail_list = {};
+        kwd.suc_list  = {};
+        filter_kwd_prep(e, kwd, init);
+      }
+      function filter_kwd_prep(e, kwd, init) {
         var kwds = (kwd.sentence)? [kwd.str] : kwd.str.split(' ');
         for (var i=kwds.length-1;i>=0;i--) {
           if (kwds[i]==='') kwds.splice(i,1);
@@ -17429,9 +17441,10 @@ function threads_idx_debug(idx,y,count, threads_idx){
           }
         }
         kwd.kwds = kwds;
-        kwd.timestamp = Date.now(); // not saved because pref.default() don't geenrate this.
-        filter_kwd_active(null, kwd, init);
+//        kwd.timestamp = Date.now(); // not saved because pref.default() don't geenrate this.
+        filter_kwd_active(e, kwd, init);
       }
+      var filter_kwd_count = 0;
       function filter_kwd_active(e, kwd, init) {
         if (!kwd) kwd = pref.catalog.filter.kwd;
         var val_old = kwd.posts_active;
@@ -17439,6 +17452,26 @@ function threads_idx_debug(idx,y,count, threads_idx){
         kwd.active       = basic_active && (kwd.op || kwd.post);
         kwd.posts_active = basic_active &&            kwd.post;
         if (!init && !kwd.posts_active && val_old) format_html.posts_search_inactivated();
+        kwd.timestamp = filter_kwd_count++; // not saved because pref.default() don't geenrate this. // use single entity for multi catalog or switching pref.*.filter object.
+if (!pref.test_mode['59']) {
+        if (e && e.target.name==='catalog.filter.kwd.str' && kwd.match===0 && (!kwd.re || /^[\w\s]*$/.test(kwd.str))) {
+          for (var i in kwd.fail_list) {
+            if (kwd.str.indexOf(kwd.fail_list[i])!==0) delete kwd.fail_list[i];
+            else if (kwd.fail_list[i]===kwd.str) kwd.timestamp = i;
+          }
+          for (var i in kwd.suc_list) {
+            if (kwd.suc_list[i].indexOf(kwd.str)!==0) delete kwd.suc_list[i];
+            else if (kwd.suc_list[i]===kwd.str) kwd.timestamp = i;
+          }
+        } else {
+          kwd.fail_list = {};
+          kwd.suc_list  = {};
+        }
+        if (kwd.str) {
+          kwd.fail_list[kwd.timestamp] = kwd.str;
+          kwd.suc_list[kwd.timestamp]  = kwd.str;
+        }
+}
         if (!init) catalog_filter_changed();
       }
 // pref.catalog.filter.kwd: {use:true, op:true, posts:false, sub:true, name:true, trip:true, com:true, file:true, re:false, ci:true, match:true, str:'', kwds:[]}
@@ -17599,83 +17632,58 @@ function threads_idx_debug(idx,y,count, threads_idx){
 //        }
 //        return flag;
 //      }
-      function catalog_filter_query_tag(tags){
-//        if (!pref.catalog.filter.tag || filter_tags.length==0) return true;
-        if (!pref.catalog.filter.tag) return true;
-if (pref.test_mode['22']) {
-        if (filter_tags.length==0) return false;
-        if (!tags) return false;
-//console.log(tags);
-        for (var i=0;i<tags.length;i++)
-          for (var j=0;j<filter_tags.length;j++)
-            if (tags[i].search(filter_tags[j])!=-1) return true;
-        return false;
-} else {
-        return liveTag.search_by_tags(tags);
-}
+////////      function catalog_filter_query_tag(tags){ // working code.
+//////////        if (!pref.catalog.filter.tag || filter_tags.length==0) return true;
+////////        if (!pref.catalog.filter.tag) return true;
+////////if (pref.test_mode['22']) {
+////////        if (filter_tags.length==0) return false;
+////////        if (!tags) return false;
+//////////console.log(tags);
+////////        for (var i=0;i<tags.length;i++)
+////////          for (var j=0;j<filter_tags.length;j++)
+////////            if (tags[i].search(filter_tags[j])!=-1) return true;
+////////        return false;
+////////} else {
+////////        return liveTag.search_by_tags(tags);
+////////}
+////////      }
+      function catalog_filter_query(name, no_reset){
+        var val_old = threads[name][9][0];
+        catalog_filter_query_1(name, threads[name]);
+        if (!no_reset && val_old !== threads[name][9][0]) drawn_idx = 0;
+        return threads[name][9];
       }
-      function catalog_filter_query(name){
-        var val_old = threads[name][9];
-        var val = catalog_filter_query_1(name);
-        if (val_old[0] !== val[0]) drawn_idx = 0;
-        return val;
-      }
-      function catalog_filter_query_1(name){
-        if (threads[name][16].show_always && !pref.catalog.filter.kwd.active) return [true]; // can't set 'threads[name][16].icon_show_always' if (threads[name][0]===null)
-        if (pref.catalog.filter.kwd.active) {
-          var tgt_posts = (pref.catalog.filter.kwd.post && pref[embed_mode].t2h_sel!=='no' && threads[name][16].th && threads[name][16].th.posts) || threads[name][4];
-          if (!catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, tgt_posts, common_func.fullname2dbt(name)[0])) return [false];
-//          else if (pref[embed_mode].popup2==='sr' || pref[embed_mode].popup2==='srpv') threads[name][10] = catalog_filter_query_keyword.kwd_make_result(tgt_posts);
-        }
-        
-//        if (!catalog_filter_query_keyword(threads[name][4])) return [false];
-//        var kwd = pref.catalog.filter.kwd.str;
-//        if (pref.catalog.filter.kwd && kwd!=='') {
-//          if (!pref.catalog.filter.kwd.re) kwd = kwd.replace(/\*/g,'.*');
-//          if (pref.catalog.filter.kwd.ci) kwd = new RegExp(kwd,'i');
-//          var str = threads[name][4];
-//          var result = (str.search(kwd)!=-1);
-//          var match = (pref.catalog.filter.kwd.match==='match');
-//          if ((match && !result) || (!match && result)) return [false];
-//        }
-//        if (pref.catalog.filter.tag) {
-//          var pn_tag_list = pn_filter.getElementsByTagName('div')['catalog.filter.tag_list'];
-//          var cbxes = pn_tag_list.getElementsByTagName('input');
-//          var tags = '';
-//          for (var i=0;i<cbxes.length;i++)
-//            if (cbxes[i].checked) tags = tags + cbxes[i].nextSibling.textContent.replace(/ [0-9]*: /,'').replace(/$/,'(#|,| |\.|:|;|\n|$)') + '|'; // ATTENTION. DESCRIPTION IS ALSO EXIST IN SCAN_TAGS().
-//          if (tags!=='') {
-//            tags = tags.replace(/\|$/,'');
-//            if (pref.catalog.filter.tag_ci) tags = new RegExp(tags,'i');
-//            var str = threads[name][0][brwsr.innerText];
-//            if (str.search(tags)==-1) return [false];
-//          }
-//        }
-if (pref.test_mode['22']) {
-        if (!catalog_filter_query_tag(threads[name][17])) return [false];
-} else {
-//        if (!catalog_filter_query_tag((threads[name][17])? threads[name][17][0][0].concat(threads[name][17][1][0]) : '')) return [false];
-        if (pref.catalog.filter.tag) if (!liveTag.search_by_tags(threads[name][17])) return [false];
-}
-//        if (pref.catalog.filter.tag && filter_tags.length!=0) {
-//          var str = threads[name][17];
-//          if (!str) return [false];
-//          else {
-//            var flag = false;
-//            for (var i=0;i<str.length;i++)
-//              for (var j=0;j<filter_tags.length;j++)
-//                if (str[i].search(filter_tags[j])!=-1) {flag = true; break;}
-//            if (!flag) return [false];
-//          }
-//        }
+      function catalog_filter_query_1(name, tgt_th){
+        if (tgt_th[16].show_always && !pref.catalog.filter.kwd.active) {tgt_th[9][0] = true; return;} // can't set 'tgt_th[16].icon_show_always' if (tgt_th[0]===null)
+        if (pref.catalog.filter.tag) if (!liveTag.search_by_tags(tgt_th[17])) {tgt_th[9][0] = false; return;}
         if (pref.catalog.filter.time) {
           var time = Date.parse(pref.catalog.filter.time_str);
-//          if (threads[name][8][0]<=time && threads[name][8][4]<=time) return [false];
-          if ((threads[name][8][4]||threads[name][8][0])<=time) return [false];
+//          if (tgt_th[8][0]<=time && tgt_th[8][4]<=time) return [false];
+          if ((tgt_th[8][4]||tgt_th[8][0])<=time) {tgt_th[9][0] = false; return;}
         }
-        if (pref.catalog.filter.list || pref.catalog.filter.list_mark_time) return catalog_filter_query_time_list(name);
+        if (pref.catalog.filter.list && (!pref.catalog.filter.kwd.active || !pref.filter.disable_list_when_kwd_active)) { // use [1]
+          var retval = catalog_filter_query_time_list(name);
+          if (retval[0]===false) {tgt_th[9] = retval; return;}
+        }
 //        else if (pref.catalog.filter.list_mark_time) [true, get_mark_time(name)];
-        else return [true];
+        if (pref.catalog.filter.kwd.active) { // use [2],[3]
+          var tgt_posts = (pref.catalog.filter.kwd.post && pref[embed_mode].t2h_sel!=='no' && tgt_th[16].th && tgt_th[16].th.posts) || tgt_th[4];
+if (pref.test_mode['59']) { // BUG. THIS DOESN'T WORK WITH OTHER FILTERS, NEEDS TO BE SPLITTED. 
+          if (!catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, tgt_posts, common_func.fullname2dbt(name)[0])) {tgt_th[9][0] = false; return;}
+} else {
+          if (!((pref.catalog.filter.kwd.fail_list[tgt_th[9][3]] && tgt_th[9][2]===false) ||
+                (pref.catalog.filter.kwd.suc_list[tgt_th[9][3]]  && tgt_th[9][2]===true ))) {
+            tgt_th[9][3] = pref.catalog.filter.kwd.timestamp;
+            tgt_th[9][2] = catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, tgt_posts, common_func.fullname2dbt(name)[0]);
+          } else {
+            if (pref.debug_mode['18'] && tgt_th[9][2]!==catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, tgt_posts, common_func.fullname2dbt(name)[0])) console.log('BUG, test59, '+name);
+          }
+          if (!tgt_th[9][2]) {tgt_th[9][0] = false; return;}
+}
+//          else if (pref[embed_mode].popup2==='sr' || pref[embed_mode].popup2==='srpv') tgt_th[10] = catalog_filter_query_keyword.kwd_make_result(tgt_posts);
+        }
+        tgt_th[9][0] = true;
+        return;
       }
       cataLog.catalog_filter_query = catalog_filter_query;
 ////      function catalog_filter_query_scan(posts,tags){
@@ -17694,41 +17702,21 @@ if (pref.test_mode['22']) {
 //        if (val.time) return [(!pref.catalog.filter.list || val.time<threads[name][8][0] || val.time<threads[name][8][4]), val.time]; // hit always.
         if (val.time) return [(!pref.catalog.filter.list || val.time<(threads[name][8][4]||threads[name][8][0])), val.time]; // hit always.
         else if (val.hit) return [!pref.catalog.filter.list];
-
-//          if (pref.catalog.filter.list_obj[1]) // working code
-//            for (var j=1;j<pref.catalog.filter.list_obj.length;j++) {
-//              var dn_bl = pref.catalog_board_list_obj[board_sel.selectedIndex][0]['domain'];
-//              var bn_bl = pref.catalog_board_list_obj[board_sel.selectedIndex][0]['board'];
-//              for (var i=0;i<pref.catalog.filter.list_obj[j].length;i++) {
-//                var key = pref.catalog.filter.list_obj[j][i]['key'];
-//                if (name == key) {retval = false;break;} // for faster execution.
-//                var time;
-//                if (key.indexOf('@')!=-1) {
-//                  time = Date.parse(key.replace(/[^@]*@/,'')) - pref.localtime_offset*3600000;
-//                  key = key.replace(/@.*/,'');
-//                } else time = false;
-//                var dn_key = (key.indexOf('/')==-1)? dn_bl : key.replace(/\/.*/,'');
-//                if (dn_key=='') dn_key = dn_bl;
-//                var bn_key = (key.indexOf('/')==-1)? bn_bl : key.replace(/[^\/]*\//,'/').replace(/\/[^\/]*$/,'/');
-//                if (bn_key=='/') bn_key = bn_bl;
-//                var tn_key = key.replace(/[^\/]*\//g,'')
-//                var dn_name = name.replace(/\/.*/,'');
-//                var bn_name = name.replace(/[^\/]*\//,'/').replace(/\/[^\/]*$/,'/');
-//                var tn_name = name.replace(/[^\/]*\//g,'')
-//                if (dn_name==dn_key && bn_name==bn_key && tn_key==tn_name) {
-//                  if (time===false || time>=threads[name][8][0]) {retval = false; break;}
-//                  else {retval = time; break;}
-//                }
-//              }
-//            }
         return [true];
       }
       function catalog_filter_changed(){
+if (pref.test_mode['60']) {        
         if (pref.catalog.filter.kwd.use || pref.catalog.filter.tag || pref.catalog.filter.time || pref.catalog.filter.list) for (var th in threads) threads[th][9] = catalog_filter_query(th);
         else {
-          for (var th in threads) threads[th][9] = [true];
+//          for (var th in threads) threads[th][9] = [true];
+          for (var th in threads) threads[th][9][0] = true;
           drawn_idx = 0;
         }
+} else {
+        var val = (pref.catalog.filter.kwd.use || pref.catalog.filter.tag || pref.catalog.filter.time || pref.catalog.filter.list)? null : true;
+        for (var th in threads) threads[th][9][0] = val;
+        drawn_idx = 0;
+}  
         if (show_catalog) show_catalog(); // 'if (show_catalog)' is a patch.
 //console.log('filter_changed');
 //        catalog_refresh_gather_info(); // cut at 2015.05.15.
