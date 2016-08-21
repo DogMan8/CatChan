@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.08.14.0
+// @version 2016.08.14.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2076,7 +2076,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               '<br>'+
               '1,Environment values:(advanced option)'+ pref_func.settings.html_funcs.rollup(
                 '2,Native has:<br>'+
-                '3,<ICBX"page.env.image_hover_native"> Image hover') +'<br>'+
+                '3,<ICBX"catalog.env.image_hover_native"> Image hover') +'<br>'+
               '';},
           function(){
             return pref_func.settings.html_funcs.show_hide_all_to_header('Index Page:') + '<br>'+
@@ -2531,7 +2531,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.08.14.0<br>'+
+          'Version 2016.08.14.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2624,8 +2624,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          },
           SUB: function(e){
 //            var pns = e.currentTarget.parentNode.querySelectorAll('span[name="' +e.target.getAttribute('name')+ '"]');
-            var pns = e.currentTarget.previousSibling.previousSibling.querySelectorAll('span[data-class=show_value]');
-            if (pns.length>0) pref_func.apply_prep_2(pns, false);
+            var pn = e.currentTarget.previousSibling.previousSibling;
+            if (pn && pn.querySelectorAll) {
+              var pns = pn.querySelectorAll('span[data-class=show_value]');
+              if (pns.length>0) pref_func.apply_prep_2(pns, false);
+            }
           },
           html_after_func: function(){
 //            var str = '<span name="virtualBoard.scan_domains">'+
@@ -16191,7 +16194,7 @@ if (pref.test_mode['19']) { // stability test.
               scan.list_nup.add_scan(th.key);
 //              catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
             }
-            if (tgt_th[16].th) site2[th.domain].update_posts_replace_prep(th, tgt_th[16].th.posts, t2h_num_of_posts); // merge
+            if (tgt_th[16].th) site2[th.domain].update_posts_replace_prep(th, tgt_th[16].th, t2h_num_of_posts); // merge
             site2[th.domain].update_posts_replace_prep(th, (tgt_th[16].posts)? tgt_th[16] : th, t2h_num_of_posts); // merge // MUST CHANGE ADDRESS OF th.posts, 'th.posts===th_old.posts' is used 'insert_thread_format_html'
             // CAUSE BUG??? may cayse mixing posts which should use different prototype, posts_html and posts_json.
           }
