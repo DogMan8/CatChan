@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.08.14.1
+// @version 2016.08.14.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2531,7 +2531,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.08.14.1<br>'+
+          'Version 2016.08.14.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3681,7 +3681,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       for (var i=0;i<val.boards.length;i++) {
         var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val.boards[i].board+'/'});
         bd.o = i;
-        if (val.boards[i].pages) bd.pgs = val.boards[i].pages;
+        if (val.boards[i].pages && !bd.pgs) bd.pgs = val.boards[i].pages;
         if (val.boards[i].tags && val.boards[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
       }
     },
@@ -5567,7 +5567,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (val[i].max>0) { // val[i].max is string, but this is ok.
           var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].uri+'/'});
           bd.o = i;
-          if (val[i].pages) bd.pgs = val[i].pages;
+          if (val[i].pages && !bd.pgs) bd.pgs = val[i].pages;
 ////          site3[this.nickname].boards.push(bd); // BUG. increase length forever.
           Object.defineProperty(bd,'max',{value:parseInt(val[i].max,10), writable:true});
           if (bd.read_max===undefined) Object.defineProperty(bd,'read_max',{value:0, writable:true});
@@ -16200,7 +16200,7 @@ if (pref.test_mode['19']) { // stability test.
           }
         }
         if (!th.page && tgt_th[16].th) th.page = tgt_th[16].th.page;
-        if (!init_new) tgt_th[16].th = th;
+        if (!init_new && th.parse_funcs.has_posts) tgt_th[16].th = th;
         if (!pref.test_mode['49'] && (pref[embed_mode].t2h_sel!=='no' && pref[embed_mode].t2h_sel!=='chart')) tgt_th[7] = th;
 //        if (!pref.test_mode['49'] && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && !flag_posts_stored) tgt_th[7] = th; // BUG at catalog.
         threads[name][9][2] = null;
