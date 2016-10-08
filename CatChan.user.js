@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.07.24.0
+// @version 2016.08.14.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -149,10 +149,13 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                search:{style: false, contents: false, layout: false, posts:  true, fileinfo:  true, images_2nd: true},
                thumb: {resize: false},
       },
-      footer: {ctime:false, btime:false, ptime:false, br:true},
+      footer: {ctime:false, btime:false, ptime:false, br:true, prate:false},
       draw_on_demand: true,
       load_on_demand: false,
       t2h_sel: 'page',
+      t2h_L: 100,
+      t2h_M: 50,
+      get t2h_N(){return this.t2h_num_of_posts},
       t2h_num_of_posts : 5,
       save_board_list_sel: false,
       board_list_sel: 0,
@@ -165,11 +168,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       expand_thumbnail_inline:true, expand_thumbnail_inline_native:true, localtime:true,
       expand_thumbnail_inline_all_after:false,
       expand_thumbnail_initial:false,
-      expand_thumbnail_on_demand:true,
       hide_posts_without_images:false,
-      expand_thumbnail_limit_width: true,
-      expand_thumbnail_limit_height: false,
-      expand_thumbnail_margin_width: 40,
+      thumbnail:{
+        inline:{limit_width: true, limit_height:false, margin_width: 40, margin_height: 0, webm: true, webm_mute:false, webm_loop:false, ondemand:true, ref_height:400},
+        hover: {limit_width: true, limit_height: true, margin_width: 40, margin_height: 0, webm:false, webm_mute: true, webm_loop:false},
+      },
       open_spoiler_text: false,
       merge: false,
       scroll_lock: false,
@@ -218,7 +221,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       wafd_open_spoiler: false,
       show_page_fraction : true,
       catalog_max_page: 5,
-      catalog_max_page_auto: false,
+      catalog_max_page_auto: true,
+      catalog_max_page_select: 'auto',
       catalog_snoop_refresh: true,
       catalog_auto_rollup_when_moving: true,
       catalog_size_width: 240,
@@ -546,6 +550,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     catalog_refresh_1: null,
     catalog_refresh_end: null,
     catalog_filter_changed: null,
+    image_hover_add: null,
   }
 
   var pref_func = (function(){
@@ -572,6 +577,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           fm = Array.prototype.slice.call(pn.getElementsByTagName('input'));
           fm = fm.concat(Array.prototype.slice.call(pn.getElementsByTagName('textarea')));
           fm = fm.concat(Array.prototype.slice.call(pn.getElementsByTagName('select')));
+          if (!set) fm = fm.concat(Array.prototype.slice.call(pn.querySelectorAll('span[data-class=show_value]')));
 //          var fm = pn.getElementsByTagName('*'); // this doesn't work because a select contains its options in it.
           if (fm.length==0) fm = [pn];
         } else {
@@ -587,10 +593,13 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           for (var j=fm.length-1;j>=0;j--) if (fm[j]===pn) fm.splice(j,1);
           if (fm.length==0) return;
         }
+        this.apply_prep_2(fm,set,propagate,mirror);
+      },
+      apply_prep_2: function(fm,set,propagate,mirror){
         for (var i=0;i<fm.length;i++) {
-          if (!fm[i].name) continue;
+          if (!fm[i].getAttribute('name')) continue; // for <span> //  if (!fm[i].name) continue;
           if (fm[i].type=='button') continue;
-          var target_hier = pref_func.get_tgt(fm[i].name);
+          var target_hier = pref_func.get_tgt(fm[i].getAttribute('name'));
           var parent = target_hier[0];
           var tgt    = target_hier[1];
 //          var parent = pref;
@@ -599,8 +608,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //            var tgts = tgt.split('.');
 //            for (var j=0;j<tgts.length-1;j++) parent = parent[tgts[j]];
 //            tgt = tgts[tgts.length-1];
-//          }
-          if (fm[i].tagName==='INPUT') {
+          //          }
+          var tagname = fm[i].tagName;
+          if (tagname==='INPUT') {
             if (set) {
               if      (typeof(parent[tgt])==='number' ) {
                 if (fm[i].name.substr(-2,2)==='_f') parent[tgt] = (isNaN(parseFloat(fm[i].value)))? 0 : parseFloat(fm[i].value);
@@ -624,8 +634,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 fm[i].parentNode.removeChild(fm[i]);
               }
             }
-          }
-          if (fm[i].tagName==='TEXTAREA') {
+          } else if (tagname==='TEXTAREA') {
             if (set) {
               parent[tgt] = fm[i].value;
               if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj')]) pref_func.str2obj(tgt);
@@ -633,8 +642,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //              if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj4']) pref_func.str2obj4(parent,tgt.substr(0,tgt.length-3)+'obj4',fm[i].value);
               if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj5']) pref_func.str2obj5(parent,tgt.substr(0,tgt.length-3)+'obj5',fm[i].value);
             } else fm[i].value = parent[tgt];
-          }
-          if (fm[i].tagName==='SELECT') {
+          } else if (tagname==='SELECT') {
             if (set) {
               if (parent[tgt]!==undefined) parent[tgt] = fm[i].selectedIndex;
             } else {
@@ -649,6 +657,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               if (parent[tgt]>=fm[i].length) parent[tgt] = 0;
               fm[i].selectedIndex = parent[tgt];
             }
+          } else if (tagname==='SPAN') {
+            if (!set && fm[i].getAttribute('data-class')==='show_value') {
+              var val = parent[tgt];
+              var func_str = this.apply_prep_2_str[tgt+':'+parent[tgt]];
+              if (func_str) val = (typeof(func_str)==='string')? func_str : func_str(parent);
+//              if (fm[i].getAttribute('name').substr(-7,7)==='t2h_sel' && ['L','M','N'].indexOf(parent[tgt])!=-1) val = parent['t2h_'+parent[tgt]];
+              fm[i].textContent = val.toString().replace(/^./,function(v){return v.toUpperCase();});
+            }
           }
           if (propagate) {
             if (fm[i].oninput)  fm[i].oninput.call(fm[i]);
@@ -656,6 +672,18 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           }
         }
         if (sessionStorage && set) sessionStorage.pref = JSON.stringify(pref);
+      },
+      apply_prep_2_str: {
+        't2h_sel:L': function(parent){return parent['t2h_L'];},
+        't2h_sel:M': function(parent){return parent['t2h_M'];},
+        't2h_sel:N': function(parent){return parent['t2h_N'];},
+        't2h_sel:N_unread': function(parent){return parent['t2h_N']+'+unread';},
+        't2h_sel:unread': 'All unread',
+        'posts_search_op:opaque': function(parent){return 'opaque '+parent['posts_search_op_opacity']+'%';},
+        'popup2:sr': 'SearchResult',
+        'popup2:srpv': 'SearchResult/Preview',
+        'popup2:pv': 'Preview',
+        'popup2:chart': 'PostRateChart',
       },
       make_pref_obj : function(name){ // copy of part of apply_prep.
         var target_hier = pref_func.get_tgt(name);
@@ -695,14 +723,22 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           var fm = pn.getElementsByTagName('*');
           if (fm.length==0) fm = [pn];
           for (var i=0;i<fm.length;i++) {
-            if (!fm[i].name) continue;
-            if (fm[i].tagName==='INPUT' || fm[i].tagName==='TEXTAREA' || fm[i].tagName==='SELECT')
+            var name = fm[i].getAttribute('name');
+            if (!name) continue; // for span // if (!fm[i].name) continue;
+            var tagName = fm[i].tagName;
+            if (tagName==='INPUT' || tagName==='TEXTAREA' || tagName==='SELECT') {
               if (func_obj2 && func_obj2[fm[i].name]) fm[i].oninput = tgt_wrapped;
               else {
                 fm[i].onchange = tgt_wrapped;
-                if (fm[i].tagName==='INPUT' && fm[i].type==='text') fm[i].oninput = prep_beforeunload;
+                if (tagName==='INPUT' && fm[i].type==='text') fm[i].oninput = prep_beforeunload;
               }
-            if (fm[i].tagName==='BUTTON') fm[i].onclick = tgt_wrapped; // OK.
+            } else if (tagName==='BUTTON') fm[i].onclick = tgt_wrapped; // OK.
+            else if (tagName==='A') {
+              if (name==='SHOW' || name==='SHOWALL' || name==='HIDEALL' || name==='SHOW2') fm[i].onclick = tgt;
+            } else if (tagName==='SPAN') {
+//              if (name==='NEXT') fm[i].onclick = tgt;
+              if (name==='SUB') fm[i].onchange = tgt;
+            }
           }
         };
       })(),
@@ -1163,10 +1199,19 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //            delete func[elem.name];
           }
         }
+        function add_root(elem){
+          elem.addEventListener('mouseover', show, false);
+        }
+        function remove_root(elem){
+          elem.removeEventListener('mouseover', show, false);
+        }
         function show(e){
           if (!pref.tooltips.help.show) return;
           var str_tooltip = null;
-          var name = this.name || this.getAttribute('name');
+          var name = e && (e.target.name || e.target.getAttribute('name')) || this.name;
+          if (!name && e.target.tagName==='LABEL') name = e.target.childNodes[0].name; 
+          if (!name) return; // for add_root
+//          var name = this.name || this.getAttribute('name')); // for add_hier
 ////          for (var i in str_func) if (this.name.indexOf(i)==0) {
 ////            str_tooltip = str_func[i](this,e);
 ////            break;
@@ -1368,6 +1413,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         return {
           add_hier: add_hier,
           remove_hier: remove_hier,
+          add_root: add_root,
+          remove_root: remove_root,
 //          add: add,
 //          remove: remove,
           show: show,
@@ -1757,6 +1804,84 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           pref_func.settings.options.splice(idx,0,menu);
           pref_func.settings.htmls.splice(idx,0,html);
         },
+        html_funcs: {
+          show_hide_all_to_header: function(str){
+            return '<span>' + str + '<span style="float:right">' + this.show_hide_all('all\u25bc', 'all\u25b2') + '</span></span>';
+          },
+          show_hide_all: function(str_show, str_hide){
+            return '<a name="SHOWALL" style="cursor:pointer">[' +str_show+ ']</a><a name="HIDEALL" style="cursor:pointer">[' +str_hide+ ']</a>';
+          },
+          show_hide: function(str_show, str_hide, str_inner){
+            return '<a name="SHOW" style="cursor:pointer" data-str="' +str_hide+ '">' +str_show+ '</a><span style="display:none" name="SUB"><br>' +str_inner+ '</span>';
+          },
+//          show_hide: function(str_show, str_hide, str_inner){
+//            return '<a name="SHOW" style="cursor:pointer">[' +str_show+ ']</a><a name="HIDE" style="cursor:pointer;display:none">[' +str_hide+ ']</a><span style="display:none" name="SUB"><br>' +str_inner+ '</span>';
+//          },
+          expand_thumbnail_inline: function(mode){
+            return '2,<ICBX"' +mode+ '.expand_thumbnail_inline"> Image expansion at click'+ this.rollup(
+              '3,<ICBX"' +mode+ '.expand_thumbnail_initial"> Expand all images at initial<br>'+
+              '3,<ICBX"' +mode+ '.expand_thumbnail_inline_all_after"> Expand all images after clicked one<br>'+
+              '4,<ICBX"' +mode+ '.thumbnail.inline.ondemand"> On demand loading: '+
+              '<ITB3"' +mode+ '.thumbnail.inline.ref_height"> % of browser<br>'+
+              this.expand_thumbnail_1(mode,'inline'))+ '<br>';
+          },
+          expand_thumbnail_hover: function(mode){
+            return '2,<ICBX"' +mode+ '.image_hover"> Image hover'+ this.rollup(
+              '3,<ICBX"' +mode+ '.image_prefetch"> Prefetch next image<br>'+
+              this.expand_thumbnail_1(mode,'hover'))+ '<br>';
+          },
+          expand_thumbnail_1: function(mode,inline_or_hover){
+            var pref = mode+'.thumbnail.'+inline_or_hover+'.';
+            return '3,<ICBX"' +pref+ 'webm"> Play webm<br>'+
+              '4,<ICBX"' +pref+ 'webm_loop"> Loop<br>'+
+              '4,<ICBX"' +pref+ 'webm_mute"> Mute<br>'+
+              '3,<ICBX"' +pref+ 'limit_width"> Limit to browser\'s width - '+
+              '<ITB3"' +pref+ 'margin_width"> px<br>'+
+              '3,<ICBX"' +pref+ 'limit_height"> Limit to browser\'s height - '+
+              '<ITB3"' +pref+ 'margin_height"> px';
+          },
+          env: function(mode, str_inner){
+            return '1,Environment values:(advanced option)'+ this.rollup(
+              '2,Native has:<br>'+
+              '3,<ICBX"' +mode+ '.popup_native"> Pop up reply<br>'+
+              '3,<ICBX"' +mode+ '.expand_thumbnail_inline_native"> Image expansion<br>'+
+              '3,<ICBX"' +mode+ '.env.image_hover_native"> Image hover<br>'+
+              '3,<ICBX"' +mode+ '.env.colorID_native"> Color ID<br>'+
+              '3,<ICBX"' +mode+ '.env.backlink_native"> Backlink<br>'+
+              '3,<ICBX"' +mode+ '.env.localtime_native"> Local time'+
+              str_inner) + '<br>';
+          },
+          op_in_search_result: function(mode){
+            return '2,' + this.rollup_radio(mode+'.posts_search_op', ' :Unmatched OP in search result', 3, '',
+              ['show:Show', 'opaque:Opaque: <ITB3"' +mode+ '.posts_search_op_opacity"> %','hide:Hide']) + '<br>';
+          },
+//          show_val_rollup: function(pref, inner){
+//            return '<SSV"' +pref+ '">'+ '&emsp;' + this.show_hide('change...', 'hide', '', inner);
+//          },
+          rollup_radio: function(pref, header, indent, middler, args){
+            var sep_h = indent+ ',<IR"' +pref+ '""';
+            for (var i=0;i<args.length;i++) args[i] = sep_h + args[i].replace(/:/,'">');
+            return '<a name="SHOW2" style="cursor:pointer" data-str="\u25b2]">[<SSV"' +pref+ '"></span>\u25bc]</a>'+
+                   '<span>' + header + '</span><span style="display:none" name="SUB"><br>' +middler + args.join('<br>')+ '</span>';
+//            return '<span name="NEXT" style="cursor:pointer">[<SSV"' +pref+ '"></span>' + this.show_hide('\u25bc]', '\u25b2]', header, middler + args.join('<br>'));
+//            return '<SSV"' +pref+ '">'+ header + '&emsp;' + this.show_hide('change...', 'hide', '', middler + args.join('<br>'));
+          },
+          rollup: function(inner){
+            return '&emsp;' + this.show_hide('[\u25bc]', '[\u25b2]', inner);
+          },
+          format_posts: function(mode){
+            return '2,<ICBX"' +mode+ '.open_spoiler_text"> Open text spoiler<br>'+
+              '2,<ICBX"' +mode+ '.colorID"> Color ID<br>'+
+              '2,<ICBX"' +mode+ '.backlink"> Backlink<br>'+
+              '2,<ICBX"' +mode+ '.localtime"> Local time<br>'+
+              '2,<ICBX"' +mode+ '.mark_new_posts"> Mark new posts<br>';
+          },
+          updates: function(mode){
+            return '2,<ICBX"' +mode+ '.auto_update"> Auto update, every <ITB2"' +mode+ '.auto_update_period"> min.<br>'+
+              '2,<ICBX"' +mode+ '.hide_posts_without_images"> Hide posts without images<br>'+
+              '2,<ICBX"' +mode+ '.merge"> Merge threads<br>';
+          },
+        },
 ////        options: [
 ////          '<option>Easy Setting:</option>',
 ////          '<option>Virtual board:</option>',
@@ -1776,7 +1901,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////          '<option>Networking</option>',
 ////          '<option>General</option>',
 ////          '<option>About</option>'
-////        ],
+        ////        ],
         options: [
           'Easy Setting2:',
           'Easy Setting:',
@@ -1870,10 +1995,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '2,<input type="checkbox" name="easy2.network.fetch_actively"> Fetch missing info actively<br>'+
 //          '2,<input type="checkbox" name="easy2.basics"> Other basic settings, which depends on preset<br>'+
           '2,<input type="checkbox" name="easy2.basics"> Other basic settings<br>'+
-          '2,limits for safe: <br>'+
-          '3,boards at scan: <input type="text" name="easy2.scan.max" size="6" style="text-align: right;">'+
-          ', threads at scan: <input type="text" name="easy2.scan.max_threads" size="6" style="text-align: right;"><br>'+
-          '3,threads in a catalog: <input type="text" name="easy2.catalog.max_threads_at_refresh" size="6" style="text-align: right;"><br>'+
+          '2,Limits for safe: <br>'+
+          '3,At scan: <ITB6"easy2.scan.max"> boards, <ITB6"easy2.scan.max_threads"> threads.<br>'+
+          '3,In a catalog: <ITB6"easy2.catalog.max_threads_at_refresh"> threads.<br>'+
           '1,5. Click <button name="easy2.apply">Apply</button><br>'+
           '1,6. Click <button name="save">Save</button> if you want to save your settings to localStorage<br>'+
           '1,7. Click <button name="reload">Reload</button>, because some setting may need<br>'+
@@ -1929,126 +2053,72 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;&emsp;Unread replies to me:<input type="text" name="liveTag.style_urtm_str" size="30"><br>'+
           '&emsp;&emsp;Unread replies:<input type="text" name="liveTag.style_ur_str" size="30"><br>'+
           '',
-          'Catalog:<br>'+
-          '&emsp;<input type="checkbox" name="catalog.embed"> Use CatChan in catalog<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.image_hover"> Image hover<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.open_spoiler_text"> Open text spoiler<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.auto_update"> Auto update, every '+
-          '<input type="text" name="catalog.auto_update_period" size="2" style="text-align: right;"> min.<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.mark_new_posts"> Mark new posts when you open a thread<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.save_board_list_sel"> Save board group index<br>'+
-          '&emsp;&emsp;Click area:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.click_area" value="thumbnail">Thumbnail<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.click_area" value="entire">Entire thread card<br>'+
-          '&emsp;&emsp;Pop up:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.popup2" value="no">No<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.popup2" value="sr">Search result<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.popup2" value="srpv">Search result or preview<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.popup2" value="pv">Preview<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.popup2" value="chart">Post rate chart (statistics must be activated)<br>'+
-          '&emsp;&emsp;Preserve posts for search/preview:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="no">No (Need a scan for every search)<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="N">Last '+
-          '<input type="text" name="catalog.t2h_num_of_posts" size="3" style="text-align: right;"> posts from once matched threads(N posts)<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="N_unread">N + all unread posts from once matched threads<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="unread">All unread posts<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="ALL">All posts from once matched threads<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.t2h_sel" value="ALL_agg">All posts from all scanned threads<br>'+
-          '&emsp;&emsp;OP in posts search result:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.posts_search_op" value="show">Show always<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.posts_search_op" value="opaque">Opaque: ' +
-          '<input type="text" name="catalog.posts_search_op_opacity" size="3" style="text-align: right;"> % when op doen\'t match<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog.posts_search_op" value="hide">Hide when op doesn\'t match<br>'+
-          '<br>'+
-          '&emsp;Environment values:(advanced option)<br>'+
-          '&emsp;&emsp;Native has:<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.env.image_hover_native"> Image hover<br>'+
-          '<br>'+
-          '',
-          'Index Page:<br>'+
-          '&emsp;<input type="checkbox" name="catalog.embed_page"> Use CatChan in index page<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog_max_page_auto"> Set max page automatically<br>'+
-//          '&emsp;&emsp;<input type="checkbox" name="page.infinite"> Infinite scroll<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.popup"> Pop up reply<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_inline"> Image expansion at click<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_inline_all_after"> Expand all after which<br>'+
-          '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_limit_width"> Limit to browser width with margin '+
-          '<input type="text" name="page.expand_thumbnail_margin_width" size="2" style="text-align: right;"> px<br>'+
-          '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_limit_height"> Limit to browser height<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_initial"> Expand all images at initial<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_on_demand"> On demand loading<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.image_hover"> Image hover<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.image_prefetch"> Image prefetch<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.hide_posts_without_images"> Hide posts without images<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.open_spoiler_text"> Open text spoiler<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.colorID"> Color ID<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.backlink"> Backlink<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.localtime"> Local time<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.auto_update"> Auto update, every '+
-          '<input type="text" name="page.auto_update_period" size="2" style="text-align: right;"> min.<br>'+
-//          '&emsp;&emsp;<input type="checkbox" name="page.scan_tag"> Scan tags at initial<br>'+
-//          '&emsp;&emsp;<input type="checkbox" name="page.format.show.posts"> Show posts<br>'+
-          '&emsp;&emsp;Num of posts to show:(default)<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="page">Inherit from index page<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="N"> ' +
-          '<input type="text" name="page.t2h_num_of_posts" size="3" style="text-align: right;"> posts(N posts)<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="N_unread">N + all unread posts<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="unread">All unread posts<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="ALL">All posts<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.t2h_sel" value="ALL_agg">All posts (for incremental posts search)<br>'+
-          '&emsp;&emsp;OP in posts search result:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.posts_search_op" value="show">Show always<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.posts_search_op" value="opaque">Opaque: ' +
-          '<input type="text" name="page.posts_search_op_opacity" size="3" style="text-align: right;"> % when op doen\'t match<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="page.posts_search_op" value="hide">Hide when op doesn\'t match<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.use_expander_always"> Use CatChan\'s expander always<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.merge"> Merge threads<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.scroll_lock"> Don\'t scroll at update<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="page.mark_new_posts"> Mark new posts<br>'+
-          '&emsp;<input type="checkbox" name="page.save_board_list_sel"> Save board group index<br>'+
-          '<br>'+
-          '&emsp;Environment values:(advanced option)<br>'+
-          '&emsp;&emsp;Native has:<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.popup_native"> Pop up reply<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.expand_thumbnail_inline_native"> Image expansion<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.env.image_hover_native"> Image hover<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.env.colorID_native"> Color ID<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.env.backlink_native"> Backlink<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="page.env.localtime_native"> Local time<br>'+
-          '',
-          'Thread:<br>'+
-          '&emsp;<input type="checkbox" name="thread.embed"> Use CatChan in thread<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.popup"> Pop up reply<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_inline"> Image expansion at click<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_inline_all_after"> Expand all after which<br>'+
-          '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_limit_width"> Limit to browser width with margin '+
-          '<input type="text" name="thread.expand_thumbnail_margin_width" size="2" style="text-align: right;"> px<br>'+
-          '&emsp;&emsp;&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_limit_height"> Limit to browser height<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_initial"> Expand all images at initial<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_on_demand"> On demand loading<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.image_hover"> Image hover<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.image_prefetch"> Image prefetch<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.hide_posts_without_images"> Hide posts without images<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.open_spoiler_text"> Open text spoiler<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.colorID"> Color ID<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.backlink"> Backlink<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.localtime"> Local time<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.auto_update"> Auto update, every '+
-          '<input type="text" name="thread.auto_update_period" size="2" style="text-align: right;"> min.<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.merge"> Merge threads<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="thread.mark_new_posts"> Mark new posts<br>'+
-//          '&emsp;<input type="checkbox" name="thread.save_board_list_sel"> Save board group index<br>'+
-          '<br>'+
-          '&emsp;Environment values:(advanced option)<br>'+
-          '&emsp;&emsp;Native has:<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.popup_native"> Pop up reply<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.expand_thumbnail_inline_native"> Image expansion<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.env.image_hover_native"> Image hover<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.env.colorID_native"> Color ID<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.env.backlink_native"> Backlink<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.env.localtime_native"> Local time<br>'+
-          '&emsp;&emsp;&emsp;<input type="checkbox" name="thread.env.auto_update_native"> Auto update<br>'+
-          '',
+          function(){
+            return pref_func.settings.html_funcs.show_hide_all_to_header('Catalog:') + '<br>'+
+              '&emsp;<input type="checkbox" name="catalog.embed"> Use CatChan in catalog<br>'+
+              pref_func.settings.html_funcs.expand_thumbnail_hover('catalog')+
+              '&emsp;&emsp;<input type="checkbox" name="catalog.open_spoiler_text"> Open text spoiler<br>'+
+              '&emsp;&emsp;<input type="checkbox" name="catalog.auto_update"> Auto update, every '+
+              '<input type="text" name="catalog.auto_update_period" size="2" style="text-align: right;"> min.<br>'+
+              '&emsp;&emsp;<input type="checkbox" name="page.mark_new_posts"> Mark new posts when you open a thread<br>'+
+              '&emsp;&emsp;<input type="checkbox" name="catalog.save_board_list_sel"> Save board group index<br>'+
+              '2,'+ pref_func.settings.html_funcs.rollup_radio('catalog.click_area', ' :Click to open the thread', 3, '',
+                ['thumbnail:Thumbnail','entire:Entire thread card'])+ '<br>'+
+              '2,'+ pref_func.settings.html_funcs.rollup_radio('catalog.popup2',' :Pop up', 3, '',
+                ['no:No','sr:Search result','srpv:Search result or preview','pv:Preview','chart:Post rate chart (statistics must be activated)'])+ '<br>'+
+              '2,'+ pref_func.settings.html_funcs.rollup_radio('catalog.t2h_sel',' :Num of posts to store for search/preview', 3,
+                '3,Posts are stored after the thread was shown at once,<br>'+
+                '3,and you can utilize them to search or get preview.<br>'+
+                '3,The last option is for incremental search for posts.<br>',
+                ['no:No (Need a scan for every search)','N:Last <ITB3"catalog.t2h_num_of_posts"> posts (N posts)',
+                 'N_unread:N + all unread posts', 'unread:All unread posts', 'ALL:All posts', 'ALL_agg:All posts from all scanned threads']) +'<br>'+
+              pref_func.settings.html_funcs.op_in_search_result('catalog')+
+              '<br>'+
+              '1,Environment values:(advanced option)'+ pref_func.settings.html_funcs.rollup(
+                '2,Native has:<br>'+
+                '3,<ICBX"catalog.env.image_hover_native"> Image hover') +'<br>'+
+              '';},
+          function(){
+            return pref_func.settings.html_funcs.show_hide_all_to_header('Index Page:') + '<br>'+
+              '&emsp;<input type="checkbox" name="catalog.embed_page"> Use CatChan in index page' + pref_func.settings.html_funcs.rollup(
+                '3,Refresh up to:<br>'+
+                '4,<IR"catalog_max_page_select""manual"> <ITB2"catalog_max_page"> pages<br>'+
+                '4,<IR"catalog_max_page_select""auto"> Max pages<br>'+
+                '5,<ICBX"catalog_max_page_auto"> Update automatically') +'<br>'+
+    //          '&emsp;&emsp;<input type="checkbox" name="page.infinite"> Infinite scroll<br>'+
+              '&emsp;&emsp;<input type="checkbox" name="page.popup"> Pop up reply<br>'+
+              pref_func.settings.html_funcs.expand_thumbnail_inline('page')+
+              pref_func.settings.html_funcs.expand_thumbnail_hover('page')+
+              pref_func.settings.html_funcs.format_posts('page')+
+    //          '&emsp;&emsp;<input type="checkbox" name="page.scan_tag"> Scan tags at initial<br>'+
+    //          '&emsp;&emsp;<input type="checkbox" name="page.format.show.posts"> Show posts<br>'+
+              '2,<ICBX"page.use_expander_always"> Use CatChan\'s expander always<br>'+
+              '2,' + pref_func.settings.html_funcs.rollup_radio('page.t2h_sel', ' :Num of posts to show or search', 3, '',
+                ['page:Inherit from index page',
+                 'L: <ITB3"page.t2h_L"> posts(L posts)',
+                 'M: <ITB3"page.t2h_M"> posts(M posts)',
+                 'N: <ITB3"page.t2h_num_of_posts"> posts(N posts)',
+                 'N_unread:N + all unread posts',
+                 'unread:All unread posts',
+                 'ALL:All posts',
+                 'ALL_agg:All posts (for incremental posts search)']) +'<br>'+
+              pref_func.settings.html_funcs.op_in_search_result('page')+
+              pref_func.settings.html_funcs.updates('page')+
+              '&emsp;&emsp;<input type="checkbox" name="page.scroll_lock"> Don\'t scroll at update<br>'+
+              '&emsp;<input type="checkbox" name="page.save_board_list_sel"> Save board group index<br>'+
+              '<br>'+
+              pref_func.settings.html_funcs.env('page','');},
+          function(){
+            return pref_func.settings.html_funcs.show_hide_all_to_header('Thread:') + '<br>'+
+              '&emsp;<input type="checkbox" name="thread.embed"> Use CatChan in thread<br>'+
+              '&emsp;&emsp;<input type="checkbox" name="thread.popup"> Pop up reply<br>'+
+              pref_func.settings.html_funcs.expand_thumbnail_inline('thread')+
+              pref_func.settings.html_funcs.expand_thumbnail_hover('thread')+
+              pref_func.settings.html_funcs.format_posts('thread')+
+              pref_func.settings.html_funcs.updates('thread')+
+    //          '&emsp;<input type="checkbox" name="thread.save_board_list_sel"> Save board group index<br>'+
+              '<br>'+
+              pref_func.settings.html_funcs.env('thread', '<br>3,<input type="checkbox" name="thread.env.auto_update_native"> Auto update');},
           'Floating Catalog:<br>'+
           '&emsp;&emsp;<input type="checkbox" name="float.auto_update"> Auto update, every '+
           '<input type="text" name="float.auto_update_period" size="2" style="text-align: right;"> min.<br>'+
@@ -2297,6 +2367,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;&emsp;<input type="checkbox" name="catalog.footer.ctime"> Show created time(ctime)<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.footer.btime"> Show bumped time(btime)<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.footer.ptime"> Show last posted time(ptime)<br>'+
+          '&emsp;&emsp;<input type="checkbox" name="catalog.footer.prate"> Show post rate(prate)<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog_footer_show_flag"> Show recent flags(flags)<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog_footer_show_page"> Show page No.(page)<br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog_footer_show_tag"> Show tags'+
@@ -2460,7 +2531,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.07.24.0<br>'+
+          'Version 2016.08.14.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2517,6 +2588,48 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         tag_gen: null,
 //        health_indicator: null,
         onchange_funcs : {
+          SHOWALL: function(e){
+            Array.prototype.slice.call(e.target.parentNode.parentNode.parentNode.querySelectorAll('[name=SHOW],[name=SHOW2]')).forEach(function(v){v.onclick({target:v});});
+          },
+          HIDEALL: function(e){
+            Array.prototype.slice.call(e.target.parentNode.parentNode.parentNode.querySelectorAll('[name=HIDE],[name=HIDE2]')).forEach(function(v){v.onclick({target:v});});
+          },
+          SHOW: function(e){this.TOGGLE(e.target,'HIDE','');}, // bound later.
+          HIDE: function(e){this.TOGGLE(e.target,'SHOW','none');}, // bound later.
+          TOGGLE: function(et,name,disp, dst_dom, tgt_dom){
+            if (!dst_dom) dst_dom = et;
+            var str = et.getAttribute('data-str');
+            et.setAttribute('data-str',dst_dom.textContent);
+            dst_dom.textContent = str;
+            et.setAttribute('name',name);
+            if (!tgt_dom) tgt_dom = et.nextSibling;
+            tgt_dom.style.display = disp;
+          },
+//          NEXT: function(e){e.currentTarget.nextSibling.onclick({target:e.currentTarget.nextSibling});},
+          SHOW2: function(e){this.TOGGLE2(e.target,'HIDE2','');}, // bound later.
+          HIDE2: function(e){this.TOGGLE2(e.target,'SHOW2','none');}, // bound later.
+          TOGGLE2: function(et,name,disp){ // bound later.
+            if (et.tagName!=='A') et = et.parentNode;
+            this.TOGGLE(et,name,disp,et.childNodes[2], et.nextSibling.nextSibling);
+          },
+//          SHOW: function(e){
+//            e.target.style.display = 'none';
+//            e.target.nextSibling.style.display = '';
+//            e.target.nextSibling.nextSibling.style.display = '';
+//          },
+//          HIDE: function(e){
+//            e.target.style.display = 'none';
+//            e.target.nextSibling.style.display = 'none';
+//            e.target.previousSibling.style.display = '';
+//          },
+          SUB: function(e){
+//            var pns = e.currentTarget.parentNode.querySelectorAll('span[name="' +e.target.getAttribute('name')+ '"]');
+            var pn = e.currentTarget.previousSibling.previousSibling;
+            if (pn && pn.querySelectorAll) {
+              var pns = pn.querySelectorAll('span[data-class=show_value]');
+              if (pns.length>0) pref_func.apply_prep_2(pns, false);
+            }
+          },
           html_after_func: function(){
 //            var str = '<span name="virtualBoard.scan_domains">'+
             var str = '2,Scan targets:<br>'+
@@ -2550,15 +2663,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                                                                                         this_obj.htmls[pref.settings.indexing]   )+
                        this_obj.html_common);
             html = html.replace(/FROM_AFTER_FUNC/,pref_func.settings.onchange_funcs.html_after_func());
-            html = html.replace(/<br>([1-9]),/g,function(match,p1){ // function myself(match,p1){return (!p1)? '<br>' : myself(null,p1-1)+'&emsp;';}
-                                                  var str = '<br>';
-                                                  for (var i=0;i<p1;i++) str += '&emsp;';
-                                                  return str;
-                                                });
-            pn13_1.innerHTML = html;
+            pn13_1.innerHTML = pref_func.format_html_str(html);
             pref_func.add_onchange(pn13_1,pref_func.settings.onchange_funcs);
             pref_func.settings.apply_pn13_1();
-            pref_func.tooltips.add_hier(pn13_1);
+//            pref_func.tooltips.add_hier(pn13_1);
+            pref_func.tooltips.add_root(pn13_1);
           },
           'pn13_1_warning_reload': function(){
             pref3.reload_required = true;
@@ -2746,9 +2855,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'catalog_footer_show_page'          : 'catalog_footer',
           'catalog_footer_design'             : 'catalog_footer',
           'catalog_footer_show_tag'           : 'catalog_footer',
-          'catalog.footer.ctime'              : 'catalog_footer',
-          'catalog.footer.btime'              : 'catalog_footer',
-          'catalog.footer.ptime'              : 'catalog_footer',
+          'catalog.footer.*'                  : 'catalog_footer',
           'catalog_footer' : function(){
             if (catalog_obj && catalog_obj.catalog_func()!==null) catalog_obj.catalog_func().update_all_footers();
           },
@@ -2870,16 +2977,36 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                                 (pref[embed_mode].posts_search_op==='hide')? '{display:none}' : null);},
           '*.posts_search_op_opacity': '*.posts_search_op',
         }
-      }
+      },
+      bind_funcs: function(func_obj, args){for (var i of args) func_obj[i] = func_obj[i].bind(func_obj);},
+      format_html_str: function(html){
+        html = html.replace(/<br>([1-9]),/g,function(match,p1){ // function myself(match,p1){return (!p1)? '<br>' : myself(null,p1-1)+'&emsp;';}
+                                              var str = '<br>';
+                                              for (var i=0;i<p1;i++) str += '&emsp;';
+                                              return str;
+                                            });
+        html = html.replace(/<ICBX"/g,'<input type="checkbox" name="');
+        html = html.replace(/<ITB(\d+)"/g,'<input type="text" style="text-align: right;" size="$1" name="');
+//        html = html.replace(/<IR("[\w\.]+):([^:]+):([^"]+)">/g,'<input type="radio" name=$1" value="$2">$3');
+        html = html.replace(/<IR("[\w\.]+")("[^"]+")>/g,'<input type="radio" name=$1 value=$2>');
+        html = html.replace(/<SSV("[\w\.]+")>/g,'<span data-class="show_value" style="font-weight:bold" name=$1></span>');
+        html = html.replace(/<IB"([\w.]+),([^"]+)">/g,'<button name="$1">$2</button>');
+        return html.replace(/<input type="(checkbox|radio)[^>]+>[^<]+</g,'<label>$&/label><');
+      },
     };
   })();
   pref_func.settings.onchange_funcs.entry_func = (function(myself){
     return function(e){
       pref_func.apply_prep(this,true);
-      if (myself[this.name]) myself[this.name].call(this,e);
-      else if (this.name.indexOf('.')!=-1) {
-        var name = '*'+this.name.substr(this.name.indexOf('.'));
+      var pn_name = this.getAttribute('name'); // for <span>
+      if (myself[pn_name]) myself[pn_name].call(this,e);
+      else if (pn_name.indexOf('.')!=-1) {
+        var name = '*'+pn_name.substr(pn_name.indexOf('.'));
         if (myself[name]) myself[name].call(this,e);
+        else if (pn_name.lastIndexOf('.')!=-1) {
+          var name = pn_name.substr(0,pn_name.lastIndexOf('.')+1)+'*';
+          if (myself[name]) myself[name].call(this,e);
+        }
       }
     }
   })(pref_func.settings.onchange_funcs);
@@ -2887,8 +3014,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
   pref_func.settings.onchange_funcs['catalog.tag.ignore'] = pref_func.settings.onchange_funcs['tag.re_generate'];
   pref_func.settings.onchange_funcs['catalog.tag.max']    = pref_func.settings.onchange_funcs['tag.re_generate'];
   pref_func.settings.onchange_funcs['tag.gen_str']        = pref_func.settings.onchange_funcs['tag.gen'];
-
-  
+  pref_func.bind_funcs(pref_func.settings.onchange_funcs, ['SHOW','HIDE','SHOW2','HIDE2','TOGGLE2']);
 
   var styleSheet = (function(){
     var ss;
@@ -3406,7 +3532,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //      if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref,site2[site.nickname].pref_default);
       site.patch = site2[site.nickname].patch;
     },
-    features : {page: true, graph: true, setting: true, setting2: true, postform: true, catalog: true, listener : true, uip_tracker: false, thread_reader: true, debug: false},
+    features : {page: false, graph: true, setting: true, setting2: true, postform: true, catalog: true, listener : false, uip_tracker: false, thread_reader: true, debug: false},
     owners_recommendation: '',
     catalog : false,
     whereami: null,
@@ -3450,6 +3576,12 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //      function func_false(){return false;}
       var obj = {
         common: {
+          subscribe: function(catalog_root){
+            if (this.mouseover) catalog_root.addEventListener('mouseover',this.mouseover,false);
+          },
+          unsubscribe: function(catalog_root){
+            if (this.mouseover) catalog_root.removeEventListener('mouseover',this.mouseover,false);
+          },
           get_mark: function(pn, clientY){
             return this.get_mark_from_height(clientY, document.getElementByTagName('div'));
           },
@@ -3481,8 +3613,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       return pn;
     },
 //    get_next_image: function(img,name){return null;}, // return next image for prefetch3
-    get_next_image: function(img,top){
-      var imgs = cataLog.parent.getElementsByTagName('img');
+    get_next_image: function(img,top, imgs){
+      if (!imgs) imgs = cataLog.parent.getElementsByTagName('img');
       var idx = Array.prototype.indexOf.call(imgs,img);
       if (top) while (imgs[idx+1] && imgs[idx+1].offsetTop<top) idx++;
       return (idx>=0)? imgs[idx+1] : null;
@@ -3497,7 +3629,6 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     postform_rules : null,
     thread_keyword : 'thread', // thread keyword in URL.
     max_page : function(board){return 10;}, // returns max_page
-    set_max_page: function(){return pref.catalog_max_page;},
 //    max_page : 10, // maximum page number.
 //    make_url : function(board,no,key){return ['_blank','raw'];}, // returns URL and type from board name and page number.
 //    make_url3: function(board,th){return '_blank';}, // returns URL from board name and thread number.
@@ -3550,6 +3681,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       for (var i=0;i<val.boards.length;i++) {
         var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val.boards[i].board+'/'});
         bd.o = i;
+        if (val.boards[i].pages && !bd.pgs) bd.pgs = val.boards[i].pages;
         if (val.boards[i].tags && val.boards[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
       }
     },
@@ -4083,7 +4215,6 @@ if (pref.test_mode['47']) {
       pn12.style.resize = '';
       pn12.style.top = '';
     },
-    postform_activation : null,
     thread2search_obj : function(thread){return [thread[brwsr.innerText],'','','','','','',''];}, // return search_obj from thread.
 ////    get_click_area: function(pn){
 ////      var img = pn.getElementsByTagName('img');
@@ -4763,8 +4894,19 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 ////          th.idx_pop = th.pn.childNodes.length-1;
 ////        },
         type_com: 'txt',
-        replace_omitted_info : function(dst, src){dst.textCopntent = src.textContent;},
+        replace_omitted_info : function(dst, src){dst.textContent = src.textContent;},
+        replace_omitted_info2 : function(dst, src){
+          if (!src) dst.parentNode.removeChild(dst);
+          else this.replace_omitted_info(dst,src);},
         posts_full: 'catalog_html',
+        get_max_page: function(doc){
+          var pns = doc.getElementsByClassName('pages')[0];
+          if (!pns) return;
+          pns = pns.childNodes;
+          var max = 0;
+          for (var i=0;i<pns.length;i++) if (max+1 == pns[i].textContent) max++; // == used intentionally.
+          return max;
+        },
       },
       'page_json': {
         ths: function(obj, parse_obj){
@@ -4845,6 +4987,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           var sub = post.pn.getElementsByClassName('subject')[0];
           return (sub)? sub.textContent : '';
         },
+        img2src: function(img){return img.parentNode.href;}
       },
       'post_json': {
         time_unit: 1000,
@@ -4904,8 +5047,9 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         var info_old = th_old.parse_funcs_html.get_omitted_info(th_old.posts[0]);
         var info_new = (th.posts[0].pn)? th.parse_funcs_html.get_omitted_info(th.posts[0]) : site2[th.domain_html].page_json2html3_add_omitted_info(th,null,th.posts);
         if (info_old) {
-          if (info_new) th_old.parse_funcs_html.replace_omitted_info(info_old, info_new);
-          else info_old.parentNode.removeChild(info_old);
+//          if (info_new) th_old.parse_funcs_html.replace_omitted_info(info_old, info_new);
+//          else info_old.parentNode.removeChild(info_old);
+          th_old.parse_funcs_html.replace_omitted_info2(info_old, info_new);
         } else if (info_new) th_old.parse_funcs_html.set_omitted_info(th_old.posts[0], info_new);
 ////        var nos = {}; // working code.
 ////        for (var i=1;i<th.posts.length;i++) nos[th.posts[i].no] = null;
@@ -5371,6 +5515,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
     features : {uip_tracker: true},
     pref_default: {
       catalog_expand_with_hr: true,
+      page:{ env:{ disp_offset:1}},
     },
     utilize_boards_json: true,
     check_func : function(){
@@ -5422,6 +5567,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (val[i].max>0) { // val[i].max is string, but this is ok.
           var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].uri+'/'});
           bd.o = i;
+          if (val[i].pages && !bd.pgs) bd.pgs = val[i].pages;
 ////          site3[this.nickname].boards.push(bd); // BUG. increase length forever.
           Object.defineProperty(bd,'max',{value:parseInt(val[i].max,10), writable:true});
           if (bd.read_max===undefined) Object.defineProperty(bd,'read_max',{value:0, writable:true});
@@ -5429,7 +5575,6 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         }
       }
     },
-    set_max_page: function(){return site2['vichan'].set_max_page() -1;},
 ////    enumerate_boards_to_scan:function(){
 ////      var obj = [];
 ////      var end = (site3[site.nickname].boards.length > pref.scan.max)? pref.scan.max : site3[site.nickname].boards.length;
@@ -5726,12 +5871,6 @@ if (pref.test_mode['0']) {
       obj.catalog = Object.create(obj.thread);
       return obj;
     })(),
-    set_max_page: function(){
-      var pn = document.getElementsByClassName('pages')[0];
-      var max = 0;
-      for (var i=0;i<pn.childNodes.length;i++) if (pn.childNodes[i].getAttribute && pn.childNodes[i].getAttribute('href')) max++;
-      return max;
-    },
     boards_sel_from_tags : function(){
       var boards = document.getElementsByClassName('board-list-tbody')[0];
       var str = 'SELECTED_BOARDS,';
@@ -5742,10 +5881,10 @@ if (pref.test_mode['0']) {
 //    catalog_background : '#eef2ff',
 //    catalog_bordercolor : '#d6daf0',
     get_next_image: function(img,top){
-      var imgs = cataLog.parent.getElementsByClassName('post-image');
-      var idx = Array.prototype.indexOf.call(imgs,img);
-      if (top) while (imgs[idx+1] && imgs[idx+1].offsetTop<top) idx++;
-      return (idx>=0)? imgs[idx+1] : null;
+      var imgs = Array.prototype.slice.call(cataLog.parent.getElementsByClassName('post-image')).filter(function(v){return v.src.substr(-5,5)!=='.webm';});
+//      var imgs = cataLog.parent.getElementsByClassName('post-image');
+//      var imgs = cataLog.parent.querySelectorAll('img[id^="thumbnail"]');
+      return site2['DEFAULT'].get_next_image(img,top,imgs);
     },
     get_time_of_posts : function(doc){
       var posts = doc.getElementsByClassName('post');
@@ -6344,7 +6483,6 @@ if (pref.test_mode['0']) {
       node_ref.parentNode.insertBefore(pn_tb,node_ref);
       node_ref.parentNode.insertBefore(pn_filter,node_ref);
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      selector_catchan.childNodes[0].textContent = 'Bump order';
       if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
       else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 //      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
@@ -6510,6 +6648,7 @@ if (pref.test_mode['0']) {
         type_com: 'html',
         posts: 'DEFAULT.catalog_json',
         posts_full: 'DEFAULT.catalog_json',
+        get_max_page: function(doc){return doc.length;},
         proto: 'catalog_html',
       },
       'page_json' : {
@@ -6659,7 +6798,8 @@ if (pref.test_mode['0']) {
           if (files) {
             files = files.getElementsByClassName('file');
             for (var i=0;i<files.length;i++) {
-              var tmp = files[i].getElementsByTagName('img')[0];
+              var tmp = files[i].getElementsByTagName('img')[0] || files[i].getElementsByTagName('video')[0];
+//              var tmp = files[i].getElementsByTagName('img')[0];
               if (tmp) imgs[imgs.length] = tmp;
             }
           }
@@ -6677,7 +6817,8 @@ if (pref.test_mode['0']) {
         },
         get_omitted_info : function(post){return post.pn.getElementsByClassName('omitted')[0];},
         set_omitted_info : function(post, info){post.pn.lastChild.appendChild(info);},
-        replace_omitted_info : function(dst, src){dst.childNodes[0].textContent = src.childNodes[0].textContent;},
+//        replace_omitted_info : function(dst, src){dst.childNodes[0].textContent = src.childNodes[0].textContent;},
+        replace_omitted_info2 : function(dst, src){dst.childNodes[0].textContent = (src)? src.childNodes[0].textContent : '';},
         filename: 'thread_html',
       },
       'thread_html' : {
@@ -6967,9 +7108,9 @@ if (pref.test_mode['0']) {
                   '</span>'+
                 '</p>'+
                 '<a href="'+furl+'" target="_blank">'+
-                  '<img class="post-image" src="'+turl+'" style="width: '+post.tn_w+'px; height: '+post.tn_h+'px; max-width: 98%;" alt=""'+
-                    ((post.tn_w===128 && post.tn_h===128)? 'onerror="this.onerror=null;this.src=\'/static/spoiler.png\';"' : '')+ // vichan doesn't have any information about spoilered.
-                  '>'+
+                  ((post.ext!=='.webm')? '<img class="post-image" src="'+turl+'" style="width: '+post.tn_w+'px; height: '+post.tn_h+'px; max-width: 98%;" alt=""'+
+                                         ((post.tn_w===128 && post.tn_h===128)? 'onerror="this.onerror=null;this.src=\'/static/spoiler.png\';"' : '')+ '>' : // vichan doesn't have any information about spoilered.
+                                         '<video class="post-image" src="'+furl+'" style="width: '+post.tn_w+'px; height: '+post.tn_h+'px; max-width: 98%;">')+
                 '</a>'+
               '</div>';
       return html_str;
@@ -7015,7 +7156,8 @@ if (pref.test_mode['0']) {
         var expander = document.createElement('select');
         cnst.config_expander(expander, idx);
         if (omit_info.childNodes.length>=3) omit_info.removeChild(omit_info.childNodes[2]);
-        omit_info.removeChild(omit_info.childNodes[1]);
+        if (omit_info.childNodes.length>=2) omit_info.removeChild(omit_info.childNodes[1]); // 'if ()' is a parch for a bug in lainchan, inconsistency between usual boards and /mega/
+//        omit_info.removeChild(omit_info.childNodes[1]);
         omit_info.appendChild(expander);
       }
     },
@@ -7028,8 +7170,8 @@ if (pref.test_mode['0']) {
       var nof_posts_omitted = th.nof_posts - posts.length;
 
       var omit_info = (posts_old)? posts_old[0].pn.getElementsByClassName('omitted')[0] : null;
-//      if (nof_posts_omitted!=0) {
-      if (th.nof_posts>1) {
+      if (nof_posts_omitted!=0) {
+//      if (th.nof_posts>1) {
         if (!omit_info) {
           omit_info = document.createElement('span');
           omit_info.setAttribute('class','omitted');
@@ -7038,8 +7180,10 @@ if (pref.test_mode['0']) {
           cnst.config_expander(omit_info.childNodes[1]);
           if (posts_old) posts_old[0].pn.appendChild(omit_info);
         }
-        omit_info.childNodes[0].textContent = (nof_posts_omitted!==0)? (nof_posts_omitted +' post' + ((nof_posts_omitted!==1)? 's':'') +
-          ((nof_files_omitted)? ' and ' + nof_files_omitted + ' image repl'+ ((nof_files_omitted===1)? 'y' : 'ies') : '') + ' omitted. ') : '';
+//        omit_info.childNodes[0].textContent = (nof_posts_omitted!==0)? (nof_posts_omitted +' post' + ((nof_posts_omitted!==1)? 's':'') +
+//          ((nof_files_omitted)? ' and ' + nof_files_omitted + ' image repl'+ ((nof_files_omitted===1)? 'y' : 'ies') : '') + ' omitted. ') : '';
+        omit_info.childNodes[0].textContent = nof_posts_omitted +' post' + ((nof_posts_omitted!==1)? 's':'') +
+          ((nof_files_omitted)? ' and ' + nof_files_omitted + ' image repl'+ ((nof_files_omitted===1)? 'y' : 'ies') : '') + ' omitted. ';
       } else if (omit_info && posts_old) posts_old[0].pn.removeChild(omit_info);
       return omit_info;
     },
@@ -7047,7 +7191,7 @@ if (pref.test_mode['0']) {
       return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2[obj.domain].domain_url + board + 'thumb/' + obj.tim + obj.ext : '');
     },
     catalog_json2html3_src: function(obj, board) {
-      return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2[obj.domain].domain_url + board + 'src/' + obj.tim + obj.ext : '');
+      return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png' || obj.ext==='.webm')? 'https://' + site2[obj.domain].domain_url + board + 'src/' + obj.tim + obj.ext : '');
     },
     catalog_json2html3 : function(obj,board,thumb_url) {
       var th = document.createElement('div');
@@ -7168,12 +7312,28 @@ if (pref.test_mode['0']) {
     },
     pref_default: {
       thread_reader:{own_posts_tracker:true, check_num_of_children: false},
+      proto:{
+        popup_native:false,
+        expand_thumbnail_inline_native:false,
+        env:{
+          image_hover_native:false,
+          colorID_native:false,
+          backlink_native:false,
+          localtime_native:false,
+          auto_update_native:false,
+        },
+      },
     },
-    boards_json:{boards:[{board:'b'},{board:'int'},{board:'vip'},
+    boards_json:(function(){
+      var proto = {pages:10};
+      var obj = {boards:[{board:'b', pages:15},{board:'int', pages:20},{board:'vip'},
                          {board:'a'},{board:'c'},{board:'co'},{board:'d'},{board:'e'},{board:'f'},{board:'fb'},{board:'fe'},{board:'fit'},{board:'jp'},
-                         {board:'k'},{board:'l'},{board:'li'},{board:'m'},{board:'n'},{board:'ng'},{board:'p'},{board:'ph'},{board:'prog'},{board:'sp'},
-                         {board:'t'},{board:'trv'},{board:'tu'},{board:'tv'},{board:'v'},{board:'w'},{board:'we'},{board:'wk'},{board:'wp'},{board:'z'},{board:'zp'},
-                         {board:'ft'},{board:'r'},{board:'h'},{board:'s'},{board:'bans'},{board:'kc'},{board:'rfk'},{board:'rvss'}]},
+                         {board:'k'},{board:'l'},{board:'li'},{board:'m', pages:5},{board:'n'},{board:'ng'},{board:'p'},{board:'ph'},{board:'prog'},{board:'sp'},
+                         {board:'t'},{board:'trv', pages:18},{board:'tu'},{board:'tv'},{board:'v'},{board:'w'},{board:'we'},{board:'wk'},{board:'wp'},{board:'z'},{board:'zp'},
+                         {board:'ft'},{board:'r'},{board:'h', pages:8},{board:'s'},{board:'bans'},{board:'kc'},{board:'rfk'},{board:'rvss', pages:15}]};
+      for (var i of obj.boards) i.__proto__ = proto;
+      return obj;
+    })(),
     check_func : function(){
       if (!site2['KC'].force_https) site2['KC'].protocol = site.protocol;
       var href = window.location.href;
@@ -7279,10 +7439,9 @@ if (pref.test_mode['0']) {
 ////////    },
 ////////    make_url3: function(board,th){return  site2['KC'].protocol + '//krautchan.net' + board + 'thread-' + th + '.html';},
     get_next_image: function(img,top){
-      var imgs = cataLog.parent.querySelectorAll('img[id^="thumbnail"]');
-      var idx = Array.prototype.indexOf.call(imgs,img);
-      if (top) while (imgs[idx+1] && imgs[idx+1].offsetTop<top) idx++;
-      return (idx>=0)? imgs[idx+1] : null;
+      var imgs = Array.prototype.slice.call(document.querySelectorAll('img[id^=thumbnail]')).filter(function(v){return v.src.substr(-5,5)!=='.webm';});
+//      var imgs = cataLog.parent.querySelectorAll('img[id^="thumbnail"]');
+      return site2['DEFAULT'].get_next_image(img,top,imgs);
     },
     get_ops : function(doc){
       var ops = [];
@@ -7487,11 +7646,11 @@ if (pref.test_mode['28']) {
 //      pn_tb.setAttribute('style', 'float:right');
       site4.tb_prep_for_embed(pn_tb);
 //      if (site.whereami==='catalog') {
+      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
+      selector_catchan.setAttribute('style','float:left');
+      node_ref.parentNode.insertBefore(selector_catchan,node_ref);
+      pn_tb.childNodes[3].setAttribute('style','float:left');
       node_ref.parentNode.insertBefore(pn_tb,node_ref);
-//      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-//      selector_catchan.childNodes[0].textContent = 'Bump order';
-//      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
-////      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 ////////      return site2['KC'].catalog_from_native(date,document,site.board,site.whereami+'_html');
     },
 ////////    catalog_from_native : function(date,doc,board,type) { // working code.
@@ -7595,13 +7754,16 @@ if (pref.test_mode['28']) {
               if (i>=1) th.extra_files[i-1] = {domain:th.domain, board:th.board};
               var idx = href.lastIndexOf('/');
               var tgt = (i===0)? th : th.extra_files[i-1];
-              tgt.filename = href.substr(idx+1);
+//              tgt.filename = href.substr(idx+1);
+              tgt.filename = files[i].getElementsByTagName('img')[0].getAttribute('alt');
 //              tgt.filename_server = href.substr(0,idx).replace(/[^\/]*\//g,'');
               tgt.filename_server = href.substr(idx+1);
             }
           return th.filename;
         },
         prep_mimic: 'page_html',
+        tn_imgs: function(){return [];}, // dynamic, or function(th){return th.pn.getElementsByClassName('thumbnail');},
+        img2src: function(img){return th.op_img_url.replace('thumbnails','files');}
       },
       'catalog_json' : {
         proto: 'catalog_html',
@@ -7706,7 +7868,8 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
             if (as[i].textContent==='Reply' || as[i].textContent==='Antworten') return [as[i]];
         },
         get_omitted_info : function(post){return post.pn.getElementsByClassName('omittedinfo')[0];},
-        set_omitted_info : function(post, info){post.pn.lastChild.appendChild(info);},
+        set_omitted_info : function(post, info){post.pn.insertBefore(info,post.pn.getElementsByClassName('postbody')[0].nextSibling);},
+        replace_omitted_info2 : function(dst, src){dst.childNodes[0].textContent = (src)? src.childNodes[0].textContent : '';},
         filename: function (th){ // post can be accepted.
           var op = th.pn.classList.contains('thread') || th.pn.classList.contains('thread_body');
           var files = th.pn.getElementsByClassName((op)? 'file_thread' : 'file_reply');
@@ -7734,12 +7897,23 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
             }
           return th.filename;
         },
+        tn_imgs: function(th){return th.pn.querySelectorAll('img[id^=thumbnail]');},
         prep_mimic: function (th){
 //          th.posts[0].no = th.no; // doesn't work because posts[0].no has getter.
 //          for (var i=0;i<th.posts.length;i++) Object.defineProperty(th.posts[i],'no',{value:th.no}); // test patch
           th.op_img_url = th.parse_funcs.op_img_url(th);
         },
         get_op_src: function(th){return site2['KC'].catalog_json2html3_src(th);},
+        get_max_page: function(doc){
+//          var pns = doc.querySelectorAll('form[action*=delete]')[0].lastChild.previousSibling.previousSibling.previousSibling.getElementsByTagName('*'); // CAN'T GET [1] because it's a text node.
+          var pns = doc.querySelectorAll('form[action*=delete]')[0].lastChild.previousSibling.previousSibling.previousSibling.childNodes[1].childNodes[1].childNodes[0].childNodes[3].childNodes; // WORKS ONLY PAGE 0.
+          var max = 0;
+          for (var i=0;i<pns.length;i++) {
+            var text = pns[i].textContent.replace(/\s+/g,'');
+            if (max+1 == text || '['+(max+1)+']'===text) max++; // == used intentionally.
+          }
+          return max;
+        },
       },
       'thread_html' : {
 //        ths: function(doc) {return this.ths_array(doc, doc.pn.getElementsByClassName('thread_body'));}, // patch, but for what???, de-patched for trial.
@@ -7763,8 +7937,24 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 ////        },
         get_op_src: function(th){return th.op_img_url.replace('thumbnails','files');},
         proto: 'page_html',
-      }
+      },
+      'post_html' : {
+        flag: 'page_html',
+      },
     },
+
+    general_event_handler:{
+      catalog:{
+        mouseover: function(e){
+          var et = e.target;
+          var et_tagName = et.tagName;
+          if (et_tagName==='IMG')
+            if (pref[cataLog.embed_mode].image_hover && et.parentNode.className==='thumbnail') cataLog.image_hover_add.call(e.target,e, e.target.src.replace(/thumbnail/,'file'));
+        },
+        __proto__: site2['DEFAULT'].general_event_handler.catalog
+      },
+    },
+
     popups_href2dbtp: function(href, src, th){
       if (href[0]==='#' && th) {
         href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1)]);
@@ -7788,6 +7978,192 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //      var ext = (obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext;
 //      return (obj.ext)? 'http://i.4cdn.org' + obj.board + obj.tim + 's' + ext : '';
 //    },
+
+
+
+
+    
+    post_json2html : function(post, board, op, short_link, th_no) {
+      var pn = document.createElement('div');
+      var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
+      var date = new Date((post.time || 0) * time_unit);
+      var html_file = '';
+      if (post.filename) {
+        html_file += this.post_json2html_file(post,board, post.extra_files);
+        if (post.extra_files) for (var i=0;i<post.extra_files.length;i++) html_file += this.post_json2html_file(post.extra_files[i],board, true);
+      }
+      pn.innerHTML =
+        '<div class="' +((op)? 'thread_body' : 'postreply" id="post-' +post.no) + '">'+ // <td> can't be used alone.
+          '<div class="postheader">'+
+            '<input name="post_' + post.no+ '" value="delete" type="checkbox">'+
+            ((post.flag)? post.flag.innerHTML : '')+ //  '<img src="/images/balls/ca.png">'+
+            '<span class="postsubject">' +post.sub+ '</span> '+
+            '<span class="postername">' +post.name+ '</span> '+
+            '<span class="postdate">' + date.toLocaleString()+ '</span> '+
+            '<span class="postnumber">'+
+              '<a href="/int/thread-' +th_no+ '.html#' +post.no+ '" class="quotelink">No.</a>'+
+              '<a href="/int/thread-' +th_no+ '.html#q'+post.no+ '" class="quotelink">' +post.no+ '</a>'+
+            '</span> '+
+            '<div class="report_parent"><a href="/report/int/' +th_no +'" class="report_link"><img src="/images/icon-report.png"></a></div>'+
+          '</div>'+
+          html_file+
+          '<div' + ((op)? ' class="postbody"' : '') + '>'+
+            '<blockquote>'+
+              '<p id="post_text_' +post.no+ '">'+ post.com + '</p>'+
+            '</blockquote>'+
+          '</div>'+
+        '</div>'; //'<td>';
+      return pn.childNodes[0];
+    },
+    post_json2html_file : function(post, board, multifile) {
+      var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
+      fsize_str = fsize_str.substr(0,fsize_str.indexOf('.')+3) + ((post.fsize>1048576)? ' MB' : ' KB');
+      var fname_server = site2[post.domain].post_json2html_fname_server(post);
+      var fname = site2[post.domain].post_json2html_fname(post);
+      var furl = site2[post.domain].catalog_json2html3_src(post,board);
+      var turl = site2[post.domain].catalog_json2html3_thumbnail(post,board);
+      var html_str =
+        '<div class="file_thread">'+
+          '<span class="filename">'+
+            '<a href="/download/' +fname_server+ '/' +fname+ '">' +fname+ '</a>'+
+          '</span>'+
+//          '<img id="button_expand_image_185478186" src="/images/button-expand.gif" style="cursor: pointer">'+
+//          '<a href="/paint?action=new&amp;board=int&amp;thread=35608887&amp;modify=185478186&amp;applet=shipainter" onmouseover="helpTip('Modify picture')" onmouseout="UnTip()">'+
+//            '<img src="/images/button-paint.gif" border="0" width="15" height="15"></a>
+          '<br>'+
+          '<span class="fileinfo"> '+ fname.substr(fname.lastIndexOf('.')+1).toUpperCase()+ ', ' +post.w+ 'x' +post.h+ ', ' + fsize_str + '</span><br>'+
+          '<a href="' +furl+ '" target="_blank">'+
+           '<img style="display: block" id="thumbnail_' +fname_server+ '" src="' +turl+ '" width="' +post.tn_w+ '" height="' +post.tn_h+ '">'+
+          '</a>'+
+//          '<span id="filename_XXXXXXXXX" style="display: none; margin-top: 0px; margin-left: 0px;">iPhone-SE-vs-iPhone-6S.jpg</span>'+
+        '</div>'
+      return html_str;
+    },
+    page_json2html3 : function(obj,board,thumb_url, assign_pn) { // TEMPORAL, USE thumb_url TO MIMIC. // copied from vichan.
+      assign_pn = true; // test patch
+      var th = document.createElement('div');
+      th.setAttribute('id','thread_'+obj.no);
+      th.setAttribute('style','clear:both');
+      th.innerHTML = '<hr><a name=' +obj.no+ '></a>';
+//      th.setAttribute('style','float: left; overflow: hidden;');
+      var op = this.post_json2html((obj.posts && obj.posts[0])? obj.posts[0] : obj, board, true, site2[obj.domain].short_link(obj.key, obj.nof_posts, 2, '[Last ',' Posts]'), obj.no);
+//      var files = op.getElementsByClassName('file_thread');
+//      if (files.length>0) for (i=0;i<files.length;i++) th.appendChild(files[i]);
+//      if (obj.posts && obj.posts[0] && obj.posts[0].extra_files) op.setAttribute('style','clear:both;');
+      th.appendChild(op);
+//      if (assign_pn) obj.posts[0].pn = th;
+      if (assign_pn || !obj.posts[0].pn) obj.posts[0].pn = op;
+      if (obj.posts) {
+        for (var i=1;i<obj.posts.length;i++) {
+//          th.appendChild(this.post_json2html(obj.posts[i], board));
+          var pn = this.post_container(this.post_json2html(obj.posts[i], board),obj.posts[i].no);
+          this.update_posts_insert_1(pn, obj.posts[i].no, null, th);
+//          th.appendChild(document.createElement('br'));
+          if (assign_pn || !obj.posts[i].pn) obj.posts[i].pn = pn;
+        }
+        this.page_json2html3_add_omitted_info(obj,obj.posts,obj.posts);
+////////      } else { // WILL BE REDUNDANT
+////////        var keys = Object.keys(obj); // obj.posts===undefined, but it is defined as undefined, so key contains 'posts'. 
+////////        obj.posts = [];
+////////        obj.posts[0] = {};
+////////        for (var i=0;i<keys.length;i++) if (keys[i]!=='posts') obj.posts[0][keys[i]] = obj[keys[i]]; // remove props in prototype chain.
+////////        obj.posts[0].pn = op;
+      }
+//      var br = document.createElement('br');
+//      br.setAttribute('class','clear');
+//      th.appendChild(br);
+//      th.appendChild(document.createElement('hr'));
+      return th;
+    },
+    page_json2html3_replace_expander : function(posts_old, idx) {
+      var omit_info = posts_old[0].pn.getElementsByClassName('omittedinfo')[0];
+      if (omit_info) {
+        var expander = document.createElement('select');
+        cnst.config_expander(expander, idx);
+//        omit_info.removeChild(omit_info.childNodes[1]);
+        omit_info.appendChild(expander);
+      }
+    },
+    page_json2html3_add_omitted_info : function(th,posts_old,posts) {
+      var nof_files = 0;
+      for (var i=1;i<posts.length;i++) nof_files += (posts[i].type_data==='html')? posts[i].pn.getElementsByClassName('file_thread').length :
+                                                    (!posts[i].filename)? 0 :
+                                                    (posts[i].extra_files)? posts[i].extra_files.length+1 : 1;
+      var nof_files_omitted = th.nof_files - nof_files;
+      var nof_posts_omitted = th.nof_posts - posts.length;
+
+      var omit_info = (posts_old)? posts_old[0].pn.getElementsByClassName('omittedinfo')[0] : null;
+      if (th.nof_posts>1) { // for expand ALL
+        if (!omit_info) {
+          omit_info = document.createElement('span');
+          omit_info.setAttribute('class','omittedinfo');
+//          omit_info.innerHTML = 'dummy<a href="javascript:void(0)">Click to expand</a>.';
+          omit_info.innerHTML = 'dummy<select></select>';
+          cnst.config_expander(omit_info.childNodes[1]);
+          if (posts_old) posts_old[0].pn.insertBefore(omit_info, posts_old[0].pn.getElementsByClassName('postbody')[0].nextSibling);
+        }
+        omit_info.childNodes[0].textContent = (nof_posts_omitted!==0)? (nof_posts_omitted +' post' + ((nof_posts_omitted!==1)? 's':'') +
+          ((nof_files_omitted)? ' and ' + nof_files_omitted + ' file'+ ((nof_files_omitted===1)? '' : 's') : '') + ' are not shown. ') : '';
+      } else if (omit_info && posts_old) posts_old[0].pn.removeChild(omit_info);
+      return omit_info;
+    },
+    update_posts_remove: function(th_old,i,pnode,merge){
+      pnode = pnode.getElementsByClassName('thread_body')[0];
+      var tgt = th_old.posts[i].pn;
+      if (!merge || tgt.parentNode!==pnode) tgt = tgt.parentNode.parentNode.parentNode;
+      else this.update_posts_insert_pack(tgt);
+      if (tgt.previousSibling && tgt.previousSibling.tagName==='A') pnode.removeChild(tgt.previousSibling); // <a>
+      pnode.removeChild(tgt);
+    },
+    update_posts_insert: function(src,dst,i,j,pnode){
+      var ref = dst[j];
+//      var ref = dst[(j<dst.length)? j : dst.length-1];
+      ref = (ref)? ref.pn : null;
+      var ref_pnode2 = ref && ref.parentNode && ref.parentNode.parentNode && ref.parentNode.parentNode.parentNode;
+      if (ref_pnode2 && ref_pnode2.parentNode && ref_pnode2.parentNode.parentNode===pnode) ref = ref_pnode2; // remove container
+//      if (j>=dst.length) ref = ref && ref.nextSibling && ref.nextSibling.nextSibling || null;
+      if (!src[i].pn) src[i].pn = this.post_json2html(src[i],src[i].board);
+      if (i===0) this.update_posts_insert_pack(src[0].pn);
+      if (j===0 && ref) this.update_posts_insert_pack(dst[0].pn);
+      var tgt = (j===0 && i===0)? src[i].pn : this.post_container(src[i].pn,src[i].no); // patch for thread merging.
+      this.update_posts_insert_1(tgt,src[i].no,ref,pnode);
+      if (i===0 && j===0) this.update_posts_insert_unpack(src[0].pn);
+    },
+    update_posts_insert_1: function(tgt,no,ref,pnode){
+      pnode = pnode.getElementsByClassName('thread_body')[0];
+      var pn_a = document.createElement('a');
+      pn_a.setAttribute('name',no);
+      pnode.insertBefore(pn_a,ref);
+      pnode.insertBefore(tgt, ref);
+    },
+    update_posts0_class: site2['vichan'].update_posts0_class,
+    update_posts_insert_pack: site2['vichan'].update_posts_insert_pack,
+    update_posts_insert_pack_iter: function(pn, func){
+      var prev = pn.previousSibling;
+      while (prev) {
+        var prev_prev = prev.previousSibling; // prev is livelist.
+        if (prev.classList && (prev.classList.contains(pref.script_prefix+'_footer') || prev.classList.contains('file_thread') || prev.classList.contains('post_header'))) func(prev);
+        if (prev.classList &&  prev.classList.contains('postbody')) break;
+        prev = prev_prev;
+      }
+    },
+    update_posts_insert_unpack: function(pn){
+      while (1) {
+        var fchild = pn.firstChild;
+        if (fchild && fchild.classList && (fchild.classList.contains(pref.script_prefix+'_footer') || fchild.classList.contains('file_thread') || fchild.classList.contains('post_header'))) pn.parentNode.insertBefore(fchild, pn);
+        else break;
+      }
+    },
+    post_container : function(post_pn,no) {
+      var pn = document.createElement('table');
+      pn.innerHTML = '<tbody><tr><td valign="top">&gt;&gt;</td></tr></tbody>';
+      pn.childNodes[0].childNodes[0].appendChild(post_pn);
+      return pn;
+    },
+
+
+
+
     catalog_json2html3 : function(obj,board,thumb_url) {
       var th = document.createElement('article');
       th.setAttribute('class','thread teaser');
@@ -7881,6 +8257,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     postform_rules: null,
     postform_activation : function(){
       document.getElementById('togglePostFormLink').getElementsByTagName('a')[0].click();
+      site.postform = document.getElementsByClassName('postForm')[0];
     },
     features : {uip_tracker: true},
     components: {
@@ -7952,6 +8329,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         site.whereami = (document.getElementsByTagName('head')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
                       : (window.location.href.search(/catalog/)!=-1)? 'catalog'
                       : (window.location.href.search(/thread\/[0-9]+/)!=-1)? 'thread'
+                      : (window.location.href.search(/archive/)!=-1)? 'archive'
                       : (window.location.href.search(/\/$|(index|[0-9]+)(\.html)*|\/#all$/)!=-1)? 'page'
                       : 'other';
         site.config('4chan.org','4chan');
@@ -7990,7 +8368,6 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     catalog_threads_in_page : function(doc){return doc.getElementsByClassName('thread');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
     max_page : function(){return 10;},
-    set_max_page: function (){return 10;},
     make_url4 : function(dbt){
       var url_prefix  = site.protocol + '//' + this.domain_url + dbt[1];
       var url_prefix2 = site.protocol + '//' + 'a.4cdn.org' + dbt[1];
@@ -8285,7 +8662,6 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
       node_ref.appendChild(pn_tb);
 //      node_ref.parentNode.insertBefore(pn_filter,node_ref);
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      selector_catchan.childNodes[0].textContent = 'Bump order';
       if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
       else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 ////////      return site2['4chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
@@ -8941,7 +9317,6 @@ if (pref.test_mode['35']) return;
       else node_ref.parentNode.insertBefore(pn_tb,node_ref);
       node_ref.parentNode.insertBefore(pn_filter,document.getElementById('catalog'));
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      selector_catchan.childNodes[0].textContent = 'Bump order';
       selector_catchan.setAttribute('style','float:left');
       if (site.whereami==='catalog') node_ref.parentNode.insertBefore(selector_catchan,node_ref);
       else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
@@ -9289,7 +9664,6 @@ if (pref.test_mode['35']) return;
     protocol: 'https:',
     domain_url: 'lainchan.org',
     postform_rules: null,
-    postform_activation : null,
     features : {page: false, graph: true, setting2: false},
     pref_default: {
       page:{ env:{ disp_offset:1}},
@@ -9300,7 +9674,7 @@ if (pref.test_mode['35']) return;
       chart: {inst:{show: {np:false, p:true}, time_sel:3}},
       easy2:{limits:1},
     },
-    boards_json:{boards:[{board:'cyb'}, {board:'tech'}, {board:'\u03bb'}, {board:'zzz'}, {board:'drg'}, {board:'lit'}, {board:'diy'}, {board:'art'}, {board:'w'}, {board:'r'}, {board:'layer'}, {board:'q'}, {board:'f'}, {board:'feels'}]},
+    boards_json:{boards:[{board:'cyb', pages:7}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}]},
     check_func : function(){
       var href = window.location.href;
       if (href.indexOf('/lainchan.org/')!=-1) {
@@ -9356,7 +9730,7 @@ if (pref.test_mode['35']) return;
 //    catalog_threads_in_page : function(doc){return doc.getElementsByClassName('mix');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
     max_page : function(){return 10;},
-    all_boards: ['/popular/','/all/'],
+    all_boards: ['/popular/','/all/','/mega/','/random/'],
     make_url4: function(dbt){
       return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt);
     },
@@ -9390,7 +9764,6 @@ if (pref.test_mode['35']) return;
       else node_ref.parentNode.insertBefore(pn_tb,node_ref);
       node_ref.parentNode.insertBefore(pn_filter,node_ref);
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      selector_catchan.childNodes[0].textContent = 'Bump order';
       if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
       else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 //      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
@@ -9463,6 +9836,14 @@ if (pref.test_mode['35']) return;
       },
       'catalog_json' : {
         time_unit: 1000,
+      },
+      'post_html' : {
+        img2src: function(img){
+          var src = img.parentNode.href;
+          if (src.search(/.webm/)!=-1) src = src.replace(/.*player.php\?v=/,'').replace(/&t=.*/,'');
+//              https://lainchan.org/player.php?v=/test/src/1449566174628.webm&t=1449422283293.webm&loop=1
+          return src;
+        }
       },
 
     },
@@ -10561,12 +10942,12 @@ if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
             pn.setAttribute('class', pref.script_prefix+'_titleBar');
 //            pn.style.background = '#b5ccf9';
             pn.innerHTML = '<div>' +
-              '<div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button><span>&emsp;</span></div>' +
-//              '<div style="float: right"><button type="button">[]</button><button type="button">X</button></div>' +
-              '<div style="float: right"><button style="display:inline">^</button><button style="display:inline">_</button><button style="display:none">o</button><button style="display:inline">[]</button><button>X</button></div>' +
-              '<div></div>' +
+                '<div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button><span>&emsp;</span></div>' +
+//                '<div style="float: right"><button type="button">[]</button><button type="button">X</button></div>' +
+                '<div style="float: right"><button style="display:inline">^</button><button style="display:inline">_</button><button style="display:none">o</button><button style="display:inline">[]</button><button>X</button></div>' +
+                '<div></div>' +
               '</div>' +
-              '<div class="' + pref.script_prefix + '_window" style="margin: 0px 3px 3px 3px"></div>';
+              '<div class="' + pref.script_prefix + '_window" style="margin: 0px 3px 3px 3px;clear:both"></div>';
 //              '<div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>';
 //            pn.innerHTML = '<div><div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button></div><div style="float: right"><button type="button">X</button></div><div></div></div><div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>'
             var tb = pn.childNodes[0];
@@ -10646,6 +11027,7 @@ if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
       drag_sy : function(){return drag_sy;},
       div_destroy: function(pn,child_of_body, options){
         pref_func.tooltips.remove_hier(pn);
+        pref_func.tooltips.remove_root(pn);
         if (child_of_body) pn.parentNode.removeChild(pn);
         pn.removeEventListener('dragstart', (options)? options.event_funcs.dragstart : div_dragstart, false);
         if (pn.name=='catalog_pop') {
@@ -10791,9 +11173,13 @@ if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
         };
       })(),
       config_expander: (function(){
-        function focus(){
+        function make_opts(){
           var num = pref[cataLog.embed_mode].t2h_num_of_posts;
-          var opts = ['Same as the page', num + ' posts', num + ' + all unread posts', 'All unread posts', 'All'];
+          return ['Same as the page', pref[cataLog.embed_mode].t2h_L + ' posts', pref[cataLog.embed_mode].t2h_M + ' posts',
+                  num + ' posts', num + ' + all unread posts', 'All unread posts', 'All'];
+        }
+        function focus(){
+          var opts = make_opts();
           for (var j=0;j<this.length;j++) if (this.options[j].text==='') this.options[j].text = opts[j];
         }
         function blur(){
@@ -10801,11 +11187,10 @@ if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
         }
         return function(sel,idx){
           sel.className = pref.script_prefix + '_expander';
-          sel.length = 5;
+          sel.length = 7;
           if (idx===undefined) idx = 0;
           sel.selectedIndex = idx;
-          var num = pref[cataLog.embed_mode].t2h_num_of_posts;
-          sel.options[idx].text = ['Expand...', num + ' posts', num + ' + all unread posts', 'All unread posts', 'All'][idx];
+          sel.options[idx].text = (idx===0)? 'Expand...' : make_opts()[idx];
           sel.onfocus = focus;
           sel.onblur = blur;
 //          sel.onblur();
@@ -11017,8 +11402,7 @@ if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
       var pn8 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:settings2:Show2:tile:set:left',pn_st:pn_st});
       setting_obj = make_setting_obj(pn8);
     }
-    if (site.features.postform && pref.features.postform && site.postform!=null) {
-//      if (site2[site.nickname].postform_activation) site2[site.nickname].postform_activation();
+    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform_activation)) {
       wafd = make_wafd();
       var pn9 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:post_form:Show2:tile:set:left',pn_st:pn_st});
       post_form_obj = make_post_form_obj(pn9);
@@ -11686,6 +12070,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
                                                      o:{value:null, writable:true}, // for 'add_domain' // order
 //                                                     f:{value:0, writable:true}, // for 'add_domain'
                                                      p:{value:{}, configurable:true, writable:true}, // pool of parse_funcs
+                                                     pgs:{value:null, writable:true}, // for 'add_domain' // max pages
                                                      // s:   for statistics
                                                      // sr:  for statistics
                                                      // srt: for statistics
@@ -13423,7 +13808,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
     var embed_catalog = pref.catalog.embed && site.whereami==='catalog';
     var embed_page    = pref.catalog.embed_page && site.whereami==='page';
     var embed_frame   = pref.catalog.embed_frame && site.whereami==='frame';
-    if (embed_page && pref.catalog_max_page_auto) pref.catalog_max_page = site2[site.nickname].set_max_page();
     var embed_mode = (pref.catalog.embed && site.whereami==='catalog')? 'catalog' :
                      (pref.catalog.embed_page && site.whereami==='page')? 'page' :
                      (pref.thread.embed && site.whereami==='thread')? 'thread' : 'float';
@@ -13854,23 +14238,23 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 ////      })();
 
       if (embed_mode==='float') pn12_0_4.setAttribute('class', pref.script_prefix+'_window');
-      pn12_0_4.style.margin = '0px 3px';
+      pn12_0_4.style = 'margin:0px 3px; clear:both';
       pn12_0.appendChild(pn12_0_4);
-      pn12_0_4.innerHTML = 
+      pn12_0_4.innerHTML = pref_func.format_html_str(
         '<div style="float:right">'+
           '<div style="float:right">'+
-            '<input type="checkbox" name="' + embed_mode + '.auto_update"> Auto update<br>'+
-            '&emsp;&emsp;<input type="text" name="' + embed_mode + '.auto_update_period" size="3" style="text-align: right;"> min.<br>'+
-            '<input type="checkbox" name="catalog_snoop_refresh" checked> Snoop update<br>'+
-            '&emsp;<input type="checkbox" name="catalog_promiscuous"> Promiscuous<br>'+
-            '<input type="checkbox" name="catalog_refresh_clear"> Clear latter than<br>'+
-            '&emsp;<input type="text" name="catalog.max_threads_at_refresh" size="4" style="text-align: right;">th at update<br>'+
-            '<button name="clear_threads">ClearAllThreads</button>'+
+            '<ICBX"' + embed_mode + '.auto_update"> Auto update<br>'+
+            '1,<ITB3"' + embed_mode + '.auto_update_period"> min.<br>'+
+//            '<input type="checkbox" name="catalog_snoop_refresh" checked> Snoop update<br>'+
+//            '&emsp;<input type="checkbox" name="catalog_promiscuous"> Promiscuous<br>'+
+            '<ICBX"catalog_refresh_clear"> Clear latter than<br>'+
+            '1,<ITB4"catalog.max_threads_at_refresh">th at update<br>'+
+            '<IB"clear_threads,ClearAllThreads">'+
           '</div>'+
           '<div style="float:right">'+
             '<div name="hide_at_embed">'+
 //              '<select name="catalog.indexing"><option>Last reply</option><option>Creation date</option><option>Reply count</option><option>Image count</option></select><br>'+
-              '<select name="catalog.indexing"><option>Last reply</option><option>Creation date</option><option>Reply count</option><option>Image count</option><option>Last reply</option><option>Fast</option><option>/Last reply</option><option>/Creation date</option><option>/Reply count</option><option>/Image count</option><option>/Last reply</option><option>Slow</option></select><br>'+
+              '<select name="catalog.indexing"><option>Bump order</option><option>Creation date</option><option>Reply count</option><option>Image count</option><option>Last reply</option><option>Fast</option><option>/Bump order</option><option>/Creation date</option><option>/Reply count</option><option>/Image count</option><option>/Last reply</option><option>Slow</option></select><br>'+
               'size '+
               '<span name="catalog.text_mode.mode.graphic">'+
                 '<input type="text" name="catalog_size_width" size="4" style="text-align: right;"> x '+
@@ -13881,17 +14265,13 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             '</div>'+
             '<div>'+
 //              '&emsp;Order<br>'+
-              '<input type="checkbox" name="catalog.order.reply_to_me"> New reply to me at first<br>'+
-              '<input type="checkbox" name="catalog.order.reply"> New reply at first<br>'+
+              '<ICBX"catalog.order.reply_to_me"> New reply to me at first<br>'+
+              '<ICBX"catalog.order.reply"> New reply at first<br>'+
 //              '<input type="checkbox" name="catalog.order.watch"> Watch listed at first<br>'+
-              'Watch listed:<br>'+
-              '&emsp;<input type="radio" name="catalog.order.watch" value="first"> at first<br>'+
-              '&emsp;<input type="radio" name="catalog.order.watch" value="last"> at last<br>'+
-              '&emsp;<input type="radio" name="catalog.order.watch" value="dont_care"> don\'t care<br>'+
-              'Sticky:<br>'+
-              '&emsp;<input type="radio" name="catalog.order.sticky" value="first"> at first<br>'+
-              '&emsp;<input type="radio" name="catalog.order.sticky" value="last"> at last<br>'+
-              '&emsp;<input type="radio" name="catalog.order.sticky" value="dont_care"> don\'t care<br>'+
+              pref_func.settings.html_funcs.rollup_radio('catalog.order.watch', ' :Watch listed', 1, '',
+                ['first:at first','last:at last','dont_care:don\'t care'])+ '<br>'+
+              pref_func.settings.html_funcs.rollup_radio('catalog.order.sticky', ' :Sticky', 1, '',
+                ['first:at first','last:at last','dont_care:don\'t care'])+ '<br>'+
 //              '&emsp;<input type="radio" name="catalog.order.sticky" value="hide"> hide<br>'+
             '</div>'+
           '</div>'+
@@ -13982,40 +14362,43 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 ////            '<input type="checkbox" name="catalog.filter.tag_scansite">scan tags<br>'+
 //          '</div>'+
           '<div style="clear:both"></div>'+
-          '<div style="float:left">'+
-            '<input type="checkbox" name="catalog.filter.list"> Exclusive list:<br>'+
-//            '<input type="checkbox" name="catalog.filter.list_mark_time"> Mark:<br>'+
-            '<!-- &emsp;<input type="checkbox" name="catalog.filter.list_time_scroll"> Scroll to new post -->'+
-//            '<div style="clear:both">&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.list_str"></textarea></div>'+
-            '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.list_str"></textarea>'+
-          '</div>'+
-          '<div style="float:left">'+
-//            '<div style="float:left"><input type="checkbox" name="catalog.filter.attr_list"> Attribute list:<br></div>'+
-            '<input type="checkbox" name="catalog.filter.attr_list"> Attribute list:<br>'+
-            '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.attr_list_str"></textarea>'+
-          '</div>'+
-          '<div style="float:left">'+
-            'Watch time list:<br>'+
-//            '<input type="checkbox" name="catalog.filter.watch_list_mark_time"> Mark:<br>'+
-            '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.watch_list_str"></textarea>'+
-          '</div>'+
-          '<div style="float:left">'+
-            '<input type="checkbox" name="catalog.filter.bookmark_list"> Bookmark list:<br>'+
-            '&emsp;<textarea style="height:1em" cols="10" name="catalog.filter.bookmark_list_str"></textarea>'+
-          '</div>'+
-          '<div style="float:left">'+
-            '<button name="load">load</button><input type="checkbox" name="catalog.auto_load_filter"> Auto'+
-            '&emsp;<button name="load_default">clear_filters</button><br>'+
-            '<button name="save">save</button><input type="checkbox" name="catalog.auto_save_filter"> Auto<br>'+
+          '<a name="SHOW" style="cursor:pointer;float:left" data-str="[-]">[+ List filters]</a>'+
+          '<div style="display:none">'+
+            '<div style="float:left">'+
+              '<input type="checkbox" name="catalog.filter.list"> Exclusive list:<br>'+
+  //            '<input type="checkbox" name="catalog.filter.list_mark_time"> Mark:<br>'+
+  //            '<!-- &emsp;<input type="checkbox" name="catalog.filter.list_time_scroll"> Scroll to new post -->'+
+  //            '<div style="clear:both">&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.list_str"></textarea></div>'+
+              '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.list_str"></textarea>'+
+            '</div>'+
+            '<div style="float:left">'+
+  //            '<div style="float:left"><input type="checkbox" name="catalog.filter.attr_list"> Attribute list:<br></div>'+
+              '<input type="checkbox" name="catalog.filter.attr_list"> Attribute list:<br>'+
+              '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.attr_list_str"></textarea>'+
+            '</div>'+
+            '<div style="float:left">'+
+              'Watch time list:<br>'+
+  //            '<input type="checkbox" name="catalog.filter.watch_list_mark_time"> Mark:<br>'+
+              '&emsp;<textarea style="height:1em" cols="20" name="catalog.filter.watch_list_str"></textarea>'+
+            '</div>'+
+            '<div style="float:left">'+
+              '<input type="checkbox" name="catalog.filter.bookmark_list"> Bookmark list:<br>'+
+              '&emsp;<textarea style="height:1em" cols="10" name="catalog.filter.bookmark_list_str"></textarea>'+
+            '</div>'+
+            '<div style="float:left">'+
+              '<button name="load">load</button><input type="checkbox" name="catalog.auto_load_filter"> Auto'+
+              '&emsp;<button name="load_default">clear_filters</button><br>'+
+              '<button name="save">save</button><input type="checkbox" name="catalog.auto_save_filter"> Auto<br>'+
+            '</div>'+
           '</div>'+
         '</div>'+
-        '<div style="clear:both"></div>';
+        '<div style="clear:both"></div>');
 //      if (!embed_embed) pn12_0_4.style.background = '#e5ecf9';
 //      else if (embed_mode==='catalog') {
-      if (embed_mode==='catalog') {
+      if (embed_mode==='catalog' || embed_mode==='page') {
         pn12_0_2.getElementsByTagName('span')['hide_at_embed'].style.display = 'none';
         pn12_0_4.getElementsByTagName('div')['hide_at_embed'].style.display = 'none';
-        site2[site.nickname].catalog_native_frame_prep(pn12,pn12_button);
+        if (embed_mode==='catalog') site2[site.nickname].catalog_native_frame_prep(pn12,pn12_button);
       }
       var hide_target = (pref.catalog.text_mode.mode==='text')? 'catalog.text_mode.mode.graphic' : 'catalog.text_mode.mode.text';
       pn12_0_4.getElementsByTagName('span')[hide_target].style.display = 'none';
@@ -14049,6 +14432,11 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         'catalog.filter.tag_filter_str' : liveTag.filter_onchange.bind(liveTag),
       };
       var onchange_funcs = {
+        'SHOW': pref_func.settings.onchange_funcs.SHOW,
+        'HIDE': pref_func.settings.onchange_funcs.HIDE,
+        'SHOW2': pref_func.settings.onchange_funcs.SHOW2,
+        'HIDE2': pref_func.settings.onchange_funcs.HIDE2,
+        'SUB': pref_func.settings.onchange_funcs.SUB,
 //        'catalog.filter.show' : function(){cnst.show_hide(pn_filter,pn12_1);},
 //        'catalog_show_setting': function(){cnst.show_hide(pn_setting,pn12_1);},
         'filter' : function(){cnst.show_hide(pn_filter,pn12_1);cnst.toggleButton(this);},
@@ -14147,9 +14535,10 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       onchange_funcs.entry_func = (function(myself){
         return function(e){
           pref_func.apply_prep(this,true);
-          if (myself[this.name]) myself[this.name].call(this,e);
-          else if (this.name.indexOf('.')!=-1 && this.name.substr(0,this.name.indexOf('.'))===embed_mode) {
-            var name = this.name.substr(this.name.indexOf('.')+1);
+          var this_name = this.getAttribute('name'); // for <span>
+          if (myself[this_name]) myself[this_name].call(this,e);
+          else if (this_name.indexOf('.')!=-1 && this_name.substr(0,this_name.indexOf('.'))===embed_mode) {
+            var name = this_name.substr(this_name.indexOf('.')+1);
             if (myself[name]) myself[name].call(this,e);
           }
         }
@@ -14710,6 +15099,10 @@ if (pref.test_mode['22']) {
 ////                liveTag.mems[dbt[0]][dbt[1]].f = false;
 ////              }
               if (liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].f) liveTag.mems[dbt[0]][dbt[1]].f = false; // 'liveTag.mems[dbt[0]][dbt[1]]' is for /popular/
+            }
+            if (pref.catalog_max_page_auto && (dbt[3]==='page_html' || (dbt[3]==='catalog_json' && site2[dbt[0]].parse_funcs[dbt[3]].get_max_page))) {
+              var max_page = site2[dbt[0]].parse_funcs[dbt[3]].get_max_page(value.response);
+              if (max_page) liveTag.mems[dbt[0]][dbt[1]].pgs = max_page;
             }
             if (pref[embed_mode].load_on_demand) {
               var tgt = ths[ths.length-1];
@@ -15278,6 +15671,7 @@ if (pref.test_mode['22']) {
         }
         if (changed.ex || changed.watch) show_catalog(name);
         if (triage.get_trg().format_tgt) triage.format_buttons(changed.name);
+        pref_func.tooltips.hide();
       }
       function triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime){ // KILL,TIME,UNDO,NONE,WATCH,UNWATCH,DELETE,GO
         if (tri_str_ex==='UNWATCH') common_func.modify_bookmark(name,false);
@@ -15800,13 +16194,13 @@ if (pref.test_mode['19']) { // stability test.
               scan.list_nup.add_scan(th.key);
 //              catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
             }
-            if (tgt_th[16].th) site2[th.domain].update_posts_replace_prep(th, tgt_th[16].th.posts, t2h_num_of_posts); // merge
+            if (tgt_th[16].th) site2[th.domain].update_posts_replace_prep(th, tgt_th[16].th, t2h_num_of_posts); // merge
             site2[th.domain].update_posts_replace_prep(th, (tgt_th[16].posts)? tgt_th[16] : th, t2h_num_of_posts); // merge // MUST CHANGE ADDRESS OF th.posts, 'th.posts===th_old.posts' is used 'insert_thread_format_html'
             // CAUSE BUG??? may cayse mixing posts which should use different prototype, posts_html and posts_json.
           }
         }
         if (!th.page && tgt_th[16].th) th.page = tgt_th[16].th.page;
-        if (!init_new) tgt_th[16].th = th;
+        if (!init_new && th.parse_funcs.has_posts) tgt_th[16].th = th;
         if (!pref.test_mode['49'] && (pref[embed_mode].t2h_sel!=='no' && pref[embed_mode].t2h_sel!=='chart')) tgt_th[7] = th;
 //        if (!pref.test_mode['49'] && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && !flag_posts_stored) tgt_th[7] = th; // BUG at catalog.
         threads[name][9][2] = null;
@@ -15920,6 +16314,7 @@ if (pref.test_mode['19']) { // stability test.
             for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, th.tags.q && th.tags.q[th.posts[i].no], pref_env, th.posts[i]);
           }
         } else {
+          if (th.domain==='KC' && embed_mode==='page' && pref[embed_mode].use_expander_always) site2[th.domain_html].page_json2html3_replace_expander(th.posts, format_html.get_t2h_index(threads[name])); // test patch for KC, I don't know why but other than KC generates ERROR.
           if ((embed_mode==='page' || embed_mode==='thread') && (pref.catalog_expand_at_initial_embed || pref.catalog_expand_at_initial))
             if (th.parse_funcs.has_posts) format_html.update_posts_in_page(th,name);
 ////////          if (threads[name][19][0]===0) { // patch // working code.
@@ -15952,17 +16347,18 @@ if (pref.test_mode['19']) { // stability test.
         if (embed_mode==='page' || embed_mode==='thread') {
           var add_event = !pref[embed_mode].expand_thumbnail_inline_native || !insert_thread_from_native;
           var expand_now = pref[embed_mode].expand_thumbnail_initial;
-          var expand_on_demand = pref[embed_mode].expand_thumbnail_on_demand;
+          var expand_on_demand = pref[embed_mode].thumbnail.inline.ondemand;
           if (add_event || expand_now)
             for (var j=idx_new_post;j<th.posts.length;j++) {
               var tn_imgs = th.parse_funcs_html.tn_imgs(th.posts[j]);
               if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) {
-                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set;
+                tn_imgs[i].onclick = expand_thumbnail_inline;
+//                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set; // REDUNDANT???
                 if (expand_now) {
                   if (expand_on_demand) {
                     expand_thumbnail_queue_add(tn_imgs[i]);
                     expand_now = false;
-                  } else expand_thumbnail_inline.call(tn_imgs[i]);
+                  } else expand_thumbnail_inline.call(tn_imgs[i], null, true);
                 }
               }
             }
@@ -16045,17 +16441,24 @@ if (pref.test_mode['19']) { // stability test.
             }
           }
         },
+        get_t2h_from_index: function(idx){
+          return ['page','L','M','N','N_unread','unread','all'][idx];
+        },
         get_t2h_index: function(tgt_th){
           var t2h_sel = tgt_th[16].t2h_sel || pref[embed_mode].t2h_sel; 
           return (t2h_sel==='page')? 0 :
-                 (t2h_sel==='N')? 1 :
-                 (t2h_sel==='N_unread')? 2 :
-                 (t2h_sel==='unread')? 3 : 4;
+                 (t2h_sel==='L')? 1 :
+                 (t2h_sel==='M')? 2 :
+                 (t2h_sel==='N')? 3 :
+                 (t2h_sel==='N_unread')? 4 :
+                 (t2h_sel==='unread')? 5 : 6;
         },
         get_t2h_num_of_posts: function(tgt_th, type_source){
           var t2h_sel = tgt_th[16] && tgt_th[16].t2h_sel || pref[embed_mode].t2h_sel; 
           if (t2h_sel!=='page' || type_source!=='page' || tgt_th[16].expand_posts) {
             return (t2h_sel==='page')? tgt_th[16].t2h_page || pref[embed_mode].t2h_num_of_posts :
+                   (t2h_sel==='L')? pref[embed_mode].t2h_L :
+                   (t2h_sel==='M')? pref[embed_mode].t2h_M :
                    (t2h_sel==='N')? pref[embed_mode].t2h_num_of_posts :
                    (t2h_sel==='N_unread')? pref[embed_mode].t2h_num_of_posts + ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : 0) :
                    (t2h_sel==='unread')? ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : tgt_th[16].t2h_page) :
@@ -16203,6 +16606,7 @@ if (footer) { // temporal
           if (pref.catalog.footer.btime && nums2[0]) str += new Date(nums2[0]).toLocaleString().replace(date_string,'') + '&emsp;';
           if (pref.catalog.footer.ptime && nums2[4]) str += new Date(nums2[4]).toLocaleString().replace(date_string,'') + '&emsp;';
         }
+        if (pref.catalog.footer.prate) str += Math.floor(nums2[2]/((Date.now() - nums2[1])/86400000)) + '&emsp;';
         if (pref.catalog_footer_show_board_name || pref.catalog_footer_show_thread_no || pref.catalog_footer_show_site_name) {
           var dbt = common_func.name2domainboardthread(name,true);
           str += ((pref.catalog_footer_show_site_name)? dbt[0] : '')
@@ -16532,15 +16936,16 @@ if (footer) { // temporal
       var image_prefetched_instance = null;
       var image_expand_on_demand_instance = null;
       var image_expanding = [];
-      function image_hover_prep(img){
-        var img_ex = clone_img(img);
+      function image_hover_prep(img,src){
+        var img_ex = clone_img(img, 'hover',null,src);
+        if (!img_ex) return;
         img_ex.style.position = 'fixed';
         img_ex.style.top = '0px';
         img_ex.style.right = '0px';
         img_ex.style.pointerEvents = 'none';
         return img_ex;
       }
-      function image_hover_add(e){
+      function image_hover_add(e,src){
         if (pref[embed_mode].image_hover) {
           var divert = image_prefetched_instance && image_prefetched_instance[1]===this;
           var img_ex;
@@ -16548,7 +16953,10 @@ if (footer) { // temporal
             img_ex = image_prefetched_instance[0];
             img_ex.style.display = '';
             image_prefetched_instance = null;
-          } else img_ex = image_hover_prep(this);
+          } else {
+            img_ex = image_hover_prep(this,src);
+            if (!img_ex) return;
+          }
           img_ex.style.zIndex = 101;
           this.onmouseout = image_hover_remove;
           if (!divert) site.root_body.appendChild(img_ex);
@@ -16591,32 +16999,68 @@ if (footer) { // temporal
 //        }
           
       }
+      cataLog.image_hover_add = image_hover_add;
       function image_hover_remove(){
         if (image_hover_instance) site.root_body.removeChild(image_hover_instance);
         image_hover_instance = null;
       }
-      function clone_img(img){
+      function clone_img(img, inline_or_hover, from_initial, src){
         var pn = img.cloneNode();
 //        pn.src = (embed_mode==='page')? img.parentNode.href : pn.src; // TEMPORARILY!!!
-        var tgt_th16 = threads[get_name_recursive(img)][16];
-        pn.src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : img.parentNode.href) || pn.src;
+        if (!src) {
+          var name = get_name_recursive(img);
+          if (!name) return; // patch for expand all at initial in 4chan, BUT I DON'T KNOW WHY...
+          var tgt_th16 = threads[name][16];
+//        var src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : img.parentNode.href) || pn.src;
+          src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img)) || pn.src;
+        }
+        if (src.substr(-5,5)==='.webm') {
+          if (pref[embed_mode].thumbnail[inline_or_hover].webm && !from_initial) {
+            if (image_hover_instance && image_hover_instance.src===src) {
+              pn = image_hover_instance;
+              image_hover_instance = null;
+              pn.style.position = '';
+              pn.style.top = '';
+              pn.style.right = '';
+              pn.style.pointerEvents = '';
+  //            pn.play();
+            } else {
+              var pn = document.createElement('video');
+              pn.controls = true;
+              pn.autoplay = true;
+              //  <video controls="" loop="" autoplay="" class="expandedWebm" src="xxx.webm" style="max-width: 957px; max-height: 587px;"></video> // 4chan
+            }
+if (!pref.test_mode['63']) {
+            pn.loop  = pref[embed_mode].thumbnail[inline_or_hover].webm_loop;
+            pn.muted = pref[embed_mode].thumbnail[inline_or_hover].webm_mute;
+}
+          } else return null;
+        }
+        pn.src = src;
         pn.style.width = 'auto';
         pn.style.height = 'auto';
-        if (pref[embed_mode].expand_thumbnail_limit_width)  pn.style.maxWidth = (window.innerWidth - pref[embed_mode].expand_thumbnail_margin_width) + 'px';
-        if (pref[embed_mode].expand_thumbnail_limit_height) pn.style.maxHeight = window.innerHeight + 'px';
+        if (pref[embed_mode].thumbnail[inline_or_hover].limit_width)  pn.style.maxWidth  = (window.innerWidth  - pref[embed_mode].thumbnail[inline_or_hover].margin_width)  + 'px';
+        if (pref[embed_mode].thumbnail[inline_or_hover].limit_height) pn.style.maxHeight = (window.innerHeight - pref[embed_mode].thumbnail[inline_or_hover].margin_height) + 'px';
         return pn;
       }
-      function expand_thumbnail_inline(e){
-        if (pref.page.expand_thumbnail_inline && image_expanding.indexOf(this)==-1) {
-          var img_ex = clone_img(this);
-          img_ex.style.display = 'none';
-          img_ex.addEventListener('load',expand_thumbnail_inline_load, false);
+      function expand_thumbnail_inline(e, from_initial){
+        if (pref[embed_mode].expand_thumbnail_inline && image_expanding.indexOf(this)==-1) {
+          var img_ex = clone_img(this, 'inline', from_initial);
+          if (!img_ex) return;
+          if (img_ex.tagName!=='VIDEO') {
+            img_ex.style.display = 'none';
+            img_ex.addEventListener('load',expand_thumbnail_inline_load, false);
+            this.style.opacity = 0.5;
+          }
           this.parentNode.insertBefore(img_ex,this.nextSibling);
-          this.style.opacity = 0.5;
 //          this.onclick = null; // can't track event accurately because 'on demand expand' mode adds click event to images which have a native expansion event.
           image_expanding.push(img_ex);
           
           if (e) e.preventDefault();
+          if (img_ex.tagName==='VIDEO') {
+            expand_thumbnail_inline_load.call(img_ex);
+            img_ex.play(); // may be diverted from image_hover
+          }
         }
       }
       function expand_thumbnail_inline_load(){
@@ -16627,19 +17071,18 @@ if (footer) { // temporal
         this.onclick = shrink_thumbnail_inline;
         var idx = image_expanding.indexOf(this);
         if (idx>=0) image_expanding.splice(idx,1);
-        
 
         if (site.patch.expand_thumbnail_inline_load) site.patch.expand_thumbnail_inline_load.call(this);
         expand_thumbnail_on_demand_set.call(this);
       }
       function expand_thumbnail_on_demand_set(){
-        if (pref[embed_mode].expand_thumbnail_on_demand && (pref[embed_mode].expand_thumbnail_initial || pref[embed_mode].expand_thumbnail_inline_all_after)) {
+        if (pref[embed_mode].expand_thumbnail_inline && (pref[embed_mode].expand_thumbnail_initial || pref[embed_mode].expand_thumbnail_inline_all_after)) {
           var img_next = site2[site.nickname].get_next_image(this,get_now_height()); // now_height for jump scroll
           if (img_next && img_next.style.display!=='none') expand_thumbnail_on_demand(img_next);
         }
       }
       function expand_thumbnail_on_demand(img){
-        var ref_height = get_ref_height();
+        var ref_height = get_ref_height(pref[embed_mode].thumbnail.inline.ref_height/100);
         var offsetTop;
         if (Array.isArray(img)) {
           var tgt;
@@ -16653,7 +17096,7 @@ if (footer) { // temporal
           }
           img = tgt;
         } else offsetTop = img.offsetTop;
-        if (offsetTop<ref_height) {
+        if (offsetTop<ref_height || !pref[embed_mode].thumbnail.inline.ondemand) {
           image_expand_on_demand_instance = null;
           expand_thumbnail_inline.call(img);
         } else image_expand_on_demand_instance = img;
@@ -16677,8 +17120,8 @@ if (footer) { // temporal
       }
 
       function get_name_recursive(pn){
-        while (!pn.name) pn = pn.parentNode;
-        return pn.name;
+        while (pn && !pn.name) pn = pn.parentNode;
+        return pn && pn.name;
       }
       function click_thread_tn(e){
         if (pref[embed_mode].click==='none') return;
@@ -17882,19 +18325,32 @@ if (!pref.test_mode['49']) {
         if (bookmark_list_str) tgts = bookmark_list_str.replace(/\/\/.*$/mg,',').replace(/\n/g,',').replace(/,,+/g,',').replace(/^,/,'').replace(/,$/,'').split(',');
         if (tgts[0]==='') tgts = [];
 //        var page_str = (pref.catalog.design==='page')? 'p' : 'c';
-        for (var j=0;j<pref.catalog_max_page;j++)
+        var j = 0;
+        while (blist.length>1) {
           for (var i=1;i<blist.length;i++) {
-//            if (blist[i]['key'].search(/[^\/]*\/[^\/]*\/[0-9]+/)!=-1) {if (j==0) tgts.push(blist[i]['key']);} // working code.
             var key = blist[i].key.replace(/\s/g,''); // replace... is redundant
-            if (common_func.fullname2dbt(key)[2]) {if (j==0) tgts.push(key);}
-            else if (!blist[i].max_page || j<blist[i].max_page) tgts.push(key+ ((pref.catalog.catalog_json)? 'q':'p') +j);
+            var dbt = cnst.name2domainboardthread(key,true);
+            var max_page_bd = pref.catalog_max_page_select==='auto' && liveTag.mems[dbt[0]] && liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].pgs || pref.catalog_max_page;
+            if (dbt[2] && j==0) tgts.push(key);
+            else if ((!blist[i].max_page || j<blist[i].max_page) && j<max_page_bd) tgts.push(key+ ((pref.catalog.catalog_json)? 'q':'p') +j);
+            else blist.splice(i--,1)
           }
-//        if (remove_attr) for (var i=0;i<tgts.length;i++) tgts[i] = tgts[i].replace(/!.*/,'');
-//        for (var i=tgts.length-1;i>=0;i--) { // working code
-//          var dbt = cnst.name2domainboardthread(tgts[i],true);
-//          if (tgts[i].indexOf(dbt[1])==-1) tgts[i] = dbt[0] + dbt[1] + tgts[i];
-//          else if (tgts[i].indexOf(dbt[0])==-1) tgts[i] = dbt[0] + tgts[i];
-//        }
+          j++;
+        }
+
+////        for (var j=0;j<pref.catalog_max_page;j++) // working code.
+////          for (var i=1;i<blist.length;i++) {
+//////            if (blist[i]['key'].search(/[^\/]*\/[^\/]*\/[0-9]+/)!=-1) {if (j==0) tgts.push(blist[i]['key']);} // working code.
+////            var key = blist[i].key.replace(/\s/g,''); // replace... is redundant
+////            if (common_func.fullname2dbt(key)[2]) {if (j==0) tgts.push(key);}
+////            else if (!blist[i].max_page || j<blist[i].max_page) tgts.push(key+ ((pref.catalog.catalog_json)? 'q':'p') +j);
+////          }
+//////        if (remove_attr) for (var i=0;i<tgts.length;i++) tgts[i] = tgts[i].replace(/!.*/,'');
+//////        for (var i=tgts.length-1;i>=0;i--) { // working code
+//////          var dbt = cnst.name2domainboardthread(tgts[i],true);
+//////          if (tgts[i].indexOf(dbt[1])==-1) tgts[i] = dbt[0] + dbt[1] + tgts[i];
+//////          else if (tgts[i].indexOf(dbt[0])==-1) tgts[i] = dbt[0] + tgts[i];
+//////        }
         return tgts;
       }
       function trim_list(tgts,embed_init, mode){
@@ -18050,6 +18506,7 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
 ////////      }
 
       function catalog_refresh(refresh, embed_init, from_auto) {
+        if (pref.test_mode['61'] && !embed_init && pref.catalog.auto_save_filter) onchange_funcs['save']();
         var result = catalog_refresh_1(embed_mode, refresh, embed_init, from_auto, 'refresh', board_sel.selectedIndex, pref.catalog.filter.bookmark_list_str, false);
         if (typeof(result)==='function') result(function(){catalog_refresh(refresh, embed_init, from_auto);});
       }
@@ -18736,11 +19193,10 @@ if (pref.debug_mode['14']) {
 }
         }
         var class_expander = pref.script_prefix + '_expander';
-        var arr_expander = ['page','N','N_unread','unread','all'];
         function change(e){
           if (e.target.className===class_expander) {
             var name = get_name_recursive(e.target);
-            threads[name][16].t2h_sel = arr_expander[e.target.selectedIndex];
+            threads[name][16].t2h_sel = format_html.get_t2h_from_index(e.target.selectedIndex);
             threads[name][16].expand_posts = true;
 //            drawn_idx = 0; // patched in 'show_catalog', because this is required when images are expanded.
             scan.scan_ui('expand_page', {tgts:[name], options:{refresh:true}});
@@ -18758,9 +19214,11 @@ if (pref.debug_mode['14']) {
       })();
       setTimeout(general_event_handler.setup, 500);
       cataLog.general_event_handler = general_event_handler;
+      if (pref.test_mode['62'] || (site.nickname==='KC' && embed_mode==='catalog')) site2[site.nickname].general_event_handler[site.whereami].subscribe(triage_parent);
           
       return {
         destroy: function(){ // destructor
+          if (pref.test_mode['62'] || (site.nickname==='KC' && embed_mode==='catalog')) site2[site.nickname].general_event_handler[site.whereami].unsubscribe(triage_parent);
           general_event_handler.setup(true);
           triage.off();
           for (var name in threads) remove_thread(name);
@@ -20617,17 +21075,19 @@ if (pref.test_mode['17']) {
 //    workaround_for_dollchan.onchange = on_change_workaround_for_dollchan;
     var prevent_redirection;
     var workaround_for_dollchan;
-    var parent;
-    var no;
+//    var parent
+//    var no;
     var on = false;
     var hidden_elements = [];
-    var activated = false;
     function show_hide(){
-      if (!activated && site2[site.nickname].postform_activation) {site2[site.nickname].postform_activation(); activated=true;}
+      if (site2[site.nickname].postform_activation) {
+        site2[site.nickname].postform_activation();
+        site2[site.nickname].postform_activation=null;
+      }
       var tgt    = site.postform;
       if (!on) {
         if (pn10==null) {
-          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
           pn10.id = 'pn10_debug';
 //          pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="workaround_for_dollchan">workaround for dollchan<input type="checkbox" name="prevent_redirection">prevent redirection');
           pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="prevent_redirection">prevent redirection');
@@ -20645,11 +21105,13 @@ if (pref.test_mode['17']) {
 //          options.func0_prep(pn10.childNodes[1].childNodes[0],pn10.childNodes[0]);
           options.func0_prep(pn10.childNodes[1].childNodes[0],pn10);
         }
-        parent = tgt.parentNode;
-        no = 0;
-        while (parent.childNodes[no]!=tgt && no < parent.childNodes.length) no++;
+//        parent = tgt.parentNode; // working code
+//        no = 0;
+//        while (parent.childNodes[no]!=tgt && no < parent.childNodes.length) no++;
+//        pn10.childNodes[1].childNodes[1].appendChild(tgt);
+//        site.root_body.appendChild(pn10);
+        tgt.parentNode.insertBefore(pn10,tgt);
         pn10.childNodes[1].childNodes[1].appendChild(tgt);
-        site.root_body.appendChild(pn10);
         var labels = document.getElementsByClassName('label');
         for (var i=0;i<labels.length;i++) {
           if (labels[i].innerHTML=="Go to:" || labels[i].innerHTML=="Password:") {
@@ -20663,12 +21125,14 @@ if (pref.test_mode['17']) {
           site.postform_rules.style.display = 'none';
           hidden_elements.push(site.postform_rules);
         }
-        site.postform_comment.focus();
+        site.components.postform_comment.focus();
         cnst.bottom_top(pn10);
       } else {
         while (hidden_elements.length!=0) hidden_elements.pop().style.display = '';
-        site.root_body.removeChild(pn10);
-        parent.insertBefore(tgt,parent.childNodes[no]);
+//        site.root_body.removeChild(pn10); // working code.
+//        parent.insertBefore(tgt,parent.childNodes[no]);
+        pn10.parentNode.insertBefore(pn10.childNodes[1].childNodes[1].lastChild,pn10);
+        pn10.parentNode.removeChild(pn10);
       }
       on = !on;
     }
