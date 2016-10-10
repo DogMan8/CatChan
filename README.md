@@ -43,6 +43,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.10.16.0: Meguca v2 exporter was added.<br>
 v2016.08.14.2-1: Fixed bugs.<br>
 v2016.08.14.0: Supported index page in KC.<br>
 v2016.07.24.0: Added historical lazy control to posts search.<br>
