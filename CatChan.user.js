@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.10.16.1
+// @version 2016.10.16.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2818,7 +2818,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.10.16.1<br>'+
+          'Version 2016.10.16.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3889,6 +3889,24 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
       }
       return kwds;
+    },
+    escape:(function(){
+      var entities = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '&': '&amp;',
+        '"': '&quot;',
+        '\'':'&#039;', // '&apos;'
+      };
+      function escape(str){
+        return entities[str];
+      }
+      return function(txt){
+        return txt.replace(/[<>"'&]/g,escape);
+      }
+    })(),
+    escape_text: function(txt){ // http://d.hatena.ne.jp/ockeghem/20070510/1178813849
+      return txt.replace(/&/g,'&amp;').replace(/</g,'&lt;');
     },
   }
 
@@ -10332,7 +10350,7 @@ if (pref.test_mode['35']) return;
         nof_files: function(th){return parseInt(th.footer.textContent.split('/')[1],10);},
         sub: function(th){
           var sub = th.pn.getElementsByTagName('h3')[0];
-          return (sub)? sub.textContent : undefined;
+          return (sub)? common_func.escape(sub.textContent) : undefined;
         },
         name: function(th){return undefined;},
         com: function(th){return th.pn.childNodes[th.pn.childNodes.length-1].textContent;},
@@ -10718,7 +10736,7 @@ if (pref.test_mode['35']) return;
           get tn_h(){return (this.image)? ((this.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? 150 : this.image.dims[3]) : undefined;},
           get fsize(){return (this.image)? this.image.size : undefined;},
           get ext(){return (this.image)? '.'+fileType[this.image.fileType] : undefined;},
-          get sub(){return this.subject || '';},
+          get sub(){return (this.subject)? common_func.escape(this.subject) : '';},
           name: 'Anonymous',
           get txt(){return this.body;},
           get com(){
@@ -10737,7 +10755,8 @@ if (pref.test_mode['35']) return;
             }
             Object.defineProperty(site2['meguca'].parse_funcs.post_json_template,'com',{get:function(){
                 if (!this.body) return '';
-                var com = (this.links)? this.body.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1))) : this.body;
+                var com = common_func.escape_text(this.body);
+                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1)));
                 com = com.replace(/(^>[^>].*$)/mg,'<span class="quote">$1</span>');
                 com = com.replace(/\*\*([^(\*\*)\n]*)((\*\*)|$)/mg,spoiler_replace_txt);
                 if (this.commands) {
