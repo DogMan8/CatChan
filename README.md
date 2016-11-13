@@ -46,6 +46,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.11.13.1: Fixed a bug.<br>
 v2016.11.13.0: Archiver/Delayed Pruning are added.<br>
 v2016.10.16.2: Fixed a bug.<br>
 v2016.10.16.1: Supported Meguca's native catalog, and added a search bar in virtual boardlist.<br>
