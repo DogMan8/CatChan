@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.10.16.2
+// @version 2016.11.13.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -63,6 +63,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     this.tgt = tgt;
     this.delay = delay;
     this.id = null;
+    this.do_tgt = this.do_tgt.bind(this);
   };
   DelayBuffer.prototype = {
 //    constructor: DelayBuffer,
@@ -70,7 +71,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     delayed_do: function(delay){
       if (this.id===null) {
         if (delay===undefined) delay = this.delay;
-        this.id = setTimeout(this.do_tgt.bind(this),
+        this.id = setTimeout(this.do_tgt,
                              (typeof(delay)==='number')? delay : (this.hasFocus)? delay.fg : delay.bg);
       }
     },
@@ -137,6 +138,25 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////    }
 ////  }
 
+  var pref4 = { // dynamic, but not auto sync objects.
+    funcs:{
+      set_options_to_selector: function(sel,options){
+        sel.length = options.length;
+        for (var i=0;i<options.length;i++) sel.options[i].text = options[i];
+      },
+    },
+    archive: {
+      IDB_board_sel_gfunc_pre:function(p,k,v,n,f){
+        pref4.funcs.set_options_to_selector(f,pref4.archive.IDB_board_sel_options || ['Wait...']);
+      },
+      IDB_board_sel_options: null,
+      IDB_thread_sel_gfunc_pre:function(p,k,v,n,f){
+        pref4.funcs.set_options_to_selector(f,pref4.archive.IDB_thread_sel_options || ['Wait...']);
+      },
+      IDB_thread_sel_options: null,
+    },
+  };
+  
   var pref = pref_default();
   function pref_default() {
     var proto = {
@@ -464,7 +484,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       tag : {gen: false, gen_str:''}, // dummy for checkbox and textarea.
       cloudflare: {auto_reload: true, auto_reload_time: 5},
       scan: {max:10000, lifetime:20, crawler:50, max_threads:1000, crawler_adaptive:true, crawler_idle_time_to_spawn:100},
-      notify : {sound: {notify: false, file:null, src:'beep', beep_freq:1000, beep_length_f:0.2, beep_volume_f:1, reply_to_me: true, reply: true, new_thread: true, appear: true},
+      notify : {sound: {notify: false, src:'beep', beep_freq:1000, beep_length_f:0.2, beep_volume_f:1, reply_to_me: true, reply: true, new_thread: true, appear: true},
                 desktop: {notify: true, reply_to_me: true, reply: true, new_thread:true, appear:true, lifetime:30, show_last:false,
                           limit:(brwsr.ff)? 10 : 30, delay:(brwsr.ff)? 500 : 0},
                 favicon: true,
@@ -502,22 +522,26 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               inst:{len:120, scale_thread:10, time_sel:1, board_sel:0, show_legend:true, // separate:false, 
                     show: {np:true, p:false, ep:false, nt:false, t:true, et:false}, clip_np:false, clip_np_val:0,
                     options: {bezierCurve: false, animation:false, pointDot:true, pointDotRadius:4}}},
-      archive:{json:null, dir:null, load_img:true, restore_auto:true, clear_threads:true, clear_files:true, format:'auto', domain:0, board:'',
+      archive:{load_img:true, restore_auto:true, clear_threads:true, clear_files:false, format:'auto', domain:0, board:'',
                src:'shown', store_auto:false, dir_dled:null,
                oneshot: {post:true, tn:true, img:true,  webm:true , post_idb:true, tn_idb:true, img_idb:true,  webm_idb:true},
                live:    {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
                deleted: {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
-               IDB:     {post:true, thumbnail:true, img:true,  webm:true, auto_clean:true, prune:1, check_every:1},
+               IDB:     {auto_clean:true, auto_clean_init:true, prune:168, prune_flush:false, nof_tr:10, nof_cl:20, auto_restore:false}, // check_every:1, },
                kwd: {use:true, str:'', re:false, ci:true, match:0, op:true, post:false, sub:true, name:true, trip:false, com:true, file:false, meta:false, sentence:false},
                list:true,
-               list_str:'', list_obj6:null, list_inherit:true,
-               tar: true, tarsize: 100,
+               list_str:'', list_obj6:null, list_inherit:false,
+               tar: true, tarsize: 100, sub_in_filename:true,
 //               get list_str(){return pref3.archive.list_str_get();},
 //               set list_str(val){pref3.archive.list_str_set(val);},
+               files_sel:0,
+               IDB_board_sel:0,  IDB_board_sel_gfunc_pre:pref4.archive.IDB_board_sel_gfunc_pre,
+               IDB_thread_sel:0, IDB_thread_sel_gfunc_pre:pref4.archive.IDB_thread_sel_gfunc_pre,
+               IDB_select_multiple: true,
               },
       debug_mode : {unread_count:'', parse_error:false, site2func:'', site2func_expand:true, pfunc:'', pfunc_expand: true, pfunc_all:'', pfunc_all_expand: true,
                     pfunc_comp:'', pfunc_comp_expand_same:true, pfunc_comp_expand_diff:true, pfunc_comp_proto:'',},
-      test_mode: {tips:false, num:0, num_f:0, test_str:'', js_file:null},
+      test_mode: {tips:false, num:0, num_f:0, test_str:''},
       patch: {
         delayed_invoke: {use: false, sec: 10},
         rm_404_blacklist: [], //['8chan'], // 8chan sends corrupted data.
@@ -548,13 +572,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       proto: proto, // for overwrite from pref_default.
     };
     for (var i=0;i<30;i++) pref_new.debug_mode[i] = false;
-    for (var i=0;i<80;i++) pref_new.test_mode[i] = false;
+    for (var i=0;i<90;i++) pref_new.test_mode[i] = false;
     if (site) {
       if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref_new,site2[site.nickname].pref_default);
     }
     return pref_new;
   }
-  var pref3 = {
+
+  var pref3 = { // auto sync objects.
     stats: {use:null, estimate_posts:null},
     reload_required: false,
     catalog: {
@@ -572,11 +597,15 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         },
       },
     },
+    notify:{sound:{file:null}},
     archive: {
       working: false,
       list_str: function(parent,key,val){pref_func.str2obj2(parent,key.replace(/str$/,'obj2'),val);},
       list_obj2: null,
       list_obj3: null,
+      jsons: null,
+      imgs: null,
+      dir: null,
 //      list_str_set: function(val){
 //        pref3.archive.list_str = val;
 //        pref_func.str2obj2(pref3.archive,'list_obj2',val);
@@ -600,8 +629,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //        }
 //      },
     },
+    test_mode: {js_file:null},
   };
-  
+
   var cataLog = {
     threads: null,
     insert_footer3: null,
@@ -701,11 +731,13 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           var tagName = fm[i].tagName;
           if (tagName==='INPUT') {
             if (fm[i].type==='file') {
-              if (set) parent[tgt] = fm[i];
-              else if (parent[tgt] && parent[tgt]!==fm[i]) {
+              target_hier = pref_func.get_tgt(name, pref3);
+              parent = target_hier[0];
+              tgt    = target_hier[1];
+              if (!set && parent[tgt] && parent[tgt]!==fm[i]) {
                 fm[i].parentNode.insertBefore(parent[tgt],fm[i]);
                 fm[i].parentNode.removeChild(fm[i]);
-              }
+              } else parent[tgt] = fm[i]; // set also when set===false, keep tracking the DomNode.
             } else if (set) {
               if      (typeof(parent[tgt])==='number' ) {
                 if (fm[i].name.substr(-2,2)==='_f') parent[tgt] = (isNaN(parseFloat(fm[i].value)))? 0 : parseFloat(fm[i].value);
@@ -737,6 +769,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           } else if (tagName==='SELECT') {
             if (set) {
               if (parent[tgt]!==undefined) parent[tgt] = fm[i].selectedIndex;
+//              if (parent[tgt+'_sfunc']) parent[tgt+'_sfunc'](parent,key,parent[tgt],name);
             } else {
 //              var tgt_obj = (tgt.search(/sel/)!=-1)? tgt.replace(/sel/,'obj') : null;
 //              if (parent[tgt_obj]) {
@@ -746,6 +779,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //                  fm[i].options[fm[i].length-1].text = parent[tgt_obj][j][0]['key'];
 //                }
 //              }
+              if (parent[tgt+'_gfunc_pre']) parent[tgt+'_gfunc_pre'](parent,tgt,parent[tgt],name,fm[i]);
               if (parent[tgt]>=fm[i].length) parent[tgt] = 0;
               fm[i].selectedIndex = parent[tgt];
             }
@@ -795,12 +829,23 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         var pn_name = e.currentTarget.getAttribute('name'); // for <span>
         if (!propagate && ['INPUT','TEXTAREA','SELECT'].indexOf(e.currentTarget.tagName)!=-1) pref_func.apply_prep(e.currentTarget,true);
         if (this[pn_name]) this[pn_name].call(e.currentTarget,e);
-        else if (pn_name.indexOf('.')!=-1) {
-          var name = '*'+pn_name.substr(pn_name.indexOf('.')); // *.XXX
-          if (this[name]) this[name].call(e.currentTarget,e);
-          else if (pn_name.lastIndexOf('.')!=-1) {
-            var name = pn_name.substr(0,pn_name.lastIndexOf('.')+1)+'*'; // XXX.YYY.*
+        else {
+          var idx = pn_name.indexOf('.');
+          if (idx!=-1) {
+            var name = '*'+pn_name.substr(idx); // *.XXX
             if (this[name]) this[name].call(e.currentTarget,e);
+            else {
+              var idx_l = pn_name.lastIndexOf('.');
+              if (idx_l!=-1) {
+                var name = pn_name.substr(0,idx_l+1)+'*'; // XXX.YYY.*
+                if (this[name]) this[name].call(e.currentTarget,e);
+                else if (idx!=-1) {
+                  var name_0 = pn_name.substr(0,idx); // XXX.YYY
+                  var name_1 = pn_name.substr(idx+1);
+                  if (this[name_0] && this[name_0][name_1]) this[name_0][name_1](e); // NO THIS EMULATION.
+                }
+              }
+            }
           }
         }
 //        var pn = e.target.parentNode; // 'Filter' doesn't have stopper.
@@ -1123,7 +1168,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         pref_func.str2obj4(pref.liveTag, 'style_in_obj4',   pref.liveTag.style_in_str);
         pref_func.str2obj5(pref.liveTag, 'ex_list_obj5',    pref.liveTag.ex_list_str);
         pref_func.str2obj5(pref.liveTag, 'rm_list_obj5',    pref.liveTag.rm_list_str);
-        pref_func.settings.onchange_funcs['archive.kwd.*']();
+        pref_func.settings.onchange_funcs.archive['kwd.*'](); // archiver.event_funcs['kwd.*'](); can't use this because it doesn't exist at this time.
         this.obj_init_hier(pref3, pref);
       },
       obj_elim_the_same: function(dst,src, not_root){
@@ -1153,10 +1198,6 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         delete pref_test.liveTag.style_in_obj4;
         delete pref_test.liveTag.ex_list_obj5;
         delete pref_test.liveTag.rm_list_obj5;
-        delete pref_test.notify.sound.file;
-        delete pref_test.archive.json;
-        delete pref_test.archive.dir;
-        delete pref_test.archive.dir_dled;
         if (pref_test.settings) delete pref_test.settings;
 //        if (pref_test.graph) delete pref_test.graph;
         pref_func.obj_elim_the_same(pref_test,pref);
@@ -1933,13 +1974,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             pn13_0_2.getElementsByTagName('select')['settings.indexing'].selectedIndex = pref.settings.indexing;
             pref_func.settings.pn13 = pn13; // for onchange func.
             pref_func.mirror_targets.pn13_1 = pn13.childNodes[1]; // for mirror.
-            pref_func.settings.onchange_funcs['settings.indexing'](); // leaks 1 EventLister, but call add_onchange in this.
-            pref_func.add_onchange(pn13_0_2,pref_func.settings.onchange_funcs_formatted); // leaks 1.
+            pref_func.settings.onchange_funcs['settings.indexing']();
+            pref_func.add_onchange(pn13_0_2,pref_func.settings.onchange_funcs_formatted);
+            pref_func.tooltips.add_root(pref_func.mirror_targets.pn13_1);
             cnst.bottom_top(pn13);
           } else {
-            pref_func.mirror_targets.pn13_1 = null;
             pref_func.settings.files_store();
-            pref_func.settings.pn13 = cnst.div_destroy(pref_func.settings.pn13, true); // returns null
+            pref_func.mirror_targets.pn13_1 = null;
+            pref_func.settings.pn13 = cnst.div_destroy(pref_func.settings.pn13, true); // returns null, call remove_root() in this.
           }
         },
 ////        show_hide : function(){cnst.make_destroy(pref_func.settings,'pn13',pref_func.settings.prep_pn13,pref_func.settings.destroy_pn13);}, // working code.
@@ -1980,6 +2022,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           pref_func.settings.onchange_funcs['pn13_1_warning']();
         },
         files_store: function(){
+          var files_archive = pref_func.mirror_targets.pn13_1.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0]; // out of w3c, but works in chrome and FF.
+          if (files_archive) site.script_body.appendChild(files_archive); // called also at initial.
           var files = pref_func.settings.pn13.querySelectorAll('input[type=file]');
           if (files.length>0) pref_func.apply_prep_2(files,true);
         },
@@ -2050,10 +2094,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 ['no:No', 'passive:Passive detection. Don\'t make any request',
                  'acc:Best effort without any additional requests', 'full:Full detection, read all posts at first'],
               '<br>'+
-              '3,<ICBX"' + mode + '.deleted_posts.merge"> Merge deleted posts with live posts<br>'+
-              this.radios(mode+'.deleted_posts.store',4,
-                ['LS:Store to LocalStorage to share with other tabs<br>5,<ICBX"' + mode + '.deleted_posts.auto_clean"> Clean up automatically',
-                 'SS:Store to SessionStorage to get higher security', 'MC:Use ChannelMessage for security']));
+              '3,<ICBX"' + mode + '.deleted_posts.merge"> Merge deleted posts with live posts<br>'
+//              this.radios(mode+'.deleted_posts.store',4,
+//                ['LS:Store to LocalStorage to share with other tabs<br>5,<ICBX"' + mode + '.deleted_posts.auto_clean"> Clean up automatically',
+//                 'SS:Store to SessionStorage to get higher security', 'MC:Use ChannelMessage for security'])
+              );
 
           },
 //          show_val_rollup: function(pref, inner){
@@ -2073,11 +2118,12 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           rollup: function(inner){
             return '&emsp;' + this.show_hide('[\u25bc]', '[\u25b2]', inner);
           },
-          format_posts: function(mode){
+          format_posts: function(mode, html_funcs){
             return '2,<ICBX"' +mode+ '.open_spoiler_text"> Open text spoiler<br>'+
               '2,<ICBX"' +mode+ '.colorID"> Color ID<br>'+
               '2,<ICBX"' +mode+ '.backlink"> Backlink<br>'+
               '2,<ICBX"' +mode+ '.localtime"> Local time<br>'+
+              html_funcs.deleted_posts_detection(mode)+'<br>'+
               '2,<ICBX"' +mode+ '.mark_new_posts"> Mark new posts<br>';
           },
           updates: function(mode){
@@ -2146,7 +2192,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'Watcher',
           'Notifiers',
           'JSON Archiver: Store',
-          'JSON Archiver: Restore',
+          'JSON Archiver: Restore', // 'pref.settings.indexing===17' are used twice for FILES_ARCHIVE.
           'UIP tracker for 4chan',
           'Command Line Interface',
 //          'Workaround for dollchan',
@@ -2319,7 +2365,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               '&emsp;&emsp;<input type="checkbox" name="page.popup"> Pop up reply<br>'+
               html_funcs.expand_thumbnail_inline('page')+
               html_funcs.expand_thumbnail_hover('page')+
-              html_funcs.format_posts('page')+
+              html_funcs.format_posts('page', html_funcs)+
     //          '&emsp;&emsp;<input type="checkbox" name="page.scan_tag"> Scan tags at initial<br>'+
     //          '&emsp;&emsp;<input type="checkbox" name="page.format.show.posts"> Show posts<br>'+
               '2,<ICBX"page.use_expander_always"> Use CatChan\'s expander always<br>'+
@@ -2344,7 +2390,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               '&emsp;&emsp;<input type="checkbox" name="thread.popup"> Pop up reply<br>'+
               html_funcs.expand_thumbnail_inline('thread')+
               html_funcs.expand_thumbnail_hover('thread')+
-              html_funcs.format_posts('thread')+
+              html_funcs.format_posts('thread', html_funcs)+
               html_funcs.updates('thread')+
     //          '&emsp;<input type="checkbox" name="thread.save_board_list_sel"> Save board group index<br>'+
               '<br>'+
@@ -2654,58 +2700,85 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;&emsp;<input type="checkbox" name="notify.sound.new_thread"> New threads<br>'+
           '&emsp;&emsp;<input type="checkbox" name="notify.sound.appear"> Appear threads<br>',
 //          '3',
-          function(html_funcs){return 'JSON Archiver: Store (under implementation)<br>'+
-            '1,Store:<br>'+
-            '2,1. Make sure DOWNLOAD DIRECTORY to be set correctly.<br>'+
-            '3,All files will be into the directory.<br>'+
-            '3,And also, make sure each download doesn\'t ask you anything.<br>'+
-            '3,So many files will be downloaded.<br>'+
-            '2,2. Select sources:<br>'+
-            '3,Manual/AutoLive/AutoDeleted<br>'+
-            '4,<ICBX"archive.oneshot.post">&emsp;<ICBX"archive.live.post"><ICBX"archive.deleted.post"> Posts<br>'+
-            '4,<ICBX"archive.oneshot.tn">&emsp;<ICBX"archive.live.tn"><ICBX"archive.deleted.tn"> Thumbnails<br>'+
-            '4,<ICBX"archive.oneshot.img">&emsp;<ICBX"archive.live.img"><ICBX"archive.deleted.img"> Images (original size)<br>'+
-            '4,<ICBX"archive.oneshot.webm">&emsp;<ICBX"archive.live.webm"><ICBX"archive.deleted.webm"> Webms<br>'+
-            '3,Manual/AutoLive/AutoDeleted<br>'+
-            '4,<ICBX"archive.oneshot.post_idb">&emsp;<ICBX"archive.live.post_idb"><ICBX"archive.deleted.post_idb"> Posts<br>'+
-            '4,<ICBX"archive.oneshot.tn_idb">&emsp;<ICBX"archive.live.tn_idb"><ICBX"archive.deleted.tn_idb"> Thumbnails<br>'+
-            '4,<ICBX"archive.oneshot.img_idb">&emsp;<ICBX"archive.live.img_idb"><ICBX"archive.deleted.img_idb"> Images (original size)<br>'+
-            '4,<ICBX"archive.oneshot.webm_idb">&emsp;<ICBX"archive.live.webm_idb"><ICBX"archive.deleted.webm_idb"> Webms<br>'+
-            '2,3. Select files which will be skipped downloading<br>'+
-            '3,Downloaded files: <IF"archive.dir_dled" multiple directory><br>'+
-            '2,4a. <BTN"archive.oneshot,OneShotArchive"> or <BTN"archive.start,StartArchiving"><br>'+
-            '4,<IR"archive.src,shown"> All shown threads<br>'+
-            '4,<IR"archive.src,watched"> All watched threads<br>'+
-            '4,<IR"archive.src,stored"> All stored threads<br>'+
-//            '3,<IR"archive.src""scanned"> All scanned threads for automatic archiving<br>'+
-            '2,4b. <ICBX"archive.store_auto"> Auto archiving if OP matches:<br>'+
-            '3,Keyword: <input type="text" name="archive.kwd.str" size="25">'+
+          function(html_funcs){
+            archiver.event_funcs['queryQuota']();
+            return 'JSON Archiver: Store (under implementation)<br>'+
+//            '1,Store:<br>'+
+            '<br>'+
+            '1,1. Make sure DOWNLOAD DIRECTORY to be set correctly.'+html_funcs.rollup(
+              '2,All files will be into the directory.<br>'+
+              '2,And also, make sure each download doesn\'t ask you anything.<br>'+
+              '2,So many files will be downloaded.') +'<br>'+
+            '1,2. Select sources for each target:<br>'+
+            '2,File: Manual/Auto<br>'+
+            '3,<ICBX"archive.oneshot.post"><ICBX"archive.live.post"> Posts<br>'+
+            '3,<ICBX"archive.oneshot.tn"><ICBX"archive.live.tn"> Thumbnails<br>'+
+            '3,<ICBX"archive.oneshot.img"><ICBX"archive.live.img"> Images (original size)<br>'+
+            '3,<ICBX"archive.oneshot.webm"><ICBX"archive.live.webm"> Webms<br>'+
+            '2,IndexedDB: Manual/Auto'+html_funcs.rollup(
+              '4,<ICBX"archive.IDB.auto_clean"> Automatic clean up<br>'+
+              '4,<ICBX"archive.IDB.auto_clean_init"> Automatic clean up at start up<br>'+
+              '4,Delayed pruning: <ITB3"archive.IDB.prune"> hours<br>'+
+              '5,<ICBX"archive.IDB.prune_flush"> Archive to file at pruning<br>'+
+              '4,num of transactions: <ITB3"archive.IDB.nof_tr"><br>'+
+              '4,num of requests in a cluster: <ITB3"archive.IDB.nof_cl">')+'<br>'+
+            '4,used / limit: <span name="SHOW_QUOTA"></span><button name="archive.queryQuota"><img src="' + cnst.icons.refresh + '" style="width:1em;height:1em"></button><br>'+
+            '3,<ICBX"archive.oneshot.post_idb"><ICBX"archive.live.post_idb"> Posts<br>'+
+            '3,<ICBX"archive.oneshot.tn_idb"><ICBX"archive.live.tn_idb"> Thumbnails<br>'+
+            '3,<ICBX"archive.oneshot.img_idb"><ICBX"archive.live.img_idb"> Images (original size)<br>'+
+            '3,<ICBX"archive.oneshot.webm_idb"><ICBX"archive.live.webm_idb"> Webms<br>'+
+//            '2,3. Select files which will be skipped downloading<br>'+
+//            '3,Downloaded files: <IF"archive.dir_dled" multiple directory><br>'+
+            '1,3. <ICBX"archive.list_inherit"> Inherit previous archiving list<br>'+
+            '1,4a. <ICBX"archive.store_auto"> Auto archiving if OP matches:<br>'+
+            '2,Keyword: <input type="text" name="archive.kwd.str" size="25">'+
             pref_func.settings.html_funcs.make_sel('archive.kwd.match', ['match all','match any','unmatch all','unmatch any'])+ '<br>'+
-            '4,<ICBX"archive.kwd.sub">Subject '+
+            '3,<ICBX"archive.kwd.sub">Subject '+
             '<ICBX"archive.kwd.name">Name '+
             '<ICBX"archive.kwd.com">Comment <br>'+
-            '4,<ICBX"archive.kwd.ci">CI'+
+            '3,<ICBX"archive.kwd.ci">CI'+
             ' <ICBX"archive.kwd.sentence">Sentence'+
             ' <ICBX"archive.kwd.re">RE<br>'+
-            '2,4c. <ICBX"archive.list"> List picker<br>'+
-            '3,<textarea rows="1" cols="40" name="archive.list_str" placeholder="lain  // whole lainchan\n/tech/  // whole /tech/\n/q/1234  // thread /q/1234"></textarea><br>'+
-            '2,4d. <ICBX"archive.list_inherit"> Inherit previous archiving list<br>'+
-            '2,4e. You can select target threads individually using triage<br>';},
-          function(html_funcs){return 'JSON Archiver: Restore (under implementation)<br>'+
-            '1,Restore:<br>'+
-            '2,1. Open a live catalog, index page or thread to be overriden.<br>'+
-            '4,CatChan must be used in it.<br>'+
-            '2,2. Select format<br>'+
-            '3,<IR"archive.format,auto">Extract from filename: Domain-Board-No_Sub.json<br>'+
-            '3,<IR"archive.format,manual">Set manually: '+ html_funcs.make_sel('archive.domain',html_funcs.get_domains()) + '/<ITB5"archive.board">/No.<br>'+
-            '2,3. Select JSON and image files<br>'+
-            '3,JSON/HTML files: <IF"archive.json" multiple accept=".html,.json,text/*"><br>'+
-//            '3,<ICBX"archive.load_img"> Image files: <IF"archive.dir" multiple directory><br>'+
-//            '3,<ICBX"archive.load_img"> Image files: <IF"archive.dir" webkitdirectory directory><br>'+
-            '3,<ICBX"archive.load_img"> Image files: <IF"archive.dir" multiple webkitdirectory directory><br>'+
-            '2,4. <BTN"archive.restore,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
-            '4,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>'+
-            '2,5. <BTN"archive.clear_files_button,Clear Files"> <ICBX"archive.clear_files"> Auto clear after open<br>';},
+            '1,4b. <ICBX"archive.list"> List picker<br>'+
+            '2,<textarea rows="1" cols="40" name="archive.list_str" placeholder="lain  // whole lainchan\n/tech/  // whole /tech/\n/q/1234  // thread /q/1234"></textarea><br>'+
+            '1,4c. <BTN"archive.oneshot,OneShotArchive"> or <BTN"archive.start,StartArchiving"><br>'+
+            '3,<IR"archive.src,shown"> All shown threads<br>'+
+            '3,<IR"archive.src,watched"> All watched threads<br>'+
+            '3,<IR"archive.src,stored"> All stored threads<br>'+
+//            '3,<IR"archive.src""scanned"> All scanned threads for automatic archiving<br>'+
+            '1,4d. You can select target threads individually using triage<br>';},
+          function(html_funcs){
+            if (pref.archive.files_sel===2) archiver.event_funcs['queryList']();
+            return 'JSON Archiver: Restore (under implementation)<br>'+
+//            '1,Restore:<br>'+
+            '<br>'+
+            '1,1. Open a live catalog, index page or thread to be overriden.<br>'+
+            '2,CatChan must be working in it.<br>'+
+            '1,2. Select where to extract<br>'+
+            '2,<IR"archive.format,auto">Select from filename: Domain-Board-No_Sub.json<br>'+
+            '2,<IR"archive.format,manual">Set manually: '+ html_funcs.make_sel('archive.domain',html_funcs.get_domains()) + '/<ITB5"archive.board">/No.<br>'+
+            '1,3a. <ICBX"archive.IDB.auto_restore"> Automatic restore from IndexedDB<br>'+
+            '1,3b. Select source from: '+ html_funcs.make_sel('archive.files_sel',['Dir','Files','IndexedDB'])+ '<br>'+
+            '<span name="FILES_ARCHIVE0"' +((pref.archive.files_sel===0)? '' : ' style="display:none"') +'>'+
+              '&emsp;&emsp;<span><IF"archive.dir" multiple webkitdirectory directory><BTN"archive.files_clear,X"></span><br>'+
+            '</span>'+
+            '<span name="FILES_ARCHIVE1"' +((pref.archive.files_sel===1)? '' : ' style="display:none"') +'>'+
+              '&emsp;&emsp;JSONs/HTMLs: <IF"archive.jsons" multiple accept=".html,.json,text/*"><br>'+
+              '2,<ICBX"archive.load_img"> Images: <IF"archive.imgs" multiple webkitdirectory directory><br>'+
+            '</span>'+
+            '<span name="FILES_ARCHIVE2"' +((pref.archive.files_sel===2)? '' : ' style="display:none"') +'>'+
+              '&emsp;&emsp;<span><select name="archive.IDB_board_sel"' + ((pref.archive.IDB_select_multiple)? ' multiple':'') + ' style="float:none"></select>'+
+              '<select name="archive.IDB_thread_sel" style="float:none' + ((pref4.archive.IDB_thread_sel_options)? '"' : ';display:none"')
+                                                      + ((pref.archive.IDB_select_multiple)? ' multiple':'') +'></select></span>'+
+                html_funcs.rollup('&emsp;&emsp;<ICBX"archive.IDB_select_multiple"> Multiple select<br>'+
+                                  '&emsp;&emsp;Export selected &emsp;&emsp;&emsp;&emsp;<BTN"archive.IDB.export_thread,Threads"><br>'+
+                                  '&emsp;&emsp;Reset archived time of selected <BTN"archive.IDB.reset_time,Threads">')+
+                html_funcs.rollup('&emsp;&emsp;Delete selected <BTN"archive.IDB.delete_board,Boards"><BTN"archive.IDB.delete_thread,Threads">')+'<br>'+
+            '</span>'+
+            '&emsp;&emsp;<BTN"archive.restore_button,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
+            '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>';
+//            '1,5. <BTN"archive.clear_files_button,Clear Files"> <ICBX"archive.clear_files"> Auto clear after open<br>';
+          },
           'UIP tracker for 4chan:<br>'+
           '&emsp;<input type="checkbox" name="uip_tracker.on"> Show num of unique IPs after post No.<br>'+
           '&emsp;&emsp;<input type="checkbox" name="uip_tracker.posts"> Show num of posts<br>'+
@@ -2818,7 +2891,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.10.16.2<br>'+
+          'Version 2016.11.13.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -2855,7 +2928,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           (function(){
             var str = '';
             var i=-1;
-            while (pref.test_mode[++i]!==undefined) str += '<input type="checkbox" name="test_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%10===9)? '<br>' : '');
+            while (pref.test_mode[++i]!==undefined) str += '<input type="checkbox" name="test_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%50===49)? '<br><br>' : (i%10===9)? '<br>' : '');
             return str;
           })() +
           '<input type="checkbox" name="test_mode.tips">'+
@@ -2881,6 +2954,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //        health_indicator: null,
         get onchange_funcs_formatted(){
           Object.defineProperty(this,'onchange_funcs_formatted',{value:pref_func.add_onchange_format(this.onchange_funcs), writable:true, enumerable:true, configurable:true});
+          pref_func.add_onchange_format(this.onchange_funcs.archive);
           return this.onchange_funcs_formatted;
         },
         onchange_funcs : {
@@ -2969,16 +3043,22 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'settings.indexing' : function(e){
             var this_obj = pref_func.settings;
             var pn13_1 = pref_func.settings.pn13.childNodes[1];
-            if (pn13_1.innerHTML) pref_func.tooltips.remove_hier(pn13_1);
+//            if (pn13_1.innerHTML) pref_func.tooltips.remove_hier(pn13_1);
             pref_func.settings.files_store();
+            var files_archive;
+            if (pref.settings.indexing===17) files_archive = site.script_body.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0]; // out of w3c, but works in chrome and FF.
             var html = (((typeof(this_obj.htmls[pref.settings.indexing])==='function')? this_obj.htmls[pref.settings.indexing](this_obj.html_funcs) :
                                                                                         this_obj.htmls[pref.settings.indexing]   )+
                        this_obj.html_common);
             pn13_1.innerHTML = pref_func.format_html_str(html);
+            if (files_archive) {
+              var ref = pn13_1.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0]; // out of w3c, but works in chrome and FF.
+              ref.parentNode.insertBefore(files_archive,ref);
+              ref.parentNode.removeChild(ref);
+            }
             pref_func.add_onchange(pn13_1,pref_func.settings.onchange_funcs_formatted);
             pref_func.settings.apply_pn13_1();
 //            pref_func.tooltips.add_hier(pn13_1);
-            pref_func.tooltips.add_root(pn13_1);
           },
           'pn13_1_warning_reload': function(){
             pref3.reload_required = true;
@@ -3316,30 +3396,217 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                                 (pref[embed_mode].posts_search_op==='hide')? 'display:none !important' : null);},
           '*.posts_search_op_opacity': '*.posts_search_op',
           'style.post_editing': function(){styleSheet.register('.'+pref.script_prefix+'_post_editing', pref.style.post_editing);},
-          'archive.restore': function(e){ // bound this later.
-            if (!cataLog.threads) return;
-            if (!pref.archive.restore_auto && e.target.name!=='archive.restore') return;
-            var files= pref_func.settings.pn13.getElementsByTagName('input')['archive.json'].files;
-            var imgs = pref_func.settings.pn13.getElementsByTagName('input')['archive.dir'].files;
+          'archive': {
+            'restore2': function(e, files, posts){
+              if (!cataLog.threads) return;
+              if (e && !pref.archive.restore_auto && e.target.name!=='archive.restore_button') return;
+              if (!posts) {
+                files = Array.prototype.slice.call(pref3.archive.dir.files);
+                posts = files.filter(function(v,i,a){return v.name.search(/\.(json|html*)$/)!=-1;});
+                posts = posts.filter(function(v,i,a){return v.name.indexOf('_deleted.json')==-1;}); // PATCH
+              }
+              var imgs = files.filter(function(v,i,a){return v.name.search(/\.(json|html*)$/)==-1;});
+              if (posts.length===0) return;
+              archiver.restore_entry(posts,imgs, this['clear_files_button'], files.filter(function(v,i,a){return v.name.indexOf('_deleted.json')!=-1;}));
+            },
+            'dir': 'restore2',
+            'files_sel': function(e){
+              e.target.parentNode.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0].style.display = (pref.archive.files_sel===0)? '' : 'none';
+              e.target.parentNode.querySelectorAll('span[name="FILES_ARCHIVE1"]')[0].style.display = (pref.archive.files_sel===1)? '' : 'none';
+              e.target.parentNode.querySelectorAll('span[name="FILES_ARCHIVE2"]')[0].style.display = (pref.archive.files_sel===2)? '' : 'none';
+              if (pref.archive.files_sel===2) this['queryList']();
+            },
+            'restore_button': function(e){
+              if (pref.archive.files_sel===0) this['restore2'](e);
+              if (pref.archive.files_sel===2) this['IDB_thread_sel'](e);
+              else this['restore'](e);
+            },
+            'restore': function(e){
+//            if (!cataLog.threads) return;
+//            if (!pref.archive.restore_auto && e.target.name!=='archive.restore') return;
+              var posts= pref3.archive.jsons.files;
+              var imgs = pref3.archive.imgs.files;
 //            if (pref.archive.force_json) files = Array.prototype.filter.call(files,function(v){return v.name.substr(-5,5)==='.json';});
-            if (files.length===0 || (pref.archive.load_img && imgs.length===0)) return;
-            archiver.restore_entry(files,imgs, this['archive.clear_files_button']);
+              if (posts.length===0 || (pref.archive.load_img && imgs.length===0)) return;
+//            archiver.restore_entry(files,imgs, this['clear_files_button']);
+              this['restore2'](null, Array.prototype.slice.call(imgs), posts);
+            },
+            'jsons': 'restore',
+            'imgs': 'restore',
+            'clear_files_button': function(){
+              var doms = [pref3.archive.jsons, pref3.archive.imgs];
+              for (var i=0;i<doms.length;i++) if (doms[i]) {
+                var dom_new = doms[i].parentNode.insertBefore(doms[i].cloneNode(doms[i]),doms[i]);
+                dom_new.onchange = doms[i].onchange;
+                doms[i].parentNode.removeChild(doms[i]);
+                dom_new.onchange({target:doms[i], currentTarget:doms[i]});
+              }
+            },
+            get pn_IDB_board_sel(){return pref_func.settings.pn13 && pref_func.settings.pn13.querySelector('select[name="archive.IDB_board_sel"]');},
+            get pn_IDB_thread_sel(){return pref_func.settings.pn13 && pref_func.settings.pn13.querySelector('select[name="archive.IDB_thread_sel"]');},
+            'IDB_select_multiple': function(){
+              this.pn_IDB_board_sel.multiple = pref.archive.IDB_select_multiple;
+              this.pn_IDB_thread_sel.multiple = pref.archive.IDB_select_multiple;
+            },
+            'queryQuota': function(){
+              if (navigator.webkitTemporaryStorage) navigator.webkitTemporaryStorage.queryUsageAndQuota(this['showQuota'].bind(this));
+            },
+            'showQuota': function(usage, limit){
+              var tgt = pref_func.settings.pn13.querySelector('span[name="SHOW_QUOTA"]');
+              if (tgt) tgt.textContent = usage.toLocaleString() + ' / ' + limit.toLocaleString() + ' (' + (usage*100/limit).toString().slice(0,5) + '%)';
+            },
+            'queryList': function(){
+              if (pref.test_mode['65']) if (!pref4.archive.IDB_board_sel_options) window.indexedDB.webkitGetDatabaseNames().onsuccess = this['showList'].bind(this);
+            },
+            'showList': function(e){
+              if (e) {
+                var results = e.target.result;
+                var options = ['Select board'];
+                for (var i=0;i<results.length;i++) options[options.length] = results[i].replace(/^[^\/]*/,'');
+                options[options.length] = 'ALL (' + results.length + ')';
+              } else options = null;
+              pref4.archive.IDB_board_sel_options = options;
+              pref_func.apply_prep(this.pn_IDB_board_sel, false);
+            },
+            'IDB_board_sel': function(){
+              pref4.archive.IDB_thread_sel_options = null;
+              var pn = this.pn_IDB_thread_sel;
+              pref_func.apply_prep(pn, false);
+              pn.style.display = '';
+              var boards = this['IDB_selected_boards']();
+              for (var i=0;i<boards.length;i++) IDB.req(site.nickname, boards[i], null, null, this['showThreadList_fromIDB'].bind(this), 'list_os');
+            },
+            'IDB_selected_boards': function(){
+              if (pref.archive.IDB_board_sel===0) return [];
+//            var board = pref4.archive.IDB_board_sel_options[pref.archive.IDB_board_sel];
+//            return (board[0]==='A')? pref4.archive.IDB_board_sel_options.slice(1,-1) : [board]; // ALL
+              return (pref.archive.IDB_board_sel===pref4.archive.IDB_board_sel_options.length-1)? pref4.archive.IDB_board_sel_options.slice(1,-1) :
+                Array.prototype.slice.call(this.pn_IDB_board_sel.options).filter(function(v){return v.selected;}).map(function(v){return v.textContent;});
+            },
+            'showThreadList_fromIDB': function(domain, board, nos){
+              var boards = this['IDB_selected_boards']();
+              if (boards.length==1) board = '';
+              var options = pref4.archive.IDB_thread_sel_options || ['ALL'];
+              for (var i=0;i<nos.length;i++) options[options.length] = board + nos[i];
+              options[0] = ' '; // assure the top before sort.
+              options.sort();
+              options[0] = 'ALL (' + (options.length-1) +')';
+              pref4.archive.IDB_thread_sel_options = options;
+              pref_func.apply_prep(this.pn_IDB_thread_sel, false);
+            },
+            'IDB_thread_sel': function(e){
+              if (!cataLog.threads) return;
+              if (!pref.archive.restore_auto && e.target.name!=='archive.restore_button') return;
+              if (pref.archive.clear_threads && cataLog.threads) cataLog.catalog_clear_threads(0);
+              this['IDB.selected_threads'](IDB.req, null, this['restore3'].bind(this), 'get_all');
+            },
+            'IDB.selected_threads': function(func, arg3, arg4, arg5){
+              var ths = (pref.archive.IDB_thread_sel===0)? pref4.archive.IDB_thread_sel_options.slice(1) : // ALL
+                Array.prototype.slice.call(this.pn_IDB_thread_sel.options).filter(function(v){return v.selected;}).map(function(v){return v.textContent;});
+//                                                      [pref4.archive.IDB_thread_sel_options[pref.archive.IDB_thread_sel]];
+              var boards = this['IDB_selected_boards']();
+              var board = (boards.length===1)? boards[0] : '';
+              if (func) for (var i=0;i<ths.length;i++) func(site.nickname, board || ths[i].replace(/[^\/]*$/,''), ths[i].replace(/\/[^\/]*\//,''), arg3, arg4, arg5);
+              else {
+                var proto = {domain:site.nickname, boards:boards};
+                for (var i=0;i<ths.length;i++) ths[i] = {board:board || ths[i].replace(/[^\/]*$/,''), no:ths[i].replace(/\/[^\/]*\//,''), __proto__:proto};
+                return ths;
+              }
+            },
+            'restore3': function(domain, board, no, result){
+              var obj = this['consolidate_IDB_result'](result);
+              if (obj.posts.length>0) {
+                archiver.restore({name:(site.nickname+board+no).replace(/\//,'-')}, site2[domain].parse_funcs.thread_json.prep_to_archive(obj.posts), obj.tn, true);
+                if (obj.posts_deleted.length>0) {
+                  if (pref.test_mode['80']) board = board.slice(0,-1)+'_IDB/';
+                  var lth = liveTag.mems.init({domain:domain, board:board, no:no});
+                  archiver.prep_deleted_posts(lth.th, lth, true, obj.posts_deleted);
+                }
+              }
+            },
+            'consolidate_IDB_result': function(result){
+              var posts = [];
+              var posts_deleted = [];
+              var images = {};
+              var thumbs = Object.create(images);
+              var keys = Object.keys(result);
+              for (var i=0;i<keys.length;i++) {
+                if (keys[i].indexOf('posts_deleted')===0) posts_deleted = posts_deleted.concat(result[keys[i]]);
+                else if (keys[i].indexOf('posts')===0) posts = posts.concat(result[keys[i]]);
+                else if (keys[i]==='pruned_time') continue; // patch for old files.
+                else {
+                  var ext = keys[i].replace(/[^\.]*./,'');
+                  var type = (ext==='webm')? 'video/webm' : 'image';
+                  var file_obj = {type:type, file:result[keys[i]]};
+                  if (keys[i].indexOf('tn_')===0) thumbs[keys[i].substr(3)] = file_obj;
+                  else images[keys[i].substr(4)] = file_obj;
+                }
+              }
+              var i = 0;
+              while (i<posts.length-1 && posts[i].no<posts[i+1].no) i++;
+              if (i!==posts.length-1) { // out of order or duplication may due to queueing system of IDB, retry or reload.
+                posts.sort(this['consolidate_IDB_sort_func']);
+                while (i<posts.length-1) {
+                  if (posts[i].no===posts[i+1].no) {
+                    var j=i+2;
+                    while (j<posts.length && posts[i].no===posts[j].no) j++;
+                    while (--j>i) if (posts[j-1].com===posts[j].com) posts.splice(j,1);
+                  }
+                  i++;
+                }
+              }
+              return {posts:posts, posts_deleted:posts_deleted, img:images, tn:thumbs};
+            },
+            'consolidate_IDB_sort_func': function(a,b){return (a.no!==b.no)? a.no - b.no : (a.com<b.com)? -1:1},
+            'IDB.delete_board': function(){
+              var boards = this['IDB_selected_boards']();
+              for (var i=0;i<boards.length;i++) window.indexedDB.deleteDatabase(pref.script_prefix+'.'+boards[i]);
+              var pn = this.pn_IDB_thread_sel;
+              if (pn) pn.style.display = 'none';
+              this['showList'](null);
+              this['queryList']();
+            },
+            'IDB.delete_thread': function(){
+              this['IDB.selected_threads'](IDB.req, null, null, 'delete_th');
+              this['IDB_board_sel'](null);
+            },
+            'IDB.export_thread': function(){
+              var ths = this['IDB.selected_threads']();
+              var filename = 'CatChan_IDB_'+ths[0].domain+'-'+((ths[0].boards.length==1)? ths[0].board.slice(1,-1) : ths[0].boards.length)+'-'+
+                                                              ((ths.length===1)? ths[0].no : ths.length) +'.tar';
+              var file_id = 'IDB_extract_'+Date.now();
+              var callback = (function(this_obj){
+                var count = ths.length;
+                return function(domain, board, no, result){
+                  this_obj['export_thread'](domain, board, no, result, file_id);
+                  if (--count===0) archiver.tar.flush(file_id, filename);
+                }
+              })(this);
+              for (var i=0;i<ths.length;i++) IDB.req(ths[i].domain, ths[i].board, ths[i].no, null, callback, 'get_all');
+            },
+            'export_thread': function(domain, board, no, result, file_id, filename){
+              var obj = this['consolidate_IDB_result'](result);
+//            var file_id = 'CatChan_IDB_'+domain+'-'+board.slice(1,-1)+'-'+no+'.tar';
+              var props = Object.keys(obj);
+              for (var i=0;i<props.length;i++) {
+                var props2 = (Array.isArray(obj[props[i]]))? ['dummy'] : Object.keys(obj[props[i]]);
+                for (var j=0;j<props2.length;j++) {
+                  var isPosts = props[i].indexOf('posts')===0;
+                  if (isPosts && obj[props[i]].length===0) continue;
+                  var data = (isPosts)? new Blob([JSON.stringify(site2[domain].parse_funcs.thread_json.prep_to_archive(obj[props[i]]))], {type:'text/plain'}) : obj[props[i]][props2[j]].file;
+                  var suffix = (isPosts)? domain+'-'+board.slice(1,-1)+'-'+no+ props[i].substr(5)+'.json' : props[i] +'_'+ props2[j];
+                  archiver.tar.add_blob(data, {domain:domain, board:board, no:no}, suffix, file_id, true);
+                }
+              }
+              if (filename) archiver.tar.flush(file_id, filename);
+            },
+            'IDB.reset_time': function(){
+              this['IDB.selected_threads'](archiver.clean_list);
+            },
+            'start': function(e){archiver.store_entry((e.target.name==='archive.start')? 'ARC' : 'ARC1');},
+            'oneshot': 'start',
+            'kwd.*': function(){pref.archive.kwd.kwds = common_func.kwd_prep_regexp(pref.archive.kwd);},
           },
-          'archive.dir': 'archive.restore',
-          'archive.json': 'archive.restore',
-          'archive.clear_files_button': function(){
-            var doms = [pref_func.settings.pn13.getElementsByTagName('input')['archive.json'],
-                        pref_func.settings.pn13.getElementsByTagName('input')['archive.dir']];
-            for (var i=0;i<doms.length;i++) {
-              var dom_new = doms[i].parentNode.insertBefore(doms[i].cloneNode(doms[i]),doms[i]);
-              dom_new.onchange = doms[i].onchange;
-              doms[i].parentNode.removeChild(doms[i]);
-              dom_new.onchange();
-            }
-          },
-          'archive.start': function(){archiver.store_entry((this.name==='archive.start')? 'ARC' : 'ARC1');},
-          'archive.oneshot': 'archive.start',
-          'archive.kwd.*': function(){pref.archive.kwd.kwds = common_func.kwd_prep_regexp(pref.archive.kwd);},
           'test_mode.js_load': function(){
             var file = pref_func.settings.pn13.getElementsByTagName('input')['test_mode.js_file'].files[0];
             var url = window.URL.createObjectURL(file);
@@ -3362,7 +3629,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //        html = html.replace(/<IR("[\w\.]+):([^:]+):([^"]+)">/g,'<input type="radio" name=$1" value="$2">$3');
         html = html.replace(/<IR"([\w\.]+),([^"]+)">/g,'<input type="radio" name="$1" value="$2">');
         html = html.replace(/<SSV("[\w\.]+")>/g,'<span data-class="show_value" style="font-weight:bold" name=$1></span>');
-        html = html.replace(/<BTN"([\w.]+),([^"]+)">/g,'<button name="$1">$2</button>');
+        html = html.replace(/<BTN"([\w.]+),([^"]+)"([^>]*)>/g,'<button name="$1"$3>$2</button>');
         html = html.replace(/<IF"/g,'<input type="file" name="');
         return html.replace(/<input type="(checkbox|radio)[^>]+>[^<]+/g,'<label>$&</label>');
       },
@@ -3393,7 +3660,6 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
   pref_func.settings.onchange_funcs['catalog.tag.max']    = pref_func.settings.onchange_funcs['tag.re_generate'];
   pref_func.settings.onchange_funcs['tag.gen_str']        = pref_func.settings.onchange_funcs['tag.gen'];
   pref_func.bind_myself(pref_func.settings.onchange_funcs.__proto__, ['SHOW','HIDE','SHOW2','HIDE2','SHOW3','HIDE3','TOGGLE2','SHOWALL','HIDEALL']);
-  pref_func.bind_myself(pref_func.settings.onchange_funcs, ['archive.restore']);
 
   var styleSheet = (function(){
     var ss;
@@ -4090,23 +4356,12 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////////      return obj;
 ////////    },
     url_boards_json: function(){return '';}, // returns url of boards.json.
-    get_boards_json_indicator: null,
-    get_boards_json: function(key,callback,callback_always,health_indicator){
+    get_boards_json: function(key,callback,callback_always){
       var key = 'boards_json_'+this.nickname;
-      if (this.get_boards_json_indicator) {
-        this.get_boards_json_indicator.report({end:Date.now(), prog_str:'Aborted.', err_str:'Aborted by next request.'});
-        this.get_boards_json_indicator = null;
-      }
       if (this.boards_json) this.get_boards_json_callback(this.nickname,{status:200, response:this.boards_json},[callback,callback_always]);
-      else {
-        var indicator;
-        if (health_indicator) { // patch
-          indicator = health_indicator.shift('limegreen','b',key);
-          indicator.report({start:Date.now(), prog_str:'Loading boards\' information'});
-          this.get_boards_json_indicator = indicator;
-        }
-        http_req.get(key,this.nickname+',dummy,dummy',this.url_boards_json(),this.get_boards_json_callback.bind(this),0,true,[callback,callback_always,indicator,key]);
-      }
+      else httpd.req({initiator:key,
+                      tgts:[{domain:this.nickname, url:this.url_boards_json()[0], responseType:'json', data_type:'json'}],
+                      callback_1:function(req,val){this.get_boards_json_callback(key,val,[callback,callback_always,true])}.bind(this)},6);
     },
     get_boards_json_callback: function(key,value,args){
       if (value.status==200) {
@@ -4114,16 +4369,44 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         if (!site3[this.nickname].boards) liveTag.update_pn_buf.do_tgt();
         site3[this.nickname].boards = true;
       }
-      if (args[2]) {
-        args[2].report({end:Date.now(), prog_str: (value.status==200)? 'boards.json is loaded.' : '',
-                        err_str:  (value.status==200)? '' : 'Error at loading board\'s infomation.'});
-        this.get_boards_json_indicator = null;
-      }
-      if (args[3]) http_req.close(args[3]);
       if (args[0] && (args[1] || value.status===200))
         if (args[2]) args[0]();
         else setTimeout(args[0],0);
     },
+////    get_boards_json_indicator: null, // working code.
+////    get_boards_json: function(key,callback,callback_always,health_indicator){
+////      var key = 'boards_json_'+this.nickname;
+////      if (this.get_boards_json_indicator) {
+////        this.get_boards_json_indicator.report({end:Date.now(), prog_str:'Aborted.', err_str:'Aborted by next request.'});
+////        this.get_boards_json_indicator = null;
+////      }
+////      if (this.boards_json) this.get_boards_json_callback(this.nickname,{status:200, response:this.boards_json},[callback,callback_always]);
+////      else {
+////        var indicator;
+////        if (health_indicator) { // patch
+////          indicator = health_indicator.shift('limegreen','b',key);
+////          indicator.report({start:Date.now(), prog_str:'Loading boards\' information'});
+////          this.get_boards_json_indicator = indicator;
+////        }
+////        http_req.get(key,this.nickname+',dummy,dummy',this.url_boards_json(),this.get_boards_json_callback.bind(this),0,true,[callback,callback_always,indicator,key]);
+////      }
+////    },
+////    get_boards_json_callback: function(key,value,args){
+////      if (value.status==200) {
+////        this.postprocess_board(value.response);
+////        if (!site3[this.nickname].boards) liveTag.update_pn_buf.do_tgt();
+////        site3[this.nickname].boards = true;
+////      }
+////      if (args[2]) {
+////        args[2].report({end:Date.now(), prog_str: (value.status==200)? 'boards.json is loaded.' : '',
+////                        err_str:  (value.status==200)? '' : 'Error at loading board\'s infomation.'});
+////        this.get_boards_json_indicator = null;
+////      }
+////      if (args[3]) http_req.close(args[3]);
+////      if (args[0] && (args[1] || value.status===200))
+////        if (args[2]) args[0]();
+////        else setTimeout(args[0],0);
+////    },
     postprocess_board: function(val){ // for 4chan and all 
       for (var i=0;i<val.boards.length;i++) {
         var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val.boards[i].board+'/'});
@@ -4325,8 +4608,6 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
         if (pref.test_mode['67']) archiver.clean_list_all(nos, domain, board);
       }
-      if (pref.test_mode['65'] && pref.archive.IDB.auto_clean) IDB.clean_up(site.nickname, site.board, nos);
-      liveTag.mems[domain][board].LS_synced = true;
     },
     ls_key_deletedPosts: pref.script_prefix + '.deletedPosts.',
     clean_up_deleted_posts_1: function(bt){if (localStorage) delete localStorage[this.ls_key_deletedPosts + bt];},
@@ -4338,7 +4619,6 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       for (var i=0;i<keys.length;i++)
         if (keys[i].indexOf(ls_key_bd)==0 && nos[keys[i].substr(ls_key_bd.length)]!==null) delete localStorage[keys[i]];
     },
-
     check_reply: (function(){
       var com_or_txt = false;
       var pn_tags = document.createElement('div');
@@ -4527,6 +4807,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           //          [18]: watch_req, [19]:watching, [22:20]:archive,
           //          [23]: watch time not initialized. (23,18) -> 10: not initialized, 11: watch_req, use watch[2], 01: watch_req, use tiem_watch, 00: usual state.
           //          [24]: reentry of detection of deleted posts
+          //          [25]: posts_saved.
           // watch[1] number of unread replies to me << 16 + number of unread replies
           // watch[2] checked time'
           var tag_init = watch[0]&0x00020000; // patch for retag.
@@ -5063,7 +5344,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         var no = lth.q.waiting[i];
         while (j>0 && no<th.posts[j].no) j--;
         if (no===th.posts[j].no) {
-          th.posts[j].parse_funcs = th.parse_funcs; // redundant??? 
+//          th.posts[j].parse_funcs = th.parse_funcs; // redundant???  // CAUSED A BUG, parse_funcs are archived and stop its prototype chain.
           if (th.type_data==='html') this.popups_fetched_html(th.posts[j], th); // wrap_to_parse.post and prepare_html_extract_params should be used, but not debugged, left this.
           site2[th.domain].wrap_to_parse.posts({posts:[th.posts[j]], __proto__:th});
           cataLog.format_html.prepare_html_post(th, th.posts[j]);
@@ -5592,6 +5873,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         sticky: function(obj){return obj.posts[0].sticky===1;},
         time_unit: 1000,
         prep_to_archive: function(obj){return {posts:obj};},
+        rip_from_archive: function(obj){return obj.posts || obj;}, // patch for dual acceptance, internal and external format.
 //        proto: 'page_json'
       },
       'post_html': {
@@ -6437,12 +6719,13 @@ if (pref.test_mode['0']) {
     },
 
     catalog_json2html3_thumbnail: function(obj, board) {
-      return (obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.webm' || obj.ext==='.mp4')?
+      var url = (obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.webm' || obj.ext==='.mp4')?
                site2['8chan'].protocol + '//' + site2['8chan'].domain_url + board + 'thumb/' + obj.tim + '.jpg' :
              (obj.embed)? 'https:' + obj.embed.replace(/.*src="/,'').replace(/".*/,'') :
 //             (obj.ext===undefined)? site2['8chan'].protocol + site2['8chan'].domain_url + '/static/no-file.png' :
 ////             (obj.ext===undefined)? 'https://' + site2['8chan'].domain_url + '/static/assets' + board + 'no-file.png' :
              '';
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
 //      return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2['8chan'].domain_url + board + 'thumb/' + obj.tim + obj.ext : '');
     },
     short_link:function(){return '';},
@@ -7259,11 +7542,15 @@ if (pref.test_mode['0']) {
         sub: 'DEFAULT.post_html',
         name: function(th){return th.pn.getElementsByTagName('img')[0].getAttribute('data-name');},
         com: function(th){
-if (pref.test_mode['0']) {
-          if (!th.hasOwnProperty('sub')) th.sub = this.sub(th);
-}
-          return th.pn[brwsr.innerText].replace(th.pn.getElementsByTagName('strong')[0][brwsr.innerText],'').replace(th.sub,'');
+          return th.pn.getElementsByClassName('replies')[0].innerHTML.replace(/\s*<strong>[^<]*<\/strong>\s*(<br>)*/,'').replace(/\s*$/,'');
         },
+        type_com:'html',
+//        com: function(th){ // working code.
+//if (pref.test_mode['0']) {
+//          if (!th.hasOwnProperty('sub')) th.sub = this.sub(th);
+//}
+//          return th.pn[brwsr.innerText].replace(th.pn.getElementsByTagName('strong')[0][brwsr.innerText],'').replace(th.sub,'');
+//        },
         footer: function(th){return th.pn.getElementsByTagName('strong')[0];},
         sticky: function(th){return null;}, // patch
 //        format: function(th){th.pn.getElementsByTagName('a')[0].removeAttribute('href');return null;},
@@ -7333,10 +7620,15 @@ if (pref.test_mode['0']) {
 //        after_test  : [':ITER',':ALL','posts',['sub','name','com'],'flags'],
         after_test  : ['time_created',':ITER',':ALL','posts',['sub','name','com','flag'],':ITER',':GALL','posts',['flags','flag']],
         before_test_post : ['posts',':ITER',':FL','posts',['time'],'html_org','footer'],
+//        ths: function(doc) {
+//          var ths = doc.pn.querySelectorAll('div[id^=thread_]');
+//          if (ths.length===0) ths = doc.pn.querySelectorAll('div[de-thread]'); // for dollchan archive // doesn't work because of other modification.
+//          return this.ths_array(doc,ths);
+//        },
         ths: function(doc) {return this.ths_array(doc,doc.pn.querySelectorAll('div[id^=thread_]'));},
         th_init: function(th){
           if (site.whereami!=='page' || !pref.catalog.embed_page) th.pn.removeAttribute('class');
-//          var as = th.pn.querySelectorAll('.files a');
+//          var as = th.pn.querySelectot_inheritrAll('.files a');
 //          for (var j=0;j<as.length;j++) as[j].removeAttribute('href');
 ////          for (var j=0;j<as.length;j++) as[j].addEventListener('click',th.parse_funcs.preventDefault,false); // not debugged.
         },
@@ -7355,7 +7647,11 @@ if (pref.test_mode['0']) {
 //        },
         no : function(th){return parseInt(th.pn.id.substring(th.pn.id.indexOf('_')+1),10);},
 ////        post_no: 'page_html.no',
-        time: function(post){return Date.parse(post.pn.getElementsByTagName('time')[0].getAttribute('datetime'));},
+        time: function(post){
+          var pn_time = post.pn.getElementsByTagName('time')[0]; // old threads doesn't have this.
+          return (pn_time)? Date.parse(pn_time.getAttribute('datetime'))/1000 : undefined;
+        },
+        time_unit:1000, // must be the same as json
 ////////        time_posted: function(th){
 ////////if (pref.test_mode['0']) {
 ////////          if (!th.hasOwnProperty('posts')) this.entry(th,this.before_test_post);
@@ -7367,11 +7663,10 @@ if (pref.test_mode['0']) {
 ////          if (!th.hasOwnProperty('posts')) this.entry(th,this.before_test_post);
 ////}
 ////          return th.posts[th.posts.length-1].time;
-          var i=th.posts.length-1;
-          while (i>=0) {
+          var i=th.posts.length;
+          while (--i>=0) {
             var mail = th.posts[i].pn.getElementsByClassName('email')[0];
             if (!mail || mail.href!=='mailto:sage') return th.posts[i].time;
-            i--;
           }
           return undefined;
         },
@@ -7413,8 +7708,10 @@ if (pref.test_mode['0']) {
         pn_name: 'post_html',
         com:  function(post){
           var com = post.pn.getElementsByClassName('body')[0];
-          return (com)? com[brwsr.innerText] : '';
+//          return (com)? com[brwsr.innerText] : '';
+          return (com)? com.innerHTML : '';
         },
+        type_com:'html',
         footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('post op')[0]);},
 //        footer: function(th){
 //          var footer = document.createElement('div');
@@ -7776,10 +8073,6 @@ if (pref.test_mode['0']) {
       var fname = site2[post.domain].post_json2html_fname(post);
       var furl = site2[post.domain].catalog_json2html3_src(post,board);
       var turl = site2[post.domain].catalog_json2html3_thumbnail(post,board);
-      if (post.localArchive) {
-        furl = archiver.url2file(post.localArchive, furl);
-        turl = archiver.url2file(post.localArchive, turl);
-      }
       var html_str = 
               '<div class="file' + ((multifile)?' multifile':'')+'"' +((multifile)?' style="width:'+(post.tn_w+40)+'px"':'') +'>'+
                 '<p class="fileinfo">File: '+
@@ -7874,10 +8167,12 @@ if (pref.test_mode['0']) {
       return omit_info;
     },
     catalog_json2html3_thumbnail: function(obj, board) {
-      return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2[obj.domain].domain_url + board + 'thumb/' + obj.tim + obj.ext : '');
+      var url = ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + this.domain_url + board + 'thumb/' + obj.tim + obj.ext : '');
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
     },
     catalog_json2html3_src: function(obj, board) {
-      return ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png' || obj.ext==='.webm')? 'https://' + site2[obj.domain].domain_url + board + 'src/' + obj.tim + obj.ext : '');
+      var url = ((obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png' || obj.ext==='.webm')? 'https://' + this.domain_url + board + 'src/' + obj.tim + obj.ext : '');
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
     },
     catalog_json2html3 : function(obj,board,thumb_url) {
       var th = document.createElement('div');
@@ -8629,6 +8924,9 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
       'post_html' : {
         flag: 'page_html',
       },
+      'post_json' : {
+        time_unit: 1, // for archive.list_all
+      }
     },
 
     general_event_handler:{
@@ -8660,8 +8958,14 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 
     post_json2html_fname_server: function(post){return post.filename_server;},
     post_json2html_fname: function(post){return post.filename;},
-    catalog_json2html3_src: function(obj) {return site.protocol + '//' + site2[obj.domain].domain_url + '/files/' + obj.filename_server;},
-    catalog_json2html3_thumbnail: function(obj) {return site.protocol + '//' + site2[obj.domain].domain_url + '/thumbnails/' + obj.filename_server;},
+    catalog_json2html3_src: function(obj) {
+      var url = site.protocol + '//' + site2[obj.domain].domain_url + '/files/' + obj.filename_server;
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
+    },
+    catalog_json2html3_thumbnail: function(obj) {
+      var url = site.protocol + '//' + site2[obj.domain].domain_url + '/thumbnails/' + obj.filename_server;
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
+    },
 //    catalog_json2html3_thumbnail: function(obj, board) {
 //      var ext = (obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext;
 //      return (obj.ext)? 'http://i.4cdn.org' + obj.board + obj.tim + 's' + ext : '';
@@ -9488,6 +9792,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           else if (lth.th.parse_funcs.missing_info) scan.scan_ui('image_hover', {tgts: [lth.domain+lth.board], options:{callback:function(){cataLog.image_hover_reentry(img);}, priority:6}}); // NEVER ACTIVATED because catalog.json is read always at initial
           return src;
         },
+        time_unit: 1000,
       },
       'catalog_json' : {
         ths: function(obj, parse_obj) {
@@ -9626,6 +9931,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           }
         },
         get_op_src: 'thread_json',
+        time_unit: 1000,
       },
       'page_json'  : {
         ths: 'DEFAULT.page_json',
@@ -9663,6 +9969,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //////        post_no: function(post){return parseInt(post.pn.id.substr(3),10);},
 ////        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
         get_op_src: 'thread_json',
+        time_unit: 1000,
         proto: 'page_html',
       },
       'thread_json'  : {
@@ -9676,14 +9983,16 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         get_op_src: function(th, img){
           if (th.op_img_url.indexOf('s.4cdn.org')!=-1) return th.op_img_url;
           if (!th.ext && th.parse_funcs.missing_info) scan.scan_ui('image_hover', {tgts: [th.domain+th.board+'j0'], options:{callback:function(){cataLog.image_hover_reentry(img);}, priority:6}}); // NEVER ACTIVATED because catalog.json is read always at initial
-          return (th.ext)? th.op_img_url.replace(/s(\.\w+)$/, th.ext) : img.src;
+          return (th.localArchive)? site2[th.domain].catalog_json2html3_src(th,th.board) :
+                 (th.ext)? th.op_img_url.replace(/s(\.\w+)$/, th.ext) : img.src;
+//          return (th.ext)? th.op_img_url.replace(/s(\.\w+)$/, th.ext) : img.src;
         },
         proto: 'DEFAULT.thread_json'
       },
       'post_html': {
         no : function(th){return parseInt(th.pn.id.substr(1),10) || parseInt(th.pn.id.substr(2),10)},
         time: function(post){
-          return parseInt(post.pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10) * 1000;
+          return parseInt(post.pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10);
         },
         flag: function(post){  // same as 8chan
           var flags = post.pn.getElementsByClassName('flag');
@@ -9695,6 +10004,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //          return txt.replace(/\n/g,'<br>');},
         txt2com_anchor_class: 'quotelink',
         txt2com_spoiler_replace_txt: '<s>$1</s>',
+        time_unit: 1000,
         proto: 'DEFAULT.post_html',
       },
       'post_json': {
@@ -9963,13 +10273,15 @@ if (pref.test_mode['35']) return;
       return omit_info;
     },
     catalog_json2html3_thumbnail: function(obj, board) {
-      return (obj.ext)? this.protocol+'//i.4cdn.org' + board + obj.tim + 's'  // not 'obj.board' but 'board' is for thread_json.
-                          + ((obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext)
-                      : '';
+      var url = (obj.ext)? this.protocol+'//i.4cdn.org' + board + obj.tim + 's'  // not 'obj.board' but 'board' is for thread_json.
+                             + ((obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext)
+                         : '';
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
     },
     catalog_json2html3_src: function(obj, board) {
-      return (obj.ext)? this.protocol+'//i.4cdn.org' + board + obj.tim + obj.ext : // not 'obj.board' but 'board' is for thread_json.
-                        '';
+      var url = (obj.ext)? this.protocol+'//i.4cdn.org' + board + obj.tim + obj.ext : // not 'obj.board' but 'board' is for thread_json.
+                           '';
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
     },
 //    catalog_json2html3_src: function(obj, board) { // working code.
 //      return (obj.ext)? this.protocol+'//i.4cdn.org' + board + obj.tim  // not 'obj.board' but 'board' is for thread_json.
@@ -10510,26 +10822,26 @@ if (pref.test_mode['35']) return;
         return false;
       }
     },
-    url_boards_json : function(){return ['https://meguca.org/json/boardList', 'json'];}, // working code.
-    postprocess_board: function(val){
-      for (var i=0;i<val.length;i++) {
-        var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].id+'/'});
-        bd.o = i;
-        if (val[i].tags && val[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
-      }
-    },
-//////    utilize_boards_json: true,
-////    url_boards_json : function(){return ['https://meguca.org/json/boardTimestamps', 'json'];}, // need to be debugged
+////    url_boards_json : function(){return ['https://meguca.org/json/boardList', 'json'];}, // working code.
 ////    postprocess_board: function(val){
-////      var order = 0;
-////      for (var i in val) {
-////        var bd = liveTag.mems.init({domain:this.nickname, board:'/'+i+'/'});
-////        bd.o = order++;
-////        Object.defineProperty(bd,'max',{value:val[i], writable:true});
-////        if (bd.read_max===undefined) Object.defineProperty(bd,'read_max',{value:0, writable:true});
-//////        if (val[i].tags && val[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
+////      for (var i=0;i<val.length;i++) {
+////        var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].id+'/'});
+////        bd.o = i;
+////        if (val[i].tags && val[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
 ////      }
 ////    },
+    utilize_boards_json: true,
+    url_boards_json : function(){return ['https://meguca.org/json/boardTimestamps', 'json'];}, // need to be debugged
+    postprocess_board: function(val){
+      var order = 0;
+      for (var i in val) {
+        var bd = liveTag.mems.init({domain:this.nickname, board:'/'+i+'/'});
+        bd.o = order++;
+        Object.defineProperty(bd,'max',{value:val[i], writable:true});
+        if (bd.read_max===undefined) Object.defineProperty(bd,'read_max',{value:0, writable:true});
+//        if (val[i].tags && val[i].tags.length!=0) liveTag.postprocess_board_add_btag(val[i].tags,bd);
+      }
+    },
     make_url4 : function(dbt){
       var url_prefix  = this.protocol + '//' + this.domain_url; // force to use https:
       if (dbt[3].substr(0,4)==='page' && dbt[2]==0) dbt[3] = 'catalog_json'; // dbt[2] is string, === can't be used.
@@ -10611,9 +10923,10 @@ if (pref.test_mode['35']) return;
     post_container: site2['4chan'].post_container,
     wrap_to_parse: site2['DEFAULT'].wrap_to_parse, // bypass meguca1
     catalog_json2html3_thumbnail: function(post){
-      return (post.image)? this.protocol + '//' + this.domain_url + // fullpath is required for desktopNotification.
+      var url = (post.image)? this.protocol + '//' + this.domain_url + // fullpath is required for desktopNotification.
         ((post.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? '/assets/spoil/default.jpg' :
         '/images/thumb/' + post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png')) : undefined;
+      return (url && post.localArchive)? archiver.url2file(post.localArchive, url) : url;
     },
 //    catalog_json2html3_src: (function(){
 //      var fileType = ['jpg', 'png', 'gif', 'webm', 'pdf', 'svg', 'mp4', 'mp3', 'ogg'];
@@ -10808,7 +11121,7 @@ if (pref.test_mode['35']) return;
       chart: {inst:{show: {np:false, p:true}, time_sel:3}},
       easy2:{limits:1},
     },
-    boards_json:{boards:[{board:'cyb', pages:7}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
+    boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
     check_func : function(){
       var href = window.location.href;
       if (href.indexOf('/lainchan.org/')!=-1) {
@@ -10888,16 +11201,27 @@ if (pref.test_mode['35']) return;
         while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
         pn_tb = pn_tb_new;
         pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
-      } else if (site.whereami==='page') {
+        document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        node_ref.parentNode.insertBefore(pn_filter,node_ref);
+      } else { // if (site.whereami==='page') {
         var pctrls = document.getElementsByName('postcontrols')[0];
 //        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
-        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
+//        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
+        var blotter = document.getElementsByClassName('blotter')[0];
+        var pn = document.createElement('div');
+        pn.setAttribute('style','float:left');
+        pn.appendChild(blotter.nextSibling.nextSibling);
+        pn.appendChild(blotter.nextSibling.nextSibling);
+        if (site.whereami==='page') pn.appendChild(document.createTextNode(' | '));
+        blotter.parentNode.insertBefore(pn,blotter.nextSibling.nextSibling);
+        pn.parentNode.insertBefore(pn_filter, pn.nextSibling);
+        pn.parentNode.insertBefore(pn_tb, pn.nextSibling);
       }
 //      node_ref.parentNode.insertBefore(pn_hi,node_ref);
-      if (site.whereami==='catalog') node_ref.previousElementSibling.appendChild(pn_tb);
+//      if (site.whereami==='catalog') node_ref.previousElementSibling.appendChild(pn_tb);
 //      if (site.whereami==='catalog') node_ref.previousSibling.appendChild(pn_tb);
-      else node_ref.parentNode.insertBefore(pn_tb,node_ref);
-      node_ref.parentNode.insertBefore(pn_filter,node_ref);
+//      else node_ref.parentNode.insertBefore(pn_tb,node_ref);
+//      node_ref.parentNode.insertBefore(pn_filter,node_ref);
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
       if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
       else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
@@ -10992,9 +11316,9 @@ if (pref.test_mode['35']) return;
       }
     },
     catalog_json2html3_thumbnail: function(obj, board) {
-      return (obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + site2['lain'].domain_url + board + 'thumb/' + obj.tim + '.png' :
-             (obj.ext==='.pdf')? 'https://' + site2['lain'].domain_url + '/static/pdf.jpg' :
-             '';
+      var url = (obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + this.domain_url + board + 'thumb/' + obj.tim + '.png' :
+                (obj.ext==='.pdf')? 'https://' + this.domain_url + '/static/pdf.jpg' : '';
+      return (url && obj.localArchive)? archiver.url2file(obj.localArchive, url) : url;
     },
 ////////    catalog_json2html3 : function(obj,board,thumb_url) {
 ////////      var th = document.createElement('div');
@@ -11280,8 +11604,8 @@ if (pref.test_mode['35']) return;
         if (this.name==='notify.sound.file') pref.notify.sound.src='file';
         if (pref.notify.sound.src==='beep') make_beep();
         else {
-          var file = pref_func.settings.pn13.getElementsByTagName('input')['notify.sound.file'].files[0];
-          if (file) audio = new Audio(URL.createObjectURL(file));
+          var file = pref3.notify.sound.file;
+          if (file) audio = new Audio(URL.createObjectURL(file.files[0]));
         }
         pref_func.settings.apply_pn13_1();
         if (pref.notify.sound.notify) audio.play();
@@ -11563,6 +11887,7 @@ if (pref.test_mode['35']) return;
     delete ports[name];
   }
   function send_message(name,val,win){
+    if (typeof(val[0])==='string') val = [val];
 //    if (!ports[name]) make_port_parent(name,win);
     if (win) make_port_parent(name,win);
     if (ports[name]==='init') { // chrome works at ==.
@@ -11570,7 +11895,7 @@ if (pref.test_mode['35']) return;
       for (var i=0;i<val.length;i++) messages_to_send[name].push(val[i]);
     } else {
       for (var i=0;i<val.length;i++) {
-        if (pref.debug_mode['0']) console.log(window.name + ': Sent to '+name+': '+val[i].toString().substr(0,80));
+        if (pref.debug_mode['0']) console.log(window.name + ': Sent to '+name+': '+ JSON.stringify(val[i]).substr(0,80));
         if (!brwsr.ff) ports[name].postMessage(JSON.stringify(val[i]));
         else ports[name].postMessage(JSON.stringify(val[i]),'*');
         if (val[i][0]=='CLOSE') {close_connection(name);break;}
@@ -11581,17 +11906,20 @@ if (pref.test_mode['35']) return;
     if (pref.debug_mode['0']) console.log(window.name + ': Received from '+name+': '+e.data.toString().substr(0,80));
     var val = JSON.parse(e.data);
     if (typeof(val)=='string') val=JSON.parse(val); // patch for GM.
-    if (val[0]=='CLOSE') close_connection(name);
+    if (val[0]=='HTTPD') httpd.sub_funcs(val[1]);
+    else if (val[0]=='ARCHIVER') archiver.sub_funcs(val[1]);
+    else if (val[0]=='CLOSE') close_connection(name);
     else if (val[0]=='MARK' && val[1]>0) {
       var marked_first_post = (common_obj.thread_reader && pref.test_mode['16'])? common_obj.thread_reader.mark_newer_posts(val[1])
                                                         : site2[site.nickname].mark_newer_posts(document,val[1],pref.catalog.unmark_on_hover);
       if (marked_first_post) scrollTo(0,marked_first_post.offsetTop - site.header_height());
       else scrollTo(0,document.body.clientHeight - window.innerHeight);
       if (common_obj.thread_reader) common_obj.thread_reader.mark_posts_from_parent(val[1]);
-    } else if (val[0]=='SUBFRAME_INIT') http_req.remote();
-    else if (val[0]=='SUB_GET') http_req.sub_get(val[1]);
-    else if (val[0]=='SUB_ACK') http_req.sub_ack(val[1]);
-    else if (val[0]=='SUB_DEST') http_req.sub_dest(val[1]);
+    }
+////    else if (val[0]=='SUBFRAME_INIT') http_req.remote();
+////    else if (val[0]=='SUB_GET') http_req.sub_get(val[1]);
+////    else if (val[0]=='SUB_ACK') http_req.sub_ack(val[1]);
+////    else if (val[0]=='SUB_DEST') http_req.sub_dest(val[1]);
     else if (val[0]=='OWN_POSTS') {
       if (site2[val[1]].prep_own_posts_event_received) site2[val[1]].prep_own_posts_event_received(val[2]);
       else site3[val[1]].own_posts = val[2];
@@ -11682,200 +12010,480 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //  }
 //  if (window.opener) make_port_child(window.opener);
 
-  var http_req = (function(){
+  var httpd = (function(){
     var iframes = {};
-//    var caches = {}; // prevent occuring multiple access to the same url in short time.
     var local = true;
     var parser = new DOMParser();
-    var serializer = new XMLSerializer();
-//    var doc;
-//    var pool; // object pool
-    var reqs = {};
-    var Req = function(sender){
-      this.sender = sender;
-      this.req = null;
-      this.httpd = new XMLHttpRequest();
-      this.httpd.onload  = Req.prototype.onload.bind(this);
-      this.httpd.onerror = this.httpd.onload;
-      this.httpd.onabort = this.httpd.onload;
+//    var serializer = new XMLSerializer();
+    var xhrs = new Map();
+    var xhrs_free = [];
+    var xhrs_count = 0;
+    var remote_opened = {};
+    var remote_count = 0;
+    var remote_reqs = {};
+    var reqs = [];
+    var reqs_waiting_finish = [];
+    var pause = 0;
+    var crawler_spawn   = new Watchdog(dispatch, pref.scan.crawler_idle_time_to_spawn);
+    var xhrs_reqs = [];
+    var crawler_timeout = new Watchdog(xhr_timeout, 30000);
+    var health_indicator;
+    function dispatch_if_idle(){
+      if (!crawler_spawn.id) dispatch();
     }
-    Req.prototype.onload = function(){
-//      if (local) onload_local(this.sender,{date: Date.now(), __proto__:this.httpd},false); // cause illegal invocation, I don't know why.
-      if (local) {
-        if (this.httpd.responseType==='text') onload_text(this.sender,{date: Date.now(), status: this.httpd.status, responseText: this.httpd.responseText},false); // temporaly patch.
-        else onload_local(this.sender,{date: Date.now(), status: this.httpd.status, response: this.httpd.response},false);
-      } else send_message('parent',[['SUB_ACK',[this.sender,Date.now(),this.httpd.status,this.httpd.responseText]]]);
-    };
-    function get_make_Req(sender, req){
-      if (reqs[sender]===undefined) reqs[sender] = new Req(sender);
-      if (req) reqs[sender].req = req;
-      return reqs[sender];
-    }
-    function destroy_httpd(sender){
-      delete reqs[sender];
-    }
-////    function make_httpd(sender){ // working code.
-////      var httpd = new XMLHttpRequest();
-////      function httpd_events(){
-//////        if (local) onload_local(sender,{date: Date.now(), status: httpd.status, responseText: httpd.responseText},false);
-////        if (local) {
-////          if (httpd.responseType==='text') onload_local(sender,{date: Date.now(), status: httpd.status, responseText: httpd.responseText},false); // temporaly patch.
-////          else onload_local(sender,{date: Date.now(), status: httpd.status, response: httpd.response},false);
-////        } else send_message('parent',[['SUB_ACK',[sender,Date.now(),httpd.status,httpd.responseText]]]);
-////      }
-////      httpd.addEventListener('load',  httpd_events, false);
-////      httpd.addEventListener('error', httpd_events, false);
-////      httpd.addEventListener('abort', httpd_events, false);
-////      httpds[sender] = [httpd, httpd_events];
-////    }
-////    function destroy_httpd(sender){
-////      if (sender in httpds) {
-////        var httpd = httpds[sender][0];
-////        var httpd_events = httpds[sender][1];
-////        httpd.removeEventListener('load',  httpd_events, false);
-////        httpd.removeEventListener('error', httpd_events, false);
-////        httpd.removeEventListener('abort', httpd_events, false);
-////        delete httpds[sender];
-//////if (pref.test_mode['30']) console.log('destroyed: '+site.nickname+'/'+sender)
-////      }
-////    }
-    function make_iframe(domain,url){
-//      var ifrm = cnst.init('left:200px:bottom:200px:display:none:Show'); // working code.
-////      var ifrm = cnst.init('left:200px:bottom:200px:' + ((pref.debug_mode['0'])? '' : 'display:none:') + 'Show');
-////      var ifrm = cnst.init('left:200px:bottom:200px:Show');
-//      ifrm.innerHTML = '<iframe name=' + domain + '></iframe>';
-      cnst.make_iframe(domain);
-//      try {
-        iframes[domain] = window.open((site2[domain].home!=='')? site2[domain].home : url, domain);
-        send_message(domain,[['SUBFRAME_INIT']],iframes[domain]);
-//      } catch (e) {
-//        console.log('IFRAME OPEN ERROR'); // not debugged yet.
-//      }
-//      iframes[domain].onerror = function(){console.log('IFRAME OPEN ERROR');}; // can't catch
-    }
-    function onload_from_sw_cache_check(key,value,args) {
-      if (value!==null) {
-//        var date = value[0];
-//        var req_date = Date.now() - args[4]*1000;
-//        if (date>req_date) {onload_from_sw_cache(key,value,args);return;}
-        if (args[4]===true || value.date > Date.now() - args[4]*1000) {onload_text(args[0],value,true);return;} // date check.
-      }
-      get_req(args[0],args[1],args[2],args[3],false,args[5]);
-    }
-    function onload_text(sender,value,from_cache) {
-      if (reqs[sender]) { // for 8chan's 524 error(Origin Time-out)
-        if (reqs[sender].req.data_type==='html') {
-          value.response = parser.parseFromString(value.responseText, 'text/html');
-//          delete value.responseText;
-        } else if (reqs[sender].req.data_type==='json') {
-          value.response = (value.status==200)? JSON.parse(value.responseText) : value.responseText;
+    function dispatch(xhr, req_from){
+      if (!pause) for (var p=8;p>=0;p--) if (reqs[p] && (xhrs_count<pref.scan.crawler || p==8)) {
+        while (reqs[p][0] && reqs[p][0].tgts.length===0) reqs[p].shift();
+        var req = reqs[p][0];
+        var i=0;
+        while (req && req.ERR_5xx && req_from!==req) req = reqs[p][++i];
+        if (!req) continue;
+        var req_1;
+        if (!req.INDICATOR) {
+          req.INDICATOR = health_indicator.shift('limegreen', req.initiator[0], req.initiator, p);
+          req.INDICATOR.report({start:Date.now(), prog:req}); // make reference loop.
+          req.IDX = 0;
+          req.FINISHED = 0;
+          req.SUC = 0;
+          if (!req.max) req.max = req.tgts.length;
         }
-        onload_local(sender,value,from_cache);
-      }
-//      value.response = null;
-    }
-    function onload_local(sender,value,from_cache) {
-      if (!reqs[sender]) return;
-      var req = reqs[sender].req;
-//      if (!from_cache && data_type==='html') {
-//        doc = parser.parseFromString(value.responseText, 'text/html');
-//        site2.common.remove_by_tagname(doc,'script');
-//        doc.getElementsByTagName('head')[0].innerHTML = '';
-////        value = {date:value.date, status:value.status, responseText:serializer.serializeToString(doc)};
-//      }
-//      if (!from_cache && cache_write) {
-////        caches[key] = [date, value.status, response_txt];
-////        setTimeout(function(){delete caches[key];},10000);
-////        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, response_txt]);
-////        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, value.status, response_txt]);
-//        if (pref.info_server && brwsr.sw_cache && value.status==200) {
-//          if (data_type==='html') value = {date:value.date, status:value.status, responseText:serializer.serializeToString(doc)};
-//          brwsr.sw_cache.setItem(key,value);
-//        }
-//      }
-//      if (data_type==='html') {value.response = doc; delete value.responseText;} // trial patch.
-//      else if (data_type==='json') {value.response = JSON.parse(value.responseText); delete value.responseText;}
-//      callback(key, value, callback_arg);
-
-      if (!from_cache && req.data_type==='html' && value.response) {
-//        site2.common.remove_by_tagname(value.response,'script');
-//        var dbt = common_func.name2domainboardthread(key,true);
-        var dbt = req.key.split(',');
-if (pref.test_mode['28']) {
-        site2[dbt[0]].preprocess_doc(value.response);
-}
-if (pref.test_mode['50'] && site2[dbt[0]].preprocess_doc2 && site2[dbt[0]].preprocess_doc2[dbt[3]]) site2[dbt[0]].preprocess_doc2[dbt[3]](value.response);
-if (pref.test_mode['4']) {
-  site2[dbt[0]].remove_posts(value.response,pref.test_mode.num);
-  site2.common.remove_double_br(value.response);
-}
-        if (value.response.getElementsByTagName('head')[0]) value.response.getElementsByTagName('head')[0].innerHTML = '';
-      }
-//var check_perf = ['http_req :', performance.now()];
-      if (!from_cache && req.cache_write) {
-        if (pref.info_server && brwsr.sw_cache && value.status==200) {
-          if (req.data_type==='html') site2.common.remove_by_tagname(value.response,'script');
-          var value_sw_cache = (req.data_type==='html')? {date:value.date, status:value.status, responseText:serializer.serializeToString(value.response)}
-                                                       : {date:value.date, status:value.status, responseText:JSON.stringify(value.response)};
-//check_perf.push(performance.now());
-          brwsr.sw_cache.setItem(req.key,value_sw_cache);
-//check_perf.push(performance.now());
-        }
-      }
-// https://github.com/rtomayko/rack-cache/issues/111 Cache hit gives 200 instead of 304 when behind Nginx, Nginx + StringEtag + chrome.
-if (pref.test_mode['48'] && value.status===304) console.log('onload_local: 304, '+req.key);
-      req.callback(req.key, value, req.callback_arg);
-//if (sender==='catalog') common_func.perf_out(check_perf);
-    }
-    function get_req(sender,domain,url,key,sw_cache,data_type, archived){
-//      if (caches[key]) setTimeout(function(){onload_local(sender,{date: caches[key][0], status: caches[key][1], responseText: caches[key][2]},true);},0); // this make racing condition at checking page in catalog.
-      if ((sw_cache===true || (typeof(sw_cache)==='number' && sw_cache!=0)) && brwsr.sw_cache)
-        brwsr.sw_cache.trygetItem(key,onload_from_sw_cache_check,[sender,domain,url,key,sw_cache,data_type]);
-      else {
-        if (domain==site.nickname || pref.catalog_cross_domain_connection=='direct') {
-          var httpd = get_make_Req(sender).httpd;
-          httpd.open('GET', url, true);
-          httpd.responseType = (archived)? 'text' : (data_type==='html')? 'document' : (data_type==='json')? 'json' : 'text';
-          httpd.send(null);
+        var req_1 = (req.get_tgt_func)? req.get_tgt_func(req) : {REQ:req, __proto__:req.tgts[req.IDX++]};
+        if (req.IDX>=req.max) reload_reqs(req,p);
+        xhrs_count++;
+        if (req_1) {
+          req.INDICATOR.report({tgt:req_1.tgt || url2tgt(req_1.url)});
+          if (req_1.domain===site.nickname) download_local(xhr, req_1);
+          else {
+            if (xhr) xhrs_free[xhrs_free.length] = xhr;
+            download_remote(req_1);
+          }
+          if (pref.scan.crawler_adaptive) crawler_spawn.restart(pref.scan.crawler_idle_time_to_spawn);
+          else if (xhrs_count<pref.scan.crawler) dispatch();
         } else {
-          if (!iframes[domain]) make_iframe(domain,url);
-          send_message(domain,[['SUB_GET',[sender,domain,url,key,sw_cache,'text']]]);
+          if (!(req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads))) {
+            reload_reqs(req,p);
+            req.FINISHED += req.max - req.IDX;
+            req.IDX = req.max;
+          }
+          setTimeout(function(){xhr_onload_1({type:'SKIPPED_TO_END'}, xhr, {REQ:req}, true, {date:Date.now(), status:200});},0);
+        }
+        return;
+      }
+      if (crawler_spawn.id) crawler_spawn.stop();
+      if (xhr) xhrs_free[xhrs_free.length] = xhr;
+    }
+    function url2tgt(url){return url.substr(url.lastIndexOf('/')+1);}
+    function reload_reqs(req,p){
+      if (reqs[p].length>1) reqs[p].shift();
+      else reqs[p] = null;
+      reqs_waiting_finish[reqs_waiting_finish.length] = req;
+    }
+    function download_remote(req){
+      if (!iframes[req.domain]) {
+        cnst.make_iframe(req.domain);
+        iframes[req.domain] = window.open(site2[req.domain].home || url, req.domain);
+        send_message(req.domain,['HTTPD',['SUB_FRAME_INIT']],iframes[req.domain]);
+      }
+      remote_opened[req.domain] = null;
+      remote_reqs[remote_count] = req;
+      if (!req.archive) req.responseType = 'text';
+      send_message(req.domain,['HTTPD',['SUB_GET',[{ID:remote_count++, url:req.url, responseType:req.responseType, domain:req.domain,
+                                                    board:req.board, no:req.no, key:req.key, archive:req.archive,
+                                                    to_file:req.to_file, to_idb:req.to_idb, kind:req.kind, timestamp:req.timestamp,// for archive
+                                                   }]]]);
+    }
+    function sub_get(args){
+      download_local(undefined,args[0]);
+    }
+    function download_local(xhr, req){
+      if (!xhr) { 
+        if (xhrs_free.length>0) xhr = xhrs_free.pop();
+        else {
+          var xhr = new XMLHttpRequest();
+          xhr.onload  = xhr_onload;
+          xhr.onerror = xhr_onload;
+          xhr.onabort = xhr_onload;
         }
       }
+      xhrs.set(xhr, req);
+      xhr.open('GET', req.url);
+      xhr.responseType = req.responseType;
+      xhr.send();
+      xhr_timeout_start(xhr,Date.now(),req);
     }
+    function xhr_timeout_start(xhr,date,req){
+      req.TIMEOUT = ((req.TIMEOUT)? req.TIMEOUT : date) + 15000;
+      xhrs_reqs[xhrs_reqs.length] = xhr;
+      if (xhrs_reqs.length===1) crawler_timeout.restart(15000);
+    }
+    function xhr_timeout_restart(xhr,date){
+      var idx = xhrs_reqs.indexOf(xhr);
+      if (idx<0) return true; // timeouted.
+      xhrs_reqs.splice(idx,1);
+      if (idx===0) {
+        if (xhrs_reqs.length>0) {
+          var timeout = xhrs.get(xhrs_reqs[0]).TIMEOUT - date;
+          if (timeout>0) crawler_timeout.restart(timeout);
+          else xhr_timeout();
+        } else crawler_timeout.stop();
+      }
+    }
+    function xhr_timeout(){
+      var xhr = xhrs_reqs[0];
+      if (pref.debug_mode['25']) console.log('xhr_timeout: '+xhr.readyState+', '+xhr.responseURL);
+      if (!xhr.onreadystatechange) {
+        xhr.onreadystatechange = xhr_onreadystatechange;
+        xhr.onprogress = xhr_onreadystatechange;
+        xhr_onreadystatechange({target:xhr});
+      } else xhr_onload({target:xhr, type:'TIMEOUT'});
+    }
+    function xhr_onreadystatechange(e){
+      var xhr = e.target;
+      var req = xhrs.get(xhr);
+      if (pref.debug_mode['25']) console.log('xhr_onreadystatechange: '+req.url+((e.type==='progress')? ': '+e.loaded+'/'+e.total:''));
+      if (e.type==='progress') e.target.onreadystatechange = null;
+      var date = Date.now();
+      xhr_timeout_restart(xhr,date);
+      xhr_timeout_start(xhr,date,req);
+    }
+    function xhr_onload(e){
+      var xhr = e.target;
+      var date = Date.now();
+      if (xhr_timeout_restart(xhr,date)) return; // timeouted.
+      xhr.onreadystatechange = null;
+      xhr.onprogress = null;
+      var req = xhrs.get(xhr);
+      var valid = xhr.status===200 || xhr.status===304;
+      var value = (xhr.responseType==='text')? {date: date, status: xhr.status, responseText: (valid)? xhr.responseText: null} :
+                                               {date: date, status: xhr.status, response:     (valid)? xhr.response    : null};
+      xhr_onload_1(e, xhr, req, valid, value);
+    }
+    function xhr_onload_1(e, xhr, req, valid, value){ // CACHE HIT ENTRY HERE
+      if (local) {
+        xhrs_count--;
+        var end = ++req.REQ.FINISHED === req.REQ.IDX && req.REQ.IDX >= req.REQ.max;
+        dispatch(xhr, (value.status<500)? req : null);
+        if (end) end_proc_httpd(req.REQ);
+        // CACHE WRITE CODE HERE
+        if (valid) {
+          req.REQ.SUC++;
+          onload_local(req, value);
+        } else {
+          if (value.status>=500 && !req.REQ.ERR_5xx) req.REQ.ERR_5xx = setTimeout(
+            (function(req){
+              return function(){
+                delete req.ERR_5xx;
+                dispatch_if_idle();
+              }})(req.REQ),30000);
+          req.REQ.INDICATOR.report({err_str:(req.tgt||url2tgt(req.url))+'('+value.status+((e.type!=='load')? ':'+e.type : '')+')'});
+          if (req.from) delete archiver.list_all_obj_downloading[req.from]; // patch, retry code should be here.
+        }
+        if (end) end_proc_user(req.REQ, value.date);
+        req.REQ = null; // cut reference loop for GC.
+      } else {
+        send_message('parent',['HTTPD',['SUB_ACK',[req.ID, {type:(req.archive)? 'ARCHIVE' : e.type}, valid, (req.archive)? {date:value.date, status:value.status, responseText:'', response:{}} : value]]]);
+        xhrs_free[xhrs_free.length] = xhr;
+        if (valid && req.archive) onload_archive(req, value);
+      }
+    }
+    function sub_ack(args){
+      var req = remote_reqs[args[0]];
+      delete remote_reqs[args[0]];
+      xhr_onload_1(args[1], undefined, req, args[2], args[3]);
+    }
+    function end_proc_httpd(req){ // called local only
+      reqs_waiting_finish.splice(reqs_waiting_finish.indexOf(req),1);
+      if (req.archive) req.TAR_FLUSH = remote_opened;
+      free_xhrs();
+    }
+    function free_xhrs(){
+      if (xhrs_count===0) {
+        xhrs.clear();
+        if (local) for (var domain in remote_opened) send_message(domain,['HTTPD',['SUB_FREE']]);
+        remote_count = 0;
+        remote_opened = {};
+      } else for (var i=0;i<xhrs_free.length;i++) xhrs.delete(xhrs_free[i]);
+      xhrs_free = [];
+    }
+    function onload_local(req,value) {
+      if (req.responseType==='text') {
+        if (req.data_type==='html') value.response = parser.parseFromString(value.responseText, 'text/html');
+        else if (req.data_type==='json') value.response = JSON.parse(value.responseText);
+      }
+      req.REQ.callback_1(req, value, req.REQ);
+//        req.REQ.callback(req.key, value, req.callback_arg);
+    }
+    function onload_archive(req, value){
+      if (req.from && local) delete archiver.list_all_obj_downloading[req.from];
+      if (req.domain===site.nickname) {
+        var suffix = req.kind + '_'+ req.url.replace(/.*\//g,'');
+        if (req.to_file) archiver.download_url3(value.response, req, suffix, req.timestamp);
+        if (pref.test_mode['65']) if (req.to_idb) IDB.req(req.domain, req.board, req.no, suffix, value.response, 'put');
+      }
+      if (local && req.REQ.TAR_FLUSH) { // remote doesn't have 'req.REQ'
+//        if (check_timestamp_and_flush(req.timestamp)) // flush local
+        archiver.tar.flush((xhrs_count===0)? undefined : req.timestamp);
+        for (var domain in req.REQ.TAR_FLUSH) send_message(domain,['HTTPD',['SUB_TAR_FLUSH',[(xhrs_count===0)? undefined : req.timestamp]]]); // flush remote
+      }
+    }
+    function check_timestamp_and_flush(timestamp){
+      if (reqs[0] && reqs[0][0] && reqs[0][0].timestamp === timestamp) return false;
+      for (var i=0;i<reqs_waiting_finish.length;i++) if (reqs_waiting_finish[i].timestamp===timestamp) return false;
+      archiver.tar.flush((xhrs_count===0)? undefined : timestamp);
+      return true;
+    }
+    function end_proc_user(req, date){
+      if (req.callback) req.callback(req); // this must be prior to report({end:}), because somefunc reports err_str to indicator.
+      req.INDICATOR.report({end:date});
+    }
+    function sub_tar_flush(args){
+      archiver.tar.flush(args[0]);
+    }
+    function sub_frame_init(){local=false;}
+    function pause_cancel(){
+      if (pause>0) {
+        if (--pause>0) pause_timeout.delayed_do();
+      } else {
+        pause_timeout.cancel();
+        dispatch_if_idle();
+      }
+    }
+    var pause_timeout = new DelayBuffer(pause_cancel,10000);
+    var sub_funcs = {SUB_GET:sub_get, SUB_ACK:sub_ack, SUB_FREE:free_xhrs, SUB_TAR_FLUSH:sub_tar_flush, SUB_FRAME_INIT:sub_frame_init};
     return {
-      get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg, archived){
-        var dbt = (key.indexOf(',')==-1)? common_func.name2dbt(key): key.split(',');
-        if (url==='') url = site2[dbt[0]].make_url4(dbt);
-        else if (typeof(url)==='string') url = [ url, 'raw'];
-        key = dbt.join(',');
-        get_make_Req(sender, {url:url[0], callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg, data_type:url[1]});
-        get_req(sender,dbt[0],url[0],key,sw_cache,url[1], archived);
+      req: function(reqs_in, priority){
+        if (!reqs[priority]) reqs[priority] = [reqs_in];
+        else reqs[priority].push(reqs_in);
+        if (reqs_in.tgts.length!==0) dispatch();
       },
-////////      get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg){ // working code.
-////////        var dbt = cnst.name2domainboardthread(key,true);
-////////        key = dbt[0]+dbt[1]+dbt[2];
-////////        if (url==='')
-////////          if (dbt[2][0]==='c' || dbt[2][0]==='p' || dbt[2][0]==='j') url = site2[dbt[0]].make_url(dbt[1],parseInt(dbt[2].substr(1),10),dbt[2][0]);
-////////          else url = [site2[dbt[0]].make_url3(dbt[1],dbt[2]), (dbt[2][0]!=='t')? 'html' : 'json'];
-////////        if (typeof(url)==='string') url = [ url, 'raw'];
-////////        req[sender] = {url:url[0], callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg, data_type:url[1]};
-////////        get_req(sender,dbt[0],url[0],key,sw_cache,url[1]);
-////////      },
-      close:   function(sender){
-        destroy_httpd(sender);
-        if (!pref.test_mode['30']) for (var domain in iframes) send_message(domain,[['SUB_DEST',[sender]]]);
+      req_add: function(reqs_in, priority){
+        if (!reqs[priority] || reqs[priority].length===0) reqs[priority] = [reqs_in]; // BUG, destroy prototype.
+        else reqs[priority][reqs[priority].length-1].tgts = reqs[priority][reqs[priority].length-1].tgts.concat(reqs_in.tgts);
+        dispatch_if_idle();
       },
-      sub_dest: function(args){destroy_httpd(args[0]);},
-      sub_get: function(arg){get_req(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5]);},
-      sub_ack: function(arg){
-        var value =  {date: arg[1], status: arg[2], responseText: arg[3]};
-        onload_text(arg[0], value, false);
-if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
+      check_timestamp_and_flush: check_timestamp_and_flush,
+      onload_archive: onload_archive,
+      sub_funcs: function(args){
+        sub_funcs[args[0]](args[1]);
       },
-      remote : function(){local=false;}
+      pause_req: function(){
+        pause++;
+        pause_timeout.delayed_do();
+      },
+      pause_cancel: pause_cancel,
+      set_health_indicator: function(val){health_indicator = val;},
     };
   })();
+
+  var http_req = { // emulation of old interface for uip tracker.
+    get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg, archived){
+      var dbt = (key.indexOf(',')==-1)? common_func.name2dbt(key): key.split(',');
+      if (url==='') url = site2[dbt[0]].make_url4(dbt);
+      else if (typeof(url)==='string') url = [ url, 'raw'];
+      key = dbt.join(',');
+      httpd.req({initiator:key,
+                 tgts:[{url:url[0], responseType:(url[1]==='html')? 'document' : (url[1]==='raw')? 'text' : url[1], tgt:key, data_type:url[1], domain:dbt[0]}],
+                 callback_1:function(req,val){callback(key,val,callback_arg);},
+                 INDICATOR: {shift:function(){}, report:function(){}},
+                 IDX:0, FINISHED:0, SUC:0, max:1,
+                },6);
+    },
+  };
+
+////  var http_req = (function(){ // working code.
+////    var iframes = {};
+//////    var caches = {}; // prevent occuring multiple access to the same url in short time.
+////    var local = true;
+////    var parser = new DOMParser();
+////    var serializer = new XMLSerializer();
+//////    var doc;
+//////    var pool; // object pool
+////    var reqs = {};
+////    var Req = function(sender){
+////      this.sender = sender;
+////      this.req = null;
+////      this.httpd = new XMLHttpRequest();
+////      this.httpd.onload  = Req.prototype.onload.bind(this);
+////      this.httpd.onerror = this.httpd.onload;
+////      this.httpd.onabort = this.httpd.onload;
+////    }
+////    Req.prototype.onload = function(){
+//////      if (local) onload_local(this.sender,{date: Date.now(), __proto__:this.httpd},false); // cause illegal invocation, I don't know why.
+////      if (local) {
+////        if (this.httpd.responseType==='text') onload_text(this.sender,{date: Date.now(), status: this.httpd.status, responseText: this.httpd.responseText},false); // temporaly patch.
+////        else onload_local(this.sender,{date: Date.now(), status: this.httpd.status, response: this.httpd.response},false);
+////      } else send_message('parent',[['SUB_ACK',[this.sender,Date.now(),this.httpd.status,this.httpd.responseText]]]);
+////    };
+////    function get_make_Req(sender, req){
+////      if (reqs[sender]===undefined) reqs[sender] = new Req(sender);
+////      if (req) reqs[sender].req = req;
+////      return reqs[sender];
+////    }
+////    function destroy_httpd(sender){
+////      delete reqs[sender];
+////    }
+////////    function make_httpd(sender){ // working code.
+////////      var httpd = new XMLHttpRequest();
+////////      function httpd_events(){
+//////////        if (local) onload_local(sender,{date: Date.now(), status: httpd.status, responseText: httpd.responseText},false);
+////////        if (local) {
+////////          if (httpd.responseType==='text') onload_local(sender,{date: Date.now(), status: httpd.status, responseText: httpd.responseText},false); // temporaly patch.
+////////          else onload_local(sender,{date: Date.now(), status: httpd.status, response: httpd.response},false);
+////////        } else send_message('parent',[['SUB_ACK',[sender,Date.now(),httpd.status,httpd.responseText]]]);
+////////      }
+////////      httpd.addEventListener('load',  httpd_events, false);
+////////      httpd.addEventListener('error', httpd_events, false);
+////////      httpd.addEventListener('abort', httpd_events, false);
+////////      httpds[sender] = [httpd, httpd_events];
+////////    }
+////////    function destroy_httpd(sender){
+////////      if (sender in httpds) {
+////////        var httpd = httpds[sender][0];
+////////        var httpd_events = httpds[sender][1];
+////////        httpd.removeEventListener('load',  httpd_events, false);
+////////        httpd.removeEventListener('error', httpd_events, false);
+////////        httpd.removeEventListener('abort', httpd_events, false);
+////////        delete httpds[sender];
+//////////if (pref.test_mode['30']) console.log('destroyed: '+site.nickname+'/'+sender)
+////////      }
+////////    }
+////    function make_iframe(domain,url){
+//////      var ifrm = cnst.init('left:200px:bottom:200px:display:none:Show'); // working code.
+////////      var ifrm = cnst.init('left:200px:bottom:200px:' + ((pref.debug_mode['0'])? '' : 'display:none:') + 'Show');
+////////      var ifrm = cnst.init('left:200px:bottom:200px:Show');
+//////      ifrm.innerHTML = '<iframe name=' + domain + '></iframe>';
+////      cnst.make_iframe(domain);
+//////      try {
+////        iframes[domain] = window.open((site2[domain].home!=='')? site2[domain].home : url, domain);
+////        send_message(domain,[['SUBFRAME_INIT']],iframes[domain]);
+//////      } catch (e) {
+//////        console.log('IFRAME OPEN ERROR'); // not debugged yet.
+//////      }
+//////      iframes[domain].onerror = function(){console.log('IFRAME OPEN ERROR');}; // can't catch
+////    }
+////    function onload_from_sw_cache_check(key,value,args) {
+////      if (value!==null) {
+//////        var date = value[0];
+//////        var req_date = Date.now() - args[4]*1000;
+//////        if (date>req_date) {onload_from_sw_cache(key,value,args);return;}
+////        if (args[4]===true || value.date > Date.now() - args[4]*1000) {onload_text(args[0],value,true);return;} // date check.
+////      }
+////      get_req(args[0],args[1],args[2],args[3],false,args[5]);
+////    }
+////    function onload_text(sender,value,from_cache) {
+////      if (reqs[sender]) { // for 8chan's 524 error(Origin Time-out)
+////        if (reqs[sender].req.data_type==='html') {
+////          value.response = parser.parseFromString(value.responseText, 'text/html');
+//////          delete value.responseText;
+////        } else if (reqs[sender].req.data_type==='json') {
+////          value.response = (value.status==200)? JSON.parse(value.responseText) : value.responseText;
+////        }
+////        onload_local(sender,value,from_cache);
+////      }
+//////      value.response = null;
+////    }
+////    function onload_local(sender,value,from_cache) {
+////      if (!reqs[sender]) return;
+////      var req = reqs[sender].req;
+//////      if (!from_cache && data_type==='html') {
+//////        doc = parser.parseFromString(value.responseText, 'text/html');
+//////        site2.common.remove_by_tagname(doc,'script');
+//////        doc.getElementsByTagName('head')[0].innerHTML = '';
+////////        value = {date:value.date, status:value.status, responseText:serializer.serializeToString(doc)};
+//////      }
+//////      if (!from_cache && cache_write) {
+////////        caches[key] = [date, value.status, response_txt];
+////////        setTimeout(function(){delete caches[key];},10000);
+////////        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, response_txt]);
+////////        if (pref.info_server && brwsr.sw_cache && value.status==200) brwsr.sw_cache.setItem(key,[date, value.status, response_txt]);
+//////        if (pref.info_server && brwsr.sw_cache && value.status==200) {
+//////          if (data_type==='html') value = {date:value.date, status:value.status, responseText:serializer.serializeToString(doc)};
+//////          brwsr.sw_cache.setItem(key,value);
+//////        }
+//////      }
+//////      if (data_type==='html') {value.response = doc; delete value.responseText;} // trial patch.
+//////      else if (data_type==='json') {value.response = JSON.parse(value.responseText); delete value.responseText;}
+//////      callback(key, value, callback_arg);
+////
+////      if (!from_cache && req.data_type==='html' && value.response) {
+//////        site2.common.remove_by_tagname(value.response,'script');
+//////        var dbt = common_func.name2domainboardthread(key,true);
+////        var dbt = req.key.split(',');
+////if (pref.test_mode['28']) {
+////        site2[dbt[0]].preprocess_doc(value.response);
+////}
+////if (pref.test_mode['50'] && site2[dbt[0]].preprocess_doc2 && site2[dbt[0]].preprocess_doc2[dbt[3]]) site2[dbt[0]].preprocess_doc2[dbt[3]](value.response);
+////if (pref.test_mode['4']) {
+////  site2[dbt[0]].remove_posts(value.response,pref.test_mode.num);
+////  site2.common.remove_double_br(value.response);
+////}
+////        if (value.response.getElementsByTagName('head')[0]) value.response.getElementsByTagName('head')[0].innerHTML = '';
+////      }
+//////var check_perf = ['http_req :', performance.now()];
+////      if (!from_cache && req.cache_write) {
+////        if (pref.info_server && brwsr.sw_cache && value.status==200) {
+////          if (req.data_type==='html') site2.common.remove_by_tagname(value.response,'script');
+////          var value_sw_cache = (req.data_type==='html')? {date:value.date, status:value.status, responseText:serializer.serializeToString(value.response)}
+////                                                       : {date:value.date, status:value.status, responseText:JSON.stringify(value.response)};
+//////check_perf.push(performance.now());
+////          brwsr.sw_cache.setItem(req.key,value_sw_cache);
+//////check_perf.push(performance.now());
+////        }
+////      }
+////// https://github.com/rtomayko/rack-cache/issues/111 Cache hit gives 200 instead of 304 when behind Nginx, Nginx + StringEtag + chrome.
+////if (pref.test_mode['48'] && value.status===304) console.log('onload_local: 304, '+req.key);
+////      req.callback(req.key, value, req.callback_arg);
+//////if (sender==='catalog') common_func.perf_out(check_perf);
+////    }
+////    function get_req(sender,domain,url,key,sw_cache,data_type, archived){
+//////      if (caches[key]) setTimeout(function(){onload_local(sender,{date: caches[key][0], status: caches[key][1], responseText: caches[key][2]},true);},0); // this make racing condition at checking page in catalog.
+////      if ((sw_cache===true || (typeof(sw_cache)==='number' && sw_cache!=0)) && brwsr.sw_cache)
+////        brwsr.sw_cache.trygetItem(key,onload_from_sw_cache_check,[sender,domain,url,key,sw_cache,data_type]);
+////      else {
+////        if (domain==site.nickname || pref.catalog_cross_domain_connection=='direct') {
+////          var httpd = get_make_Req(sender).httpd;
+////          httpd.open('GET', url, true);
+////          httpd.responseType = (archived)? 'text' : (data_type==='html')? 'document' : (data_type==='json')? 'json' : 'text';
+////          httpd.send(null);
+////        } else {
+////          if (!iframes[domain]) make_iframe(domain,url);
+////          send_message(domain,[['SUB_GET',[sender,domain,url,key,sw_cache,'text']]]);
+////        }
+////      }
+////    }
+////    return {
+////      get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg, archived){
+////        var dbt = (key.indexOf(',')==-1)? common_func.name2dbt(key): key.split(',');
+////        if (url==='') url = site2[dbt[0]].make_url4(dbt);
+////        else if (typeof(url)==='string') url = [ url, 'raw'];
+////        key = dbt.join(',');
+////        get_make_Req(sender, {url:url[0], callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg, data_type:url[1]});
+////        get_req(sender,dbt[0],url[0],key,sw_cache,url[1], archived);
+////      },
+////////////      get: function (sender,key,url,callback,sw_cache,sw_cache_write,callback_arg){ // working code.
+////////////        var dbt = cnst.name2domainboardthread(key,true);
+////////////        key = dbt[0]+dbt[1]+dbt[2];
+////////////        if (url==='')
+////////////          if (dbt[2][0]==='c' || dbt[2][0]==='p' || dbt[2][0]==='j') url = site2[dbt[0]].make_url(dbt[1],parseInt(dbt[2].substr(1),10),dbt[2][0]);
+////////////          else url = [site2[dbt[0]].make_url3(dbt[1],dbt[2]), (dbt[2][0]!=='t')? 'html' : 'json'];
+////////////        if (typeof(url)==='string') url = [ url, 'raw'];
+////////////        req[sender] = {url:url[0], callback:callback, key:key, sw_cache:sw_cache, sw_cache_write:sw_cache_write, callback_arg:callback_arg, data_type:url[1]};
+////////////        get_req(sender,dbt[0],url[0],key,sw_cache,url[1]);
+////////////      },
+////      close:   function(sender){
+////        destroy_httpd(sender);
+////        if (!pref.test_mode['30']) for (var domain in iframes) send_message(domain,[['SUB_DEST',[sender]]]);
+////      },
+////      sub_dest: function(args){destroy_httpd(args[0]);},
+////      sub_get: function(arg){get_req(arg[0],arg[1],arg[2],arg[3],arg[4],arg[5]);},
+////      sub_ack: function(arg){
+////        var value =  {date: arg[1], status: arg[2], responseText: arg[3]};
+////        onload_text(arg[0], value, false);
+////if (pref.test_mode['34']) send_message('meguca',[['ECHO',arg]]);
+////      },
+////      remote : function(){local=false;}
+////    };
+////  })();
 
 //  var http_req = (function(){ // working code, but chokes when and err occur.
 //    var reqs = [];
@@ -13057,7 +13665,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
         if (ref_height && favicon_obj[0].pn.offsetTop>ref_height) break;
         var tgt = favicon_obj.shift();
         tgt.pn.removeEventListener('mouseover', favicon_obj_trim, false);
-        time = tgt.time;
+        time = tgt.time * site2[site.nickname].parse_funcs['post_json'].time_unit;
         if (pref['thread'].mark_new_posts) tgt.pn.setAttribute('style','border:none');
         if (e.currentTarget===tgt.pn) break;
       }
@@ -13232,7 +13840,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
 //                                                     f:{value:0, writable:true}, // for 'add_domain'
                                                      p:{value:{}, configurable:true, writable:true}, // pool of parse_funcs
                                                      pgs:{value:null, writable:true}, // for 'add_domain' // max pages
-                                                     LS_synced:{value:false, writable:true},
+                                                     d:{value:0, writable:true}, // flags
                                                      // s:   for statistics
                                                      // sr:  for statistics
                                                      // srt: for statistics
@@ -13332,13 +13940,20 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
         time_checked: {get: function(){return  this[2][2];}},
         archived: {get: function(){return (this[2][0]&0x00700000) >> 20;},
                    set: function(v){this[2][0] = this[2][0] & 0xff8fffff | ((v&0x07)<<20);}},
-        force_ar: {get: function(){return (this[2][0]&0x00700000) >> 22;}}, // init or rescan
+        posts_saved:{get: function(){return (this[2][0]&0x02000000) >> 25;},
+                     set: function(v){this[2][0] = this[2][0] & 0xfdffffff | ((v&0x01)<<25);}},
+        force_ar: {get: function(){return (this[2][0]&0x00500000) >> 20;}}, // init or rescan
         rescan_dp:{get: function(){return (this[2][0]&0x01000000) >> 24;},
                    set: function(v){this[2][0] = this[2][0] & 0xfeffffff | ((v&0x01)<<24);}},
         nrtm:     {get: function(){return (this[2][1]) >> 16;}},
         nr:       {get: function(){return  this[2][1]&0x0000ffff;}},
         nof_posts:{get: function(){return  this[2][0]&0x0000ffff ;},
                    set: function(v){this[2][0] = (this[2][0] & 0xffff0000) + v;}},
+
+        LS_synced: {get: function(){return this.d&0x00000001;},
+                    set: function(v){this.d = (this.d&0xfffffffe) | (v&0x01);}},
+        IDB_synced:{get: function(){return (this.d&0x00000002) >> 1;},
+                    set: function(v){this.d = (this.d&0xfffffffd) | ((v&0x01)<<1);}},
       })}
     }),
 //    mems_obj_accessors: { // to reduce memory consumption.
@@ -13654,8 +14269,8 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
       var btags = this.mems[dbt[0]][dbt[1]][dbt[2]].btags;
       if (btags) for (var i=0;i<btags.length;i++) this.key_dirty[(pref.liveTag.ci)? btags[i].toLowerCase() : btags[i]] = null;
       if (pref3.stats.use) stats.thread_removed(dbt);
-      if (pref.test_mode['65']) if (pref.archive.IDB) IDB.req(dbt[0], dbt[1], dbt[2], 'pruned_time', Date.now(), 'put_if');
-      if (pref.test_mode['65']) if (pref.archive.IDB) IDB.req(dbt[0], dbt[1], dbt[2], null, null, 'check_clean');
+//      if (pref.test_mode['65']) if (pref.archive.IDB) IDB.req(dbt[0], dbt[1], dbt[2], 'pruned_time', Date.now(), 'put_if');
+      if (pref.test_mode['65']) if (pref.archive.IDB.auto_clean) IDB.req(dbt[0], dbt[1], dbt[2], 'pruned_time', Date.now(), 'check_clean');
       if (pref.test_mode['67']) archiver.clean_list(dbt[0], dbt[1], dbt[2]);
       delete this.mems[dbt[0]][dbt[1]][dbt[2]];
       this.update_pn_buf.delayed_do();
@@ -13687,7 +14302,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
             var keys_tags = Object.keys(this.tags);
             var tags_ci_obj = this.tags_ci[tag_ci];
             for (var i=0;i<keys_tags.length;i++) if (this.tags[keys_tags[i]]===tags_ci_obj) delete this.tags[keys_tags[i]];
-            if (this.tags_ci[tag_ci].pn) this.pn.removeChild(this.tags_ci[tag_ci].pn);
+            if (this.tags_ci[tag_ci].pn) this.pn.removeChild(this.tags_ci[tag_ci].pn); // BUG, CAUSED AN ERROR, because of documentfragment???
             delete this.tags_ci[tag_ci];
           } else {
             if (!this.delete_tags_buffered_list) this.delete_tags_buffered_list = new Set();
@@ -14697,23 +15312,38 @@ if (!pref.test_mode['24']) {
   var IDB = (function(){
     function IDBRequest_onerror(e){
       console.log('IDB: ERROR: ',e);
+      indicator.report({err_str:'IDB_ERROR:'+e.target.error.name});
       for (var key of db_info.keys()) console.log(db_info.get(key));
-      console.log(last_closed);
+      console.log('last_closed: ',last_closed);
     }
     function IDBRequest_onblocked(e){
       if (pref.debug_mode['21']) console.log('IDB: BLOCKED: '+e.oldVersion+' -> '+e.newVersion);
     }
     function IDBTransaction_onabort(e){
       console.log('IDBT: ABORT: '+e.target.error.name,e);
+      indicator.report({err_str:'IDBT_ABORT:'+e.target.error.name});
+      var tr = e.target;
+      var db = tr.db;
+      if (tr.error.name==='TimeoutError') {
+        var info = tr_info.get(tr);
+        tr_info.delete(e.target);
+        console.log(info);
+        if (info && info.req) {
+          add_req(reqs_re, db.name, req); // retry
+          console.log('Requeued... '+db.name.replace(/^[^\/]*/,'')+req.no+' '+req.kind);
+        }
+      }
       // http://stackoverflow.com/questions/10477489/what-are-the-details-can-be-obtained-from-webkitstorageinfo-queryusageandquota
-      if (window.webkitStorageInfo) window.webkitStorageInfo.queryUsageAndQuota(webkitStorageInfo.TEMPORARY, console.log.bind(console));
-      e.target.db.close();
+//      if (window.webkitStorageInfo) window.webkitStorageInfo.queryUsageAndQuota(webkitStorageInfo.TEMPORARY, console.log.bind(console));
+      if (navigator.webkitTemporaryStorage) navigator.webkitTemporaryStorage.queryUsageAndQuota(console.log.bind(console));
+      IDB_close(db, null, true);
     }
     function IDBTransaction_onerror(e){
       console.log('IDBT: ERROR: '+e.target.error.name,e);
-      e.target.db.close();
+      indicator.report({err_str:'IDBT_ERROR:'+e.target.error.name});
+      var db = e.target.db || e.target.transaction && e.target.transaction.db;
+      IDB_close(db, null, true);
     }
-    
     function IDBRequest_onupgradeneeded(e){
       e.target.onsuccess = null; // prevent from being called twice.
       IDBRequest_onsuccess_open(e, true);
@@ -14721,23 +15351,35 @@ if (!pref.test_mode['24']) {
     function IDBRequest_onsuccess_open(e, from_upgrade){
       var db = e.target.result;
       version[db.name] = db.version;
+      delete waiting_open[db.name+((from_upgrade)? 'vc' : 'rw')];
       var reqs = from_upgrade && reqs_vc[db.name] || reqs_rw[db.name];
       if (pref.debug_mode['20']) {
-        var debug_coms = reqs && reqs.slice(0,5).map(function(v){return v.kind;});
-        console.log('IDB: opened: v'+db.version+', '+(reqs && reqs.length)+' req(s), '+e.type+', '+debug_coms);
+        var count = 1;
+        var debug_reqs = reqs && reqs.debug_query() || null;
+//        var debug_coms = reqs && reqs.ary.slice(0,10).map(function(v){return v.kind;});
+        console.log('IDB: opened: '+(db_info.size+1)+' '+db.name.replace(/^[^\/]*/,'')+' v'+db.version+', '+(debug_reqs && debug_reqs.length)+' req(s), '+e.type+', '+(debug_reqs && debug_reqs.coms));
       }
-      if (db_info.has(db)) console.log('IDB: ERROR: the same db was returned.', db_info.get(db));
-      db_info.set(db, {type:e.type, coms:debug_coms, tr_count:1, reqs:reqs, req:null}); // tr_count.set(db, 1); // tr_count.set(db, (tr_count.get(db)||0)+1); // returns the same db sometimes.
+//      if (db_info.has(db)) console.log('IDB: ERROR: the same db was returned.', db_info.get(db));
+      var info = {type:e.type, tr_count:1, reqs:reqs, req:null, crawler:1, oss:{}, req_kinds:{}, coms:debug_reqs && debug_reqs.coms, done:0, done_put:0}; // tr_count.set(db, 1); // tr_count.set(db, (tr_count.get(db)||0)+1); // returns the same db sometimes.
+      db_info.set(db, info);
       if (reqs) {
+        for (var i=0;i<db.objectStoreNames.length;i++) info.oss[db.objectStoreNames[i]] = null;
         if (from_upgrade) {
           var tr = e.target.transaction;
-          while (reqs.length>0) {
+          while (true) {
+            indicator_update();
             var req = reqs.shift();
-            db_info.get(db).req = req;
-            var contains = db.objectStoreNames.contains(req.no);
+            info.req = req;
+            if (!req) break;
+            if (pref.debug_mode['20']) info.done++;
+            if (pref.debug_mode['22']) console.log('req_upgrade: '+req.no+', '+req.kind+', '+req.key+', '+reqs.debug_query().length);
+            info.req_kinds[req.kind] = null;
+            var contains = info.oss[req.no]===null;
             if (req.kind==='put') {
-              if (!contains) make_1(db, req, IDBRequest_close);
-              else re_req(db,req, reqs_rw); // downgrade
+              if (!contains) {
+                make_1(db, req, IDBRequest_close);
+                info.oss[req.no] = null;
+              } else add_req(reqs_rw, db.name, req); // downgrade
 //              else put_1(db,req, IDBRequest_close);
             } else if (req.kind==='delete_th') {
               if (contains) delete_th_1(db, req, tr); // returns void, not a transaction.
@@ -14747,63 +15389,128 @@ if (!pref.test_mode['24']) {
         } else {
           var loop_func = function complete_func(){req_1(db,reqs,from_upgrade,complete_func);}
           req_1(db, reqs, from_upgrade, loop_func);
+//          while (info.crawler<pref.archive.IDB.nof_tr && !reqs.isEmpty) { // not sensitive when reqs are added after this.
+//            info.crawler++;
+//            req_1(db, reqs, from_upgrade, loop_func);
+//          }
         }
       } else req_end(db, from_upgrade);
     }
     function req_1(db, reqs, from_upgrade, complete_func){ // multi transaction can be accepted, but not debugged.
+      var info = db_info.get(db);
+      if (!info) return; // closed by watchdog
+      indicator_update();
       var req = reqs.shift();
-      db_info.get(db).req = req;
+      info.req = req;
       if (req) {
-        if (pref.debug_mode['22']) console.log(req.no+', '+req.kind+', '+req.key+', '+reqs.length);
-        var contains = db.objectStoreNames.contains(req.no);
-        if (req.kind==='put') {
-          if (!contains) {re_req(db,req, reqs_vc);complete_func();} // upgrade
-          else put_1(db,req, complete_func);
-        } else if (req.kind==='put_if') {
-          if (contains) put_1(db,req, complete_func);
+        if (pref.debug_mode['20']) info.done++;
+        if (pref.debug_mode['22']) console.log(db.name.replace(/^[^\/]*/,'')+req.no+', '+req.kind+', '+req.key+', '+reqs.debug_query().length);
+        var contains = info.oss[req.no]===null;
+        if (req.kind==='get_all_m') {
+          var reqs_current = [];
+          var nos = {};
+          for (var i=0;i<req.reqs.length;i++) if (info.oss[req.reqs[i].no]===null) {
+            reqs_current[reqs_current.length] = req.reqs[i];
+            nos[req.reqs[i].no] = null;
+          }
+          if (reqs_current.length!==0) get_all(db,{nos:Object.keys(nos), reqs:reqs_current}, complete_func);
           else complete_func();
+//        } else if (req.kind==='get_all') {
+//          if (contains) get_all(db,{nos:[req.no], reqs:[req]}, complete_func);
+//          else complete_func();
+        } else if (req.kind==='list_os') {
+          req.obj(site.nickname, db.name.substr(pref.script_prefix.length+1), Array.prototype.slice.call(db.objectStoreNames).filter(function(v){return v!=='Meta';}));
+          complete_func();
+        } else if (req.kind==='put_m') {
+          var reqs_current = [];
+          for (var i=0;i<req.reqs.length;i++)
+            if (info.oss[req.reqs[i].no]!==null) add_req(reqs_vc, db.name, req.reqs[i]); // upgrade
+            else reqs_current[reqs_current.length] = req.reqs[i];
+          req.reqs = reqs_current;
+          if (req.reqs.length>1) {
+            var nos = {};
+            for (var i=0;i<req.reqs.length;i++) nos[req.reqs[i].no] = null;
+            req.nos = Object.keys(nos);
+            req.idx = 0;
+            req.complete_func = complete_func;
+            put_1(db,req, complete_func);
+          } else if (req.reqs.length==1) put_1(db,req.reqs[0], complete_func);
+          else complete_func();
+        } else if (req.kind==='put') {
+          if (!contains) {add_req(reqs_vc, db.name, req);complete_func();} // upgrade
+          else put_1(db,req, complete_func);
+//        } else if (req.kind==='put_if') {
+//          if (contains) put_1(db,req, complete_func);
+//          else complete_func();
         } else if (req.kind==='delete') {
           if (contains) delete_1(db,req, complete_func);
           else complete_func();
         } else if (req.kind==='clean_up') {
-          check_cleaned[db.name] = Date.now();
-          var tgts = [];
-          for (var i=0;i<db.objectStoreNames.length;i++) if (req.obj[db.objectStoreNames[i]]!==null) tgts[tgts.length] = db.objectStoreNames[i];
-          clean_up(db, {tgts:tgts, prune:true, __proto__:req}, complete_func);
-//          for (var i=0;i<db.objectStoreNames.length;i++) if (req.obj[db.objectStoreNames[i]]!==null) clean_1(db, {no:db.objectStoreNames[i], prune:true, __proto__:req});
-        } else if (req.kind==='check_clean') {
+          if (!check_cleaned[db.name]) check_cleaned[db.name] = [];
+          var nos = {Meta:null, __proto__:req.obj};
+          list = check_cleaned[db.name];
+          for (var i=0;i<list.length;i++) nos[list[i].no] = null;
           var date = Date.now();
-          if (date - (check_cleaned[db.name] || 0 ) > pref.archive.IDB.check_every * 3600000) {
-            check_cleaned[db.name] = date;
-            clean_up(db, {tgts:Array.prototype.slice.call(db.objectStoreNames), __proto__:req}, complete_func);
-          } else complete_func();
-//          for (var i=0;i<db.objectStoreNames.length;i++) clean_1(db, {no:db.objectStoreNames[i], __proto__:req});
+          var names = db.objectStoreNames;
+          for (var i=0;i<names.length;i++) if (nos[names[i]]===undefined) list[list.length] = {no:names[i], pruned_time:date};
+          clean_up(db, req, complete_func); // call 'clean_up_end_proc' in 'clean_up'.
+        } else if (req.kind==='check_clean') {
+          if (!check_cleaned[db.name]) check_cleaned[db.name] = [];
+          if (contains) check_cleaned[db.name][check_cleaned[db.name].length] = {no:req.no, pruned_time:req.obj};
+          clean_up_end_proc(db, null, complete_func);
+//          if (req.kind==='clean_up') { // working code.
+//            var tgts = [];
+//            for (var i=0;i<db.objectStoreNames.length;i++) if (req.obj[db.objectStoreNames[i]]!==null) tgts[tgts.length] = db.objectStoreNames[i];
+//            clean_up(db, {tgts:tgts, prune:(req.kind==='clean_up'), __proto__:req}, complete_func); // call 'clean_up_end_proc' in 'clean_up'.
+//          } else {
+//            check_cleaned[db.name][check_cleaned[db.name].length] = {no:req.no, pruned_time:req.obj};
+//            reqs[reqs.length] = {no:-1, key:'pruned_time', obj:check_cleaned[db.name], kind:'put'};
+//            clean_up_end_proc(db, null, complete_func);
+//          }
+////        } else if (req.kind==='clean_up') { // working code.
+////          check_cleaned[db.name] = Date.now();
+////          var tgts = [];
+////          for (var i=0;i<db.objectStoreNames.length;i++) if (req.obj[db.objectStoreNames[i]]!==null) tgts[tgts.length] = db.objectStoreNames[i];
+////          clean_up(db, {tgts:tgts, prune:true, __proto__:req}, complete_func);
+//////          for (var i=0;i<db.objectStoreNames.length;i++) if (req.obj[db.objectStoreNames[i]]!==null) clean_1(db, {no:db.objectStoreNames[i], prune:true, __proto__:req});
+////        } else if (req.kind==='check_clean') {
+////          var date = Date.now();
+////          if (date - (check_cleaned[db.name] || 0 ) > pref.archive.IDB.check_every * ((pref.test_mode['75'])? 60000 : 3600000)) {
+////            check_cleaned[db.name] = date;
+////            clean_up(db, {tgts:Array.prototype.slice.call(db.objectStoreNames), __proto__:req}, complete_func);
+////          } else complete_func();
+//////          for (var i=0;i<db.objectStoreNames.length;i++) clean_1(db, {no:db.objectStoreNames[i], __proto__:req});
         } else complete_func();
-      } else req_end(db, from_upgrade);
+        if (info.crawler<pref.archive.IDB.nof_tr && !reqs.isEmpty) {
+          info.crawler++;
+          req_1(db, reqs, from_upgrade, complete_func);
+        }
+      } else if (--info.crawler===0) req_end(db, from_upgrade);
     }
     function req_end(db, from_upgrade){
       IDBRequest_close({target:{db:db}});
-      delete (from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw)[db.name];
+      var req_parent = from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw;
+      if (req_parent[db.name] && req_parent[db.name].isEmpty) delete req_parent[db.name];
+//      delete (from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw)[db.name]; // BUG, might be remade.
       if (reqs_re[db.name]) {
-        reqs_rw[db.name] = (reqs_rw[db.name])? reqs_rw[db.name].concat(reqs_re[db.name]) : reqs_re[db.name];
+        reqs_rw[db.name] = (reqs_rw[db.name])? reqs_rw[db.name].push_all(reqs_re[db.name]) : reqs_re[db.name];
+//        reqs_rw[db.name] = (reqs_rw[db.name])? reqs_rw[db.name].concat(reqs_re[db.name]) : reqs_re[db.name];
         delete reqs_re[db.name];
       }
 //      if ((!from_upgrade)? reqs_vc[db.name] : reqs_rw[db.name]) open_db(db.name, (!from_upgrade)? db.version+1 : undefined);
-      if (!from_upgrade && reqs_vc[db.name]) open_db(db.name, db.version+1);
+      if (from_upgrade) {
+        if (reqs_rw[db.name] && !reqs_rw[db.name].isEmpty) open_db(db.name);
+      } else if (reqs_vc[db.name] && !reqs_vc[db.name].isEmpty) open_db(db.name, true);
       if (Object.keys(reqs_rw).length===0 && Object.keys(reqs_vc).length===0 && Object.keys(reqs_re).length===0) watchdog.stop();
     }
-    function re_req(db, req, reqs){
-//      var reqs = (reason==='upgrade')? reqs_vc : (reason==='downgrade')? reqs_rw : req_rw;
-      if (!reqs[db.name]) reqs[db.name] = [req];
-      else reqs[db.name].push(req);
-    }
+
     function delete_th_1(db,req, tr){
       tr_inc(db);
       db.deleteObjectStore(req.no);
       tr_set(tr, (function(func_prev){
         return function(e){
           if (func_prev) func_prev(e);
-          IDBRequest_close({target:{db:db}});
+          IDBRequest_close({target:{db:db}}); // cause ERROR, probably bug in browser, oncomplete is fired too early at createObjectStore and deleteObjectStore.
         }
       })(tr.oncomplete));
 if (pref.debug_mode['23']) console.log('IDB: delete_th: '+db.name+req.no+', '+db.objectStoreNames.length);
@@ -14816,26 +15523,30 @@ if (pref.debug_mode['23']) console.log('IDB: delete_th: '+db.name+req.no+', '+db
 if (!pref.test_mode['66']) {
           put_1(db,req, complete_func);
 } else {
-          re_req(db, req, reqs_rw); // downgrade // DOESN'T WORK WHY???
+          add_req(reqs_rw, db.name, req); // downgrade // DOESN'T WORK WHY???  // cause ERROR, probably bug in browser, oncomplete is fired too early at createObjectStore and deleteObjectStore.
           complete_func({target:{db:db}});
 }
           if (func_prev) func_prev(e);
         }
       })(tr.oncomplete));
     }
-    function put_1(db,req, complete_func){
+    function put_1(db,reqs_in, complete_func){
+      var reqs = reqs_in.reqs || [reqs_in];
       try {
-        if (pref.debug_mode['23']) console.log('put_1: '+req.no+', '+req.kind+', '+req.key);
-        var req = tr_set(db.transaction(req.no,'readwrite'), complete_func).objectStore(req.no).put(
-          (req.key!=='posts')? req.obj : JSON.stringify(req.obj, archiver.store_json_func),
-          (req.key!=='posts')? req.key : req.key+'_'+req.obj[0].no); // .onsuccess = IDBRequest_close;
-//        req.onsuccess = function(e){console.log('success:');};
-//        req.onerror   = function(e){console.log('ERROR');};
+        var IDBT = tr_set(db.transaction(reqs_in.nos || reqs_in.no, 'readwrite', reqs_in), complete_func);
+        for (var i=0;i<reqs.length;i++) {
+          var req = reqs[i];
+          if (pref.debug_mode['23']) console.log('put_'+((reqs_in.nos)?'m: ':'1: ')+db.name.replace(/^[^\/]*/,'')+req.no+', '+req.key+((req.key==='posts')? ':'+req.obj.length:'')+((reqs_in.nos)? ' '+(i+1)+'/'+reqs_in.nos.length+'/'+reqs_in.reqs.length:''));
+          IDBT.objectStore(req.no).put((req.key!=='posts')? req.obj : JSON.stringify(req.obj, archiver.store_json_func),
+                                       (req.key!=='posts')? req.key : req.key+'_'+req.obj[0].no).onerror = IDBRequest_onerror;
+          // .onsuccess = IDBRequest_close;
+        }
+        if (pref.debug_mode['20']) db_info.get(db).done_put += reqs.length;
       } catch (e){
 //        if (pref.debug_mode['20'])
           console.log('IDB: fail to put: '+e.name+': ' + JSON.stringify(req,['no','key','kind']), e, db_info.get(db));
         if (e.name==='InvalidStateError') { // retry when latter requests catch up with a prior request which creates new objectStore.
-          re_req(db,req, reqs_re); // retry
+          add_req(reqs_re, db.name, req); // retry
           if (pref.debug_mode['20']) console.log('IDB: re-scheduled:');
         }
         complete_func({target:{db:db}});
@@ -14844,41 +15555,138 @@ if (!pref.test_mode['66']) {
     function delete_1(db,req, complete_func){
       tr_set(db.transaction(req.no,'readwrite'), complete_func).objectStore(req.no).delete(req.key); // .onsuccess = IDBRequest_close;
     }
-    function clean_up(db,req, complete_func){ 
-      req.complete_func = function(){clean_1(db,req, complete_func);};
-      clean_1(db,req, complete_func);
-    }
-    function clean_1(db,req, complete_func){
-      if (req.tgts.length===0) return complete_func();
-      if (db_info.get(db).wdg) delete db_info.get(db).wdg;
-      var no = req.tgts.shift();
-      if (pref.debug_mode['23']) console.log('clean_1: '+no+', '+req.tgts.length);
-      tr_set(db.transaction(no,'readwrite'), req.complete_func).objectStore(no).get('pruned_time').onsuccess = (req.prune)? clean_1_onsuccess_prune : clean_1_onsuccess;
-    }
-    function tr_set(tr, complete_func){
-      tr.oncomplete = complete_func;
+    var tr_info = new Map();
+    function tr_set(tr, complete_func, req){
+      tr.oncomplete = (req)? IDBTransaction_oncomplete : complete_func;
       tr.onabort    = IDBTransaction_onabort;
       tr.onerror    = IDBTransaction_onerror;
+      if (req) tr_info.set(tr,{req:req, func:complete_func});
       return tr;
     }
-//    function clean_1(db,req){ // CAUSE ERROR in Chrome, "Internal error: Too many transactions queued." Upper limit is about 400-500.
-//      tr_inc(db);
-//      var tr = db.transaction(req.no,'readwrite');
-//      tr.objectStore(req.no).get('pruned_time').onsuccess = (req.prune)? clean_1_onsuccess_prune : clean_1_onsuccess;
-//      tr.oncomplete = IDBRequest_close;
-//      tr.onaboart = IDBTransaction_onabort;
-//      tr.onerror = IDBTransaction_onerror;
-//    }
-    function clean_1_onsuccess_prune(e){
-      clean_1_onsuccess(e, true);
+    function IDBTransaction_oncomplete(e){
+      var info = tr_info.get(e.target);
+      tr_info.delete(e.target);
+      if (info) info.func(e);
+    }
+    function clean_up(db,req, complete_func){
+      var contains = db.objectStoreNames.contains('Meta');
+      if (contains) tr_set(db.transaction('Meta','readwrite'), complete_func).objectStore('Meta').get('pruned_time').onsuccess = clean_1_onsuccess;
+      else clean_up_end_proc(db,req, complete_func);
     }
     function clean_1_onsuccess(e, prune){
-      var value = e.target.result;
-      var date = Date.now();
-      if (!value && prune) e.target.source.put(date, 'pruned_time');
-      else {
-        if (value + pref.archive.IDB.prune * 3600000 < date) acc(site.nickname, e.target.transaction.db.name.replace(pref.script_prefix+'.',''),
-                                                                 e.target.source.name, null, null, 'delete_th');
+      var db = e.target.transaction.db;
+      var src = e.target.result;
+      var dst = check_cleaned[db.name];
+      var dst_obj = {};
+      for (var i=0;i<dst.length;i++) dst_obj[dst[i].no] = i;
+      for (var i=0;i<src.length;i++) if (dst_obj[src[i].no]!==undefined) dst[dst_obj[src[i].no]].pruned_time = 0;
+      check_cleaned[db.name] = src.concat(dst.filter(function(v,i,a){return v.pruned_time!==0;}));
+      clean_up_end_proc(db, null, null); // 'complete_func' will be called by transaction.oncomplete.
+    }
+//    function clean_up(db,req, complete_func){ // working code.
+//      req.complete_func = function(e, tr){
+//        if (tr) {
+//          if (req.tgts.length===0) return;
+//          tr.oncomplete = null;
+//        }
+//        clean_1(db,req, complete_func);
+//      };
+////      req.complete_func = function(){clean_1(db,req, complete_func);};
+//      req.tr = pref.archive.IDB.nof_tr;
+//      for (var i=0;i<req.tr;i++) clean_1(db,req, complete_func);
+//    }
+//    function clean_1(db,req, complete_func){
+//      if (req.tgts.length===0) {
+//        if (--req.tr===0) clean_up_end_proc(db,req, complete_func, true);
+//        return;
+//      }
+//      if (db_info.get(db).wdg) delete db_info.get(db).wdg;
+//      var no = req.tgts.shift();
+//      if (pref.debug_mode['23']) console.log('clean_1: '+no+', '+req.tgts.length);
+//      tr_set(db.transaction(no,'readwrite'), req.complete_func).objectStore(no).get('pruned_time').onsuccess = (req.prune)? clean_1_onsuccess_prune : clean_1_onsuccess;
+//    }
+////    function clean_1(db,req){ // CAUSE ERROR in Chrome, "Internal error: Too many transactions queued." Upper limit is about 400-500.
+////      tr_inc(db);
+////      var tr = db.transaction(req.no,'readwrite');
+////      tr.objectStore(req.no).get('pruned_time').onsuccess = (req.prune)? clean_1_onsuccess_prune : clean_1_onsuccess;
+////      tr.oncomplete = IDBRequest_close;
+////      tr.onaboart = IDBTransaction_onabort;
+////      tr.onerror = IDBTransaction_onerror;
+////    }
+//    function clean_1_onsuccess_prune(e){
+//      clean_1_onsuccess(e, true);
+//    }
+//    function clean_1_onsuccess(e, prune){
+//      var value = e.target.result;
+//      if (!value && !prune) return;
+//      var date = value || Date.now();
+//      var db_name = e.target.transaction.db.name;
+//      var board = db_name.replace(pref.script_prefix+'.','');
+//      check_cleaned[db_name][check_cleaned[db_name].length] = {no:e.target.source.name, pruned_time:date};
+//      if (!value && prune) e.target.source.put(date, 'pruned_time');
+//      else if (pref.test_mode['76']) e.target.transaction.oncomplete(null, e.target.transaction);
+//    }
+//////    function clean_1_onsuccess(e, prune){ // working code.
+//////      var value = e.target.result;
+//////      var date = Date.now();
+//////      if (!value && prune) e.target.source.put(date, 'pruned_time');
+//////      else {
+//////        if (value + pref.archive.IDB.prune * 3600000 < date) acc(site.nickname, e.target.transaction.db.name.replace(pref.script_prefix+'.',''),
+//////                                                                 e.target.source.name, null, null, 'delete_th');
+//////      }
+//////    }
+    function clean_up_end_proc(db,req, complete_func, sort){
+      var tgts = check_cleaned[db.name];
+//      if (sort) tgts.sort(function(a,b){return a.pruned_time - b.pruned_time;}); // sort is in-place
+      var time_prune = Date.now() - pref.archive.IDB.prune * 3600000;
+//      var board = db.name.replace(pref.script_prefix+'.','');
+      var i=0;
+      while (i<tgts.length && tgts[i].pruned_time < time_prune)
+        if (pref.archive.IDB.prune_flush) add_req(reqs_rw, db.name, {no:tgts[i++].no, key:null, obj:flush_and_prune, kind:'get_all'}, true);
+        else add_req(reqs_vc, db.name, {no:tgts[i++].no, key:null, obj:null, kind:'delete_th'}, true);
+//      while (i<tgts.length && tgts[i].pruned_time < time_prune) add_req(reqs_vc, db.name, {no:tgts[i++].no, key:null, obj:null, kind:'delete_th'}, true); // acc(site.nickname, board, tgts[i++].no, null, null, 'delete_th');
+      if (i>0) tgts.splice(0,i);
+      if (tgts.length>0) add_req(reqs_rw, db.name, {no:'Meta', key:'pruned_time', obj:tgts, kind:'put'});
+      if (complete_func) complete_func();
+    }
+    function flush_and_prune(domain, board, no, result){
+      var filename = 'CatChan_archive_pruned_'+domain+'-'+board.slice(1,-1)+'-'+no+'.tar';
+      var file_id = 'pruned_'+domain+board+no+Date.now();
+      archiver.event_funcs['export_thread'](domain, board, no, result, file_id, filename);
+      acc(domain, board, no, null, null, 'delete_th');
+    }
+    function get_all(db,reqs_in, complete_func){
+//      var req = tr_set(db.transaction(req.no,'readonly'), complete_func).objectStore(req.no).getAll(req.key).onsuccess = req.obj;
+      var IDBT = tr_set(db.transaction(reqs_in.nos,'readonly'), complete_func);
+      for (var i=0;i<reqs_in.reqs.length;i++) {
+        var req = reqs_in.reqs[i];
+        if (pref.debug_mode['23']) console.log('get_all: '+db.name.replace(/^[^\/]*/,'')+req.no);
+        var IDBR = IDBT.objectStore(req.no).openCursor();
+        IDBR.onsuccess = get_all_onsuccess;
+        req.result = {};
+        req_dictionary.set(IDBR,req);
+      }
+    }
+    var req_dictionary = new Map();
+    function clear_wdg_get_db(e){
+      var db = e.target.transaction.db;
+      var info = db_info.get(db);
+      if (info && info.wdg) delete info.wdg; // may be stopped by watchdog.
+      return db;
+    }
+    function get_all_onsuccess(e){
+      var db = clear_wdg_get_db(e);
+      var IDBR = e.target;
+      var req = req_dictionary.get(IDBR);
+      var cursor = e.target.result;
+      if (cursor) {
+        req.result[cursor.key] = (cursor.key.indexOf('posts')===0)? JSON.parse(cursor.value) : cursor.value;
+        cursor.continue();
+      } else {
+        req_dictionary.delete(IDBR);
+        var board = e.target.transaction.db.name.replace(pref.script_prefix+'.','');
+        var no = e.target.source.name;
+        setTimeout((function(req,board,no){return function(){req.obj(site.nickname, board, no, req.result);};})(req,board,no),0);
       }
     }
     function IDBRequest_close(e){
@@ -14886,13 +15694,17 @@ if (!pref.test_mode['66']) {
       var info = db_info.get(db);
       if (!info) return; // closed by WATCHDOG.
       if (info.tr_count!==1) info.tr_count -= 1; //      if (tc===1) {db.close();tr_count.delete(db);}
-      else {
-        db.close();
-        if (pref.debug_mode['20']) console.log('IDB: closed: v'+db.version+', '+JSON.stringify(db_info.get(db),['type','coms','tr_count']));
-        last_closed = db_info.get(db);
-        last_closed.db = db;
-        db_info.delete(db);
-      }
+      else IDB_close(db, info);
+    }
+    function IDB_close(db, info, force){
+      if (!info) info = db_info.get(db);
+      db_info.delete(db);
+      if (force || !pref.test_mode['78'] || info.req_kinds['delete_th']===undefined || Object.keys(info.req_kinds).length!=1) db.close();
+      else if (pref.debug_mode['26']) console.log('Hit the case of test_mode[78]');
+      if (pref.debug_mode['20']) console.log('IDB: closed: '+db_info.size+' '+db.name.replace(/^[^\/]*/,'')+' v'+db.version+', '+info.type+', done:'+info.done+', done_put:'+info.done_put+', '+info.coms);
+      if (info) info.db = db;
+      last_closed = info;
+      indicator_update();
     }
     var last_closed = null; // for debug
     var db_info = new Map();
@@ -14901,6 +15713,7 @@ if (!pref.test_mode['66']) {
     }
     var check_cleaned = {};
     var version = {};
+    var waiting_open = {}; // exclusive request,(closing a transaction without any acceess may cause an IDB ABORT ERROR)
     var reqs_vc = {};
     var reqs_rw = {};
     var reqs_re = {};
@@ -14909,57 +15722,235 @@ if (!pref.test_mode['66']) {
       if (domain!==site.nickname) return;
       var db_name = pref.script_prefix+'.'+board;
       var req_obj = {no:no, key:key, obj:obj, kind:kind};
-      var ver = (kind==='delete_th' && version[db_name]+1) || undefined;
-      var reqs = (ver)? reqs_vc : reqs_rw;
-      if (!reqs[db_name]) {
-        reqs[db_name] = [req_obj];
-        open_db(db_name, ver);
-      } else {
-        reqs[db_name].push(req_obj);
-        watchdog.start();
-      }
+      var reqs = (kind==='delete_th')? reqs_vc : reqs_rw;
+      add_req(reqs, db_name, req_obj, true);
 //      if (!reqs[db_name]) reqs[db_name] = [req_obj]; // not improved.
 //      else reqs[db_name].push(req_obj);
 //      open_db(db_name, ver);
     }
-    function open_db(db_name, ver){
-      var req = window.indexedDB.open(db_name, ver);
+    function open_db(db_name, ver, from_watchdog){
+      var key = db_name+((ver)? 'vc' : 'rw');
+      if (waiting_open[key]!==undefined && (!from_watchdog || ++waiting_open[key]<db_info.size)) {
+        if (pref.debug_mode['27']) if (from_watchdog) console.log('IDB: WATCHDOG: '+key+', '+waiting_open[key]);
+        return;
+      }
+      waiting_open[key] = 0;
+      var req = window.indexedDB.open(db_name, ver && version[db_name]+1 || undefined); // version[db_name]+1 is NaN at initial.
       req.onerror = IDBRequest_onerror;
       req.onsuccess = IDBRequest_onsuccess_open;
       req.onupgradeneeded = IDBRequest_onupgradeneeded;
       req.onblocked = IDBRequest_onblocked;
-      watchdog.start();
+    }
+    function add_req(reqs, db_name, req, call){
+      if (!indicator && indicator_parent) {
+        indicator = indicator_parent.shift('limegreen', 'w', 'IDB', 0);
+        indicator.report({start:Date.now(), prog_str:'Opening'});
+      }
+      indicator_req_count++;
+      if (!reqs[db_name]) {
+        reqs[db_name] = new ReqFifo(db_name, reqs===reqs_rw, req);
+        if (call) open_db(db_name, reqs===reqs_vc);
+      } else reqs[db_name].push(req);
+      watchdog.start((pref.test_mode['77'])? 10000 : undefined);
+    }
+    var ReqFifo = function(db_name, allow_multi, init_val){
+      this.ary = [];
+      this.ary_ro = [];
+//      this.count = 0;
+      this.allow_multi = allow_multi;
+      if (!this.reqs[db_name]) this.reqs[db_name] = {};
+      this.reqs = this.reqs[db_name]; // shared
+      this.cls = {}; // req clusters
+      if (init_val) this.push(init_val);
+      this.cl = null;
+      this.cl_idx = 0;
+    };
+    ReqFifo.prototype = {
+      shift: function(){
+        var max = (this.allow_multi)? pref.archive.IDB.nof_cl : 1;
+        var i=0;
+        while (i<this.ary_ro.length && i<max && this.ary_ro[i].kind==='get_all') i++;
+        if (i!=0) return {kind:'get_all_m', reqs:this.ary_ro.splice(0,i)};
+        else if (this.ary_ro.length!==0) return this.ary_ro.shift();
+//        if (this.ary_ro.length>0) return this.ary_ro.shift();
+        if (this.ary.length===0 && !this.cl) return null;
+if (!pref.test_mode['79']) {
+        var retval = [];
+        while (retval.length<max) {
+          var req;
+          if (this.cl===null) {
+            req = this.ary[i];
+            if (!req || req.kind!=='put') break;
+            i++;
+            if (req.cl) {
+              this.cls[req.no] = null;
+              this.cl = req.cl;
+              this.cl_idx = 0;
+              req.cl = null; // for retry.
+            }
+          } else {
+            req = this.cl[this.cl_idx++]; // all reqs are 'put'.
+            if (this.cl_idx>=this.cl.length) this.cl = null;
+          }
+          retval[retval.length] = req;
+          delete this.reqs[req.no + req.key]; // shared, so must use delete.
+        }
+        if (i>0) this.ary.splice(0,i);
+        return (retval.length>1)? {kind:'put_m', reqs:retval} : (retval.length>0)? retval[0] : this.ary.shift();
+} else {
+        while (i<max) { // working code // not debugged enough
+          var req = this.ary[i];
+          if (!req) break;
+          if (req.cl) {
+            this.ary = this.ary.slice(0,i+1).concat(req.cl,this.ary.slice(i+1));
+            req.cl = null; // for retry.
+          }
+          if (req.kind==='put') {
+            this.cls[req.no] = null;
+            delete this.cls[req.no + req.key]; // shared, so must use delete.
+            i++;
+          } else break;
+        }
+////        while (i<max && this.ary[i] && this.ary[i].kind==='put') {delete this.cls[this.ary[i].no + this.ary[i].key]; i++;} // working code.
+////        this.count += i;
+        return (i>1)? {kind:'put_m', reqs:this.ary.splice(0,i)} :
+                      this.ary.shift();
+}
+      },
+      push: function(req){
+        if (req.kind==='get_all' || req.kind==='list_os') {
+          this.ary_ro[this.ary_ro.length] = req;
+          return;
+        }
+        if (req.kind==='put') {
+          var key = req.no + req.key;
+          var req_old = this.reqs[key];
+        }
+        if (req_old) req_old.obj = (req.key==='posts')? req_old.obj.concat(req.obj) : req.obj;
+        else if (key) {
+          if (req.key==='posts' || req.key==='pruned_time' || req.key==='posts_deleted') this.reqs[key] = req;
+//          var idx = this.reqs[req.no] - count; // maybe NaN // not debugged.
+//          if (idx>1 && idx!==this.ary.length) {
+//            this.ary.splice(idx,req);
+//            this.reqs[req.no] = count + idx +1;
+//          } else {
+//            this.ary[this.ary.length] = req;
+//            this.reqs[req.no] = count+this.ary.length;
+          var req_cl = this.cls[req.no];
+          if (req_cl) { // 'reqs' is used by 'put_m'.
+            if (req_cl.cl) req_cl.cl[req_cl.cl.length] = req;
+            else req_cl.cl = [req];
+          } else {
+            this.ary[this.ary.length] = req;
+            this.cls[req.no] = req;
+          }
+        } else this.ary[this.ary.length] = req;
+      },
+      push_all: function(reqs){
+        while (!reqs.isEmpty) this.push(reqs.shift());
+      },
+//      get length(){return this.ary.length - this.idx;},
+//      get length(){return this.ary.length + this.ary_ro.length;},
+      get length(){return this.ary.length + this.ary_ro.length + (this.cl && this.cl.length-this.cl || 0);}, // approx.
+      get isEmpty(){return this.ary.length===0 && !this.cl && this.ary_ro.length===0;},
+      reqs: {},
+      debug_query: function(){
+        var whole_array = Array.prototype.concat.apply(this.ary_ro, this.ary.map(function(v){return (v.cl)? [v].concat(v.cl) : v;}));
+        var coms = [];
+        var count = 1;
+        var i=0;
+        while (coms.length<20 && i++<whole_array.length) {
+          if (whole_array[i] && whole_array[i-1].kind===whole_array[i].kind) count++;
+          else {
+            coms[coms.length] = whole_array[i-1].kind+((count!=1)? '*'+count:'');
+            count = 1;
+          }
+        }
+        if (i<whole_array.length) coms[coms.length-1] += '...';
+//        var coms = whole_array.map((function(){ // working code.
+//          var count = 1;
+//          return function(v,i,a){
+//            if (a[i+1] && v.kind===a[i+1].kind) {
+//              count++;
+//              return null;
+//            } else {
+//              var retval = v.kind+((count!=1)? '*'+count:'');
+//              count = 1;
+//              return retval;
+//            }
+//          }
+//        })()).filter(function(v){return v;});
+        return {coms:coms, length:this.ary_ro.length+'/'+this.ary.length+'/'+whole_array.length};
+      }
+    };
+    var indicator_parent = null;
+    var indicator = null;
+    var indicator_req_count = 0;
+    var indicator_update = DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){
+      var nof_waiting_open_db = Object.keys(waiting_open).length;
+      var nof_opened_db = db_info.size;
+      var sums = get_status();
+      indicator.report({prog_str:sums.join('/')+'/'+nof_opened_db+'/'+nof_waiting_open_db+'/'+indicator_req_count});
+      if (nof_opened_db===0 && nof_waiting_open_db===0 && sums.reduce(function(a,b){return a+b;})===0) {
+        indicator.report({end:Date.now()});
+        indicator = null;
+        indicator_req_count = 0;
+      }
+    }),100);
+    function get_status(){
+      var sums = [0, 0, 0, Object.keys(reqs_vc).length, Object.keys(reqs_rw).length, Object.keys(reqs_re).length];
+      var tgts = [reqs_vc,reqs_rw,reqs_re];
+      for (var i=0;i<3;i++)
+        for (var j in tgts[i]) sums[0] += tgts[i][j].length;
+      return sums;
     }
     var watchdog = new Watchdog(function (){
 //      if (pref.debug_mode['20']) {
-        var sums = [0,0,0];
-        var tgts = [reqs_vc,reqs_rw,reqs_re];
-        for (var i=0;i<3;i++)
-          for (var j in tgts[i]) sums[i] += Object.keys(tgts[i][j]).length;
-        console.log('IDB: WATCHDOG: '+Object.keys(reqs_vc).length+'('+sums[0]+'), '+Object.keys(reqs_rw).length+'('+sums[1]+'), '+Object.keys(reqs_re).length+'('+sums[2]+')');
+        var sums = get_status();
+        var watchdog_str = 'WATCHDOG: '+sums[3]+'('+sums[0]+'), '+sums[4]+'('+sums[1]+'), '+sums[5]+'('+sums[2]+')';
+        if (pref.debug_mode['27']) console.log('IDB: '+watchdog_str);
         for (var db of db_info.keys()) {
           var tgt = db_info.get(db);
-          console.log(tgt);
-          if (!tgt.wdg || tgt.wdg!==tgt.req) tgt.wdg = tgt.req;
+          if (pref.debug_mode['27']) console.log(tgt);
+          if (!tgt.wdg || tgt.wdg!==(tgt.req||'waiting')) tgt.wdg = tgt.req || 'waiting';
+//          if (tgt.req && (!tgt.wdg || tgt.wdg!==tgt.req)) tgt.wdg = tgt.req;
+//          if (!tgt.wdg || tgt.wdg!==tgt.req) tgt.wdg = tgt.req; // BUG. lock when tgt.req===unefined or tgt.req===null. // This was patched in 'req_1'
           else {
-            db.close();
-            re_req(db, tgt.req, (tgt.req.kind==='delete_th')? reqs_vc : reqs_rw);
-            console.log('IDB: WATCHDOG: close and re-req, '+tgt.req.kind);
-            db_info.delete(db);
+            indicator_report();
+            IDB_close(db, tgt, true);
+            if (tgt.req) {
+              add_req((tgt.req.kind==='delete_th')? reqs_vc : reqs_rw, db.name, tgt.req);
+              console.log('IDB: WATCHDOG: close and re-req, '+tgt.req.kind);
+            }
           }
         }
+        for (var db_name_key in waiting_open) {
+          indicator_report();
+          open_db(db_name_key.replace(/(rw|vc)$/,''), db_name_key.search(/vc$/)!=-1, true);
+        }
 //      }
-      for (var i in reqs_vc) open_db(i,version[i]+1);
-      for (var i in reqs_rw) if (!reqs_vc[i]) open_db(i);
+      for (var i in reqs_vc) open_db(i,true, true);
+      for (var i in reqs_rw) if (!reqs_vc[i]) open_db(i, undefined, true);
+      if (sums[0]+sums[1]+sums[2]!==0) watchdog.start((pref.test_mode['77'])? 10000 : undefined);
+      function indicator_report(){
+        if (watchdog_str) {
+          indicator.report({err_str:watchdog_str});
+          watchdog_str = '';
+        }
+      }
     }, 60000);
     return {
-      req: acc,
-      put: function(domain,board,no,key,obj){acc(domain,board,no,key,obj, 'put');},
-      get: function(){
-      },
-      delete: function(domain,board,no,key,obj){acc(domain,board,no,key,obj, 'delete');},
+      req: acc, // write: function(domain, board, no, key, data,     cmd)
+                // read : function(domain, board, no, key, callback, cmd)
       clean_up: function(domain, board, nos){
-        acc(domain,board,undefined,undefined,nos, 'clean_up');
+        if (version[pref.script_prefix+'.'+board]) {
+          acc(domain,board,null,null,nos, 'clean_up');
+          liveTag.mems[domain][board].IDB_synced = 1;
+        }
+      },
+      set_indicator: function(indicator){
+        if (!indicator_parent) indicator_parent = indicator;
+//        indicator_parent.shift().set('Red','IDB:');
       },
     };
   })();
@@ -15001,7 +15992,7 @@ if (!pref.test_mode['66']) {
       var tars = {};
       var count = 0;
       return {
-        add_blob: function(blob, lth, suffix, tarfile){
+        add_blob: function(blob, lth, suffix, tarfile, ignore_limit){
           if (!tars[tarfile]) tars[tarfile] = {files:[], size:0};
           var tfile = tars[tarfile];
           tfile.files[tfile.files.length] = make_header(blob, lth, suffix);
@@ -15009,15 +16000,15 @@ if (!pref.test_mode['66']) {
           tfile.files[tfile.files.length] = blob;
           if (blob.size%512!==0) tfile.files[tfile.files.length] = new Uint8Array(512-blob.size%512);
           tfile.size += Math.floor((blob.size+511)/512);
-          if (tfile.size>pref.archive.tarsize*2*1024 || pref.test_mode['71']) this.flush(tarfile);
+          if (!ignore_limit && (tfile.size>pref.archive.tarsize*2*1024 || pref.test_mode['71'])) this.flush(tarfile);
         },
-        flush: function(tarfile){
-          tars[tarfile].files[tars[tarfile].files.length] = new Uint8Array(1024);
-          download_url4(new Blob(tars[tarfile].files, {type:'application/x-tar'}), 'CatChan_archive_updates_'+tarfile+'_'+(count++)+'.tar');
-          delete tars[tarfile];
-        },
-        flush_all: function(){
-          for (var i in tars) this.flush(i);
+        flush: function(tarfile, filename){
+          if (!tarfile) {for (var i in tars) this.flush(i); return;}
+          if (tars[tarfile]) { // called from both 'httpd.check_timestamp_and_flush' and 'archiver.flush_req', so the file might be flushed.
+            tars[tarfile].files[tars[tarfile].files.length] = new Uint8Array(1024);
+            download_url4(new Blob(tars[tarfile].files, {type:'application/x-tar'}), filename || 'CatChan_archive_updates_'+site.nickname+'_'+tarfile+'_'+(count++)+'.tar');
+            delete tars[tarfile];
+          }
         },
       };
     })();
@@ -15041,14 +16032,20 @@ if (!pref.test_mode['66']) {
       a_link.innerHTML = '<a href=' + url + ' download="' + filename + '">';
       a_link.childNodes[0].click();
     }
+    var proto_archive = {initiator:'archive', responseType:'blob', archive:true, callback_1:httpd.onload_archive,
+                         get max(){return this.tgts.length;},
+                         get tgt(){return this.key + this.url.substr(this.url.lastIndexOf('/'));},
+                        };
     var timestamp = null;
     var month = {Jan:'01', Feb:'02', Mar:'03', Apr:'04', May:'05', Jun:'06', Jul:'07', Aug:'08', Sep:'09', Oct:'10', Nov:'11', Dec:'12'};
     function set_timestamp(){
       var arr = new Date().toString().split(' ').slice(1,5);
       timestamp = [arr[2], month[arr[0]], arr[1], arr[3].replace(/:/g,'')].join('');
+      httpd.req({tgts:[], timestamp:timestamp, __proto__:proto_archive},0);
     }
     var flush_req = DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){
-      if (reqs.length==0 && xhrs.size==0) tar.flush_all();
+//      if (reqs.length==0 && xhrs.size==0) tar.flush();
+      httpd.check_timestamp_and_flush(timestamp);
     },5000));
     
     var xhrs = new Map();
@@ -15057,45 +16054,50 @@ if (!pref.test_mode['66']) {
 //      if (!timestamp) set_timestamp();
 //      var req = {url:url, lth:lth, kind:kind, to_file:to_file, to_idb:to_idb, timestamp:timestamp};
     function download_url2(reqs_in){
-      for (var i=0;i<reqs_in.length;i++) {
-        if (xhrs.size>=10) reqs.push(reqs_in[i]);
-        else {
-          var xhr = new XMLHttpRequest();
-          xhr.responseType = 'blob';
-          xhr.onload  = download_url2_1_onload;
-          xhr.onerror = download_url2_1_onload;
-          xhr.onabort = download_url2_1_onload;
-          download_url2_1(xhr, reqs_in[i]);
-        }
-      }
+      httpd.req_add({tgts:reqs_in, timestamp:timestamp, __proto__:proto_archive},0);
+      return;
     }
-    function download_url2_1(xhr, req){ // for test
-      xhrs.set(xhr, req);
-      xhr.open('GET', req.url);
-      xhr.send();
-      return xhr;
-    }
-    function download_url2_1_onload(e){
-      var xhr = e.target;
-      var req = xhrs.get(xhr);
-      if (req.from) delete list_all_obj_downloading[req.from];
-      if(xhr.status === 200 && e.type==='load') {
-        var suffix = req.kind + '_'+ xhr.responseURL.replace(/.*\//g,'');
-        if (req.to_file) download_url3(xhr.response, req.lth, suffix, req.timestamp);
-        if (pref.test_mode['65']) if (req.to_idb) IDB.req(req.lth.domain, req.lth.board, req.lth.no, suffix, xhr.response, 'put');
-      }
-      if (reqs.length>0) {
-        req = reqs.shift();
-        download_url2_1(e.target, req);
-      } else xhrs.delete(xhr);
-      if (xhrs.size===0) tar.flush_all();
-    }
+////    function download_url2(reqs_in){ // working code.
+////      for (var i=0;i<reqs_in.length;i++) {
+////        if (xhrs.size>=10) reqs.push(reqs_in[i]);
+////        else {
+////          var xhr = new XMLHttpRequest();
+////          xhr.responseType = 'blob';
+////          xhr.onload  = download_url2_1_onload;
+////          xhr.onerror = download_url2_1_onload;
+////          xhr.onabort = download_url2_1_onload;
+////          download_url2_1(xhr, reqs_in[i]);
+////        }
+////      }
+////    }
+////    function download_url2_1(xhr, req){ // for test
+////      xhrs.set(xhr, req);
+////      xhr.open('GET', req.url);
+////      xhr.send();
+////      return xhr;
+////    }
+////    function download_url2_1_onload(e){
+////      var xhr = e.target;
+////      var req = xhrs.get(xhr);
+////      if (req.from) delete list_all_obj_downloading[req.from];
+////      if(xhr.status === 200 && e.type==='load') {
+////        var suffix = req.kind + '_'+ xhr.responseURL.replace(/.*\//g,'');
+////        if (req.to_file) download_url3(xhr.response, req.lth, suffix, req.timestamp);
+////        if (pref.test_mode['65']) if (req.to_idb) IDB.req(req.lth.domain, req.lth.board, req.lth.no, suffix, xhr.response, 'put');
+////      }
+////      if (reqs.length>0) {
+////        req = reqs.shift();
+////        download_url2_1(e.target, req);
+////      } else xhrs.delete(xhr);
+////      if (xhrs.size===0) tar.flush();
+////    }
     function img_dl(kind, th, lth, posts, img, img_idb, webm, webm_idb, reqs){
       for (var i=0;i<posts.length;i++) {
         var url = (kind==='tn')? site2[th.domain].catalog_json2html3_thumbnail(posts[i],th.board) : site2[th.domain].catalog_json2html3_src(posts[i],th.board);
         if (url) {
           if (!timestamp) set_timestamp();
-          var proto = {lth:lth, kind:kind, to_file:img||webm, to_idb:img_idb||webm_idb, timestamp:timestamp};
+//          var proto = {lth:lth, kind:kind, to_file:img||webm, to_idb:img_idb||webm_idb, timestamp:timestamp};
+          var proto = {domain:th.domain, board:th.board, no:th.no, key:th.key, kind:kind, to_file:img||webm, to_idb:img_idb||webm_idb, timestamp:timestamp, __proto__:proto_archive};
           if ((url.substr(-5,5)==='.webm')? webm || webm_idb : img || img_idb) reqs[reqs.length] = {url:url, __proto__:proto};
           if (posts[i].extra_files) for (var j=0;j<posts[i].extra_files.length;j++) {
             url = (kind==='tn')? site2[th.domain].catalog_json2html3_thumbnail(posts[i].extra_files[j],th.board) : site2[th.domain].catalog_json2html3_src(posts[i].extra_files[j],th.board);
@@ -15104,20 +16106,24 @@ if (!pref.test_mode['66']) {
     }
 
     var archive_no = 0;
-    function restore(file, result, archive){
+    function restore(file, result, archive, IDB){
       if (!window.URL) return;
-      var th_obj = (file.type==='text/html')? new DOMParser().parseFromString(result, 'text/html') : JSON.parse(result);
+      var th_obj = (IDB)? result :
+                   (file.type==='text/html')? new DOMParser().parseFromString(result, 'text/html') : JSON.parse(result);
       var dbt = (pref.archive.format==='auto')? common_func.name2domainboardthread(file.name.replace(/\.[^\.]*$/,'').split('_')[0].split('-').slice(0,3).join('/'),true) :
                                                 [pref_func.settings.html_funcs.get_domains()[pref.archive.domain],
                                                  '/'+pref.archive.board.replace(/\//g,'')+'/'];
-      cataLog.scan_boards_keyword_callback2(dbt[0]+','+dbt[1]+','+ (archive_no++)+',thread_' + ((file.type==='text/html')? 'html' : 'json'),
-                                            {date:Date.now(), status:200, response:th_obj},
-                                            ['archive_restore',{found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, localArchive:archive}]);
+      if (pref.test_mode['80']) dbt[1] = dbt[1].slice(0,-1) + ((IDB)? '_IDB/' : '_File/');
+      var ths = cataLog.scan_boards_keyword_callback2(dbt[0]+','+dbt[1]+','+ (archive_no++)+',thread_' + ((file.type==='text/html')? 'html' : 'json'),
+                                                      {date:Date.now(), status:200, response:th_obj},
+                                                      ['archive_restore',{found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, localArchive:archive}]);
+      cataLog.threads[ths[0].key][16].archiveFile = (IDB)? 'IDB' : file;
     }
-    function start_1(req, lth, footer){
+    function start_1(req, lth, footer, from_check_op){
       if (req==='ARC' || req==='ARC1') {
-        lth.archived |= (req==='ARC')? 6 : 5;
-        scan.list_nup.add_scan(lth);
+        lth.archived |= (req==='ARC')? 6 : 1;
+//        lth.archived |= (req==='ARC')? 6 : 5;
+        if (!from_check_op) scan.list_nup.add_scan(lth);
       } else if (req==='UARC') {
         lth.archived = 0;
         archiver.clean_list(lth.domain, lth.board, lth.no);
@@ -15126,6 +16132,7 @@ if (!pref.test_mode['66']) {
     }
     var blist = {pn:null, time_bumped:null, time_created:null, time_posted:null, flag:null, footer:null, time_tu:null,
                  nof_posts:null, nof_files:null, tags:null, page:null,
+                 parse_funcs:null, // THIS IS REDUNDANT, but this caused a bug, so this is for safe.
                  quotes:null, backlinks:null, reply_to_me:null, reply_of_mine:null, op_img_url:null}; // BUG. meguca has 'backlinks'.
     function store_json_func(key,value){
       return (blist[key]===null)? undefined : value;
@@ -15163,15 +16170,22 @@ if (!pref.test_mode['66']) {
     var ls_key_archive = pref.script_prefix + '.archived';
     var list_all_obj = {};
     if (localStorage) load_list();
+    if (pref.debug_mode['28']) console.log('list_all_obj: ',list_all_obj);
     var list_all_obj_downloading = {};
     function list_all(){
+      if (pref.debug_mode['28']) console.log('list_all_obj_downloading: ',list_all_obj_downloading);
       for (var d in liveTag.mems) {
+        var time_unit = site2[d].parse_funcs.post_json.time_unit;
         for (var b in liveTag.mems[d]) {
           var tgt     = list_all_obj[d] && list_all_obj[d][b];
           var tgt_tmp = tgt || {};
           for (var t in liveTag.mems[d][b]) {
             var lth = liveTag.mems[d][b][t];
-            if (lth.archived) tgt_tmp[t] = list_all_obj_downloading[lth.key] || lth.time_checked; // BUG. NOT implemented yet.
+            var time_checked = list_all_obj_downloading[lth.key] || lth.time_checked/time_unit;
+            if (lth.archived) {
+              if (list_all_obj_downloading[lth.key]) tgt_tmp[t] = list_all_obj_downloading[lth.key];
+              else if (!tgt_tmp[t] || tgt_tmp[t]<time_checked) tgt_tmp[t] = time_checked;
+            } else if (lth.posts_saved) tgt_tmp[t] = - time_checked;
 //            if (lth.archived && !(lth.key in pref3.archive.list_obj2)) list_all_obj[lth.key] = lth.time_checked; // BUG. NOT implemented yet.
           }
           if (!tgt && Object.keys(tgt_tmp).length!==0) {
@@ -15190,6 +16204,7 @@ if (!pref.test_mode['66']) {
         list_all();
         if (Object.keys(list_all_obj).length===0) delete localStorage[ls_key_archive];
         else localStorage[ls_key_archive] = JSON.stringify(list_all_obj);
+        if (pref.debug_mode['28']) console.log('list_all_obj: ',list_all_obj);
       }
     }
     window.addEventListener('storage', load_list, false);
@@ -15207,21 +16222,18 @@ if (!pref.test_mode['66']) {
       check_op: function(th,lth){
         var kwd = pref.archive.kwd;
         if (pref.archive.store_auto && kwd.str && (kwd.sub || kwd.name || kwd.com) &&
-            cataLog.threads && cataLog.catalog_filter_query_keyword.kwd(pref.archive.kwd, th.posts, th.domain, th)) start_1('ARC', lth, false);
-        else {
-          var val = this.check_archived_time(th.key, th.domain, th.board, th.no);
-          if (val!==false) start_1('ARC', lth, false);
-        }
+            cataLog.threads && cataLog.catalog_filter_query_keyword.kwd(pref.archive.kwd, th.posts, th.domain, th) ||
+            this.check_archived_time(th.key, th.domain, th.board, th.no, th.parse_funcs.time_unit)!==false) start_1('ARC', lth, false, true);
       },
-      check_archived_time: function(key, domain, board, no){
+      check_archived_time: function(key, domain, board, no, time_unit){
         if (pref.archive.list) {
           var val = pref3.archive.list_obj2[key]; // find d/b/t@xxxx expression
           if (val && val.time) return val.time;
         }
-        if (pref.archive.list_inherit && list_all_obj[domain] && list_all_obj[domain][board]) val = list_all_obj[domain][board][no];
-        if (val!==undefined) return val;
+        var val_inherited = list_all_obj[domain] && list_all_obj[domain][board] && list_all_obj[domain][board][no];
+        if (pref.archive.list_inherit && val_inherited) return val_inherited;
         if (pref.archive.list) val = pref_func.merge_obj5(key,pref3.archive.list_obj2,null); // find all expresion
-        return (val)? val.time || 0 : false; // val may be undefined or null.
+        return (val)? val.time/time_unit || val_inherited || 0 : false; // val may be undefined or null.
       },
       update_archived_time: function(name){
         pref3.archive.working = true;
@@ -15237,6 +16249,7 @@ if (!pref.test_mode['66']) {
       },
       store_entry: function(req, downloaded_files){
         if (cataLog.threads) {
+          if (pref.archive.src==='shown') for (var name in cataLog.threads) if (cataLog.threads[name][9][0]===null) cataLog.threads[name][9] = cataLog.catalog_filter_query(name, true);
           for (var name in cataLog.threads) {
             var lth = liveTag.mems.getFromName(name);
             if (pref.archive.src==='stored' ||
@@ -15249,17 +16262,29 @@ if (!pref.test_mode['66']) {
       store_th_to_mem: function(th,lth){
         if (pref[cataLog.embed_mode].deleted_posts.detect!=='no') {
           var posts = (th.posts && th.posts.length>1 && th.nof_posts>th.posts.length && lth.ta && pref[cataLog.embed_mode].deleted_posts.detect!=='passive')?
-                      site2[th.domain].update_posts_replace_prep(th.posts, lth.ta.posts, -1) : th.posts;
-          if (pref.test_mode['65'] && pref.archive.IDB.post) {
+                      site2[th.domain].update_posts_replace_prep(th.posts, lth.ta.posts, -1) :
+                      (th.parse_funcs.has_posts)? th.posts : lth.ta && lth.ta.posts || th.posts;
+          if (pref.test_mode['65'] && (pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB')) {
+            var time_checked;
+            if (lth.ta) time_checked = lth.ta.posts[lth.ta.posts.length-1].time;
+            else {
+              time_checked = list_all_obj[th.domain] && list_all_obj[th.domain][th.board] && list_all_obj[th.domain][th.board][th.no];
+              if (time_checked<0) time_checked = - time_checked;
+            }
             var posts_saved;
-            if (lth.ta && (lth.ta.posts.length===lth.ta.nof_posts || th.posts.length < th.nof_posts)) {
-              var last_no = lth.ta.posts[lth.ta.posts.length-1].no;
+            if (time_checked && (!lth.ta || lth.ta.posts.length===lth.ta.nof_posts || th.posts.length < th.nof_posts)) {
               var i=th.posts.length;
-              while (i>0 && th.posts[i-1].no>last_no) i--;
+              while (i>0 && th.posts[i-1].time>time_checked) i--;
               posts_saved = th.posts.slice(i);
             } else posts_saved = th.posts;
-            if (posts_saved.length>0) IDB.req(th.domain, th.board, th.no, 'posts', posts_saved, 'put');
+            if (posts_saved.length>0) {
+              if (th.type_data==='html') this.prepare_html_extract_params(th);
+              IDB.req(th.domain, th.board, th.no, 'posts', posts_saved, 'put');
+              lth.posts_saved = 1;
+            }
+            if (pref.debug_mode['28'] && posts_saved.length>0) console.log('posts_saved: '+th.key+', '+time_checked+', '+posts_saved[posts_saved.length-1].time+' '+new Date(posts_saved[posts_saved.length-1].time*th.parse_funcs.time_unit).toLocaleString()+', LS:'+(list_all_obj[th.domain] && list_all_obj[th.domain][th.board] && list_all_obj[th.domain][th.board][th.no]));
           }
+          if (pref.test_mode['65'] && pref.archive.oneshot.post_idb && (lth.archived&0x01)) IDB.req(th.domain, th.board, th.no, 'posts', posts, 'put');
           lth.ta = {
             posts: posts,
             nof_posts:th.nof_posts,
@@ -15338,27 +16363,30 @@ if (!pref.test_mode['66']) {
         var deletedPosts = this.check_deleted_posts(value, th, lth);
         this.store_th_to_mem(th,lth); // MUST BE AFTER 'check_deleted_posts', because it uses lth.ta for old version of posts and this revises them.
         if (lth.archived) {
-          var time_checked = this.check_archived_time(th.key, th.domain, th.board, th.no) || time_check_old || 0;
-          if (lth.archived&0x04) if (th.posts[th.posts.length-1].time*th.parse_funcs.time_unit<=time_checked || th.time_posted<=time_checked) return;
+          var time_unit = th.parse_funcs.time_unit;
+          var time_checked = this.check_archived_time(th.key, th.domain, th.board, th.no, time_unit) || 0;
+          time_check_old /= time_unit;
+          if (time_checked<time_check_old) time_checked = time_check_old;
+//          var time_checked = time_check_old/time_unit || this.check_archived_time(th.key, th.domain, th.board, th.no, time_unit) || 0; // BUG, because time_check_old brings pref.catalog.filter.time_str
+          if (!(lth.archived&0x01) && (lth.archived&0x04)) if (th.posts[th.posts.length-1].time*th.parse_funcs.time_unit<=time_checked || th.time_posted<=time_checked) return;
           if (th.parse_funcs.posts_full) th.parse_funcs.posts_full(th);
-          this.update_archived_time(th.key);
           var live_active    = lth.archived&0x02;
           var oneshot_active = lth.archived&0x01;
           var post = live_active && pref.archive.live.post || oneshot_active && pref.archive.oneshot.post;
           var suffix_dbt = th.key.replace(/\//g,'-');
-          if (deletedPosts && post) store_posts(JSON.stringify(deletedPosts), 'text/plain', lth, suffix_dbt+'_'+'deleted.json');
-          
+          var timestamp_old = timestamp;
+          if (deletedPosts && post) store_posts(JSON.stringify(site2[th.domain].parse_funcs.thread_json.prep_to_archive(deletedPosts)), 'text/plain', lth, suffix_dbt+'_'+'deleted.json');
           var type = (th.type_data==='html')? 'text/html' : 'text/plain';
           var posts_all = (th.type_source==='thread' || th.posts.length===th.nof_posts)? th.posts : (lth.ta && lth.ta.posts.length===th.nof_posts)? lth.ta.posts : null;
           if (post) {
             var sub = (th.posts[0].sub || '').replace(/\..*/,'');
-            var suffix = suffix_dbt + ((sub)? '_'+sub : '') + ((th.type_data==='html')? '.html' : '.json');
+            var suffix = suffix_dbt + ((pref.archive.sub_in_filename && sub)? '_'+sub : '') + ((th.type_data==='html')? '.html' : '.json');
             if (posts_all) store_posts((th.type_source==='thread')? value.responseText :
                                                                     JSON.stringify(site2[th.domain].parse_funcs.thread_json.prep_to_archive(posts_all), store_json_func),
                                        type, lth, suffix);
             else {this.store_rescan(lth); return;}
           }
-          if (posts_new || (lth.archived&0x04)) {
+          if (posts_new || (lth.archived&0x05)) {
             var tn       = live_active && pref.archive.live.tn       || oneshot_active && pref.archive.oneshot.tn;
             var tn_idb   = live_active && pref.archive.live.tn_idb   || oneshot_active && pref.archive.oneshot.tn_idb;
             var img      = live_active && pref.archive.live.img      || oneshot_active && pref.archive.oneshot.img;
@@ -15366,14 +16394,18 @@ if (!pref.test_mode['66']) {
             var webm     = live_active && pref.archive.live.webm     || oneshot_active && pref.archive.oneshot.webm;
             var webm_idb = live_active && pref.archive.live.webm_idb || oneshot_active && pref.archive.oneshot.webm_idb;
             if (tn || tn_idb || img || img_idb || webm || webm_idb) {
-              if (lth.archived&0x04) {
-                if (!posts_all && (!th.posts[1] || th.posts[1].time>time_checked) && (!lth.ta.posts[1] || lth.ta.posts[1].time>time_checked)) {this.store_rescan(lth); return;}
-                var posts_src = (th.posts[1] && th.posts[1].time<=time_checked)? th.posts : lth.ta.posts;
-                var i = posts_src.length;
-                while (i>0 && posts_src[i-1].time>time_checked) i--;
-                posts_new = posts_src.slice(i); // posts_src contains posts_new always.
+              if (lth.archived&0x05) {
+                if (!posts_all && (oneshot_active || (!th.posts[1] || th.posts[1].time>time_checked) && (!lth.ta.posts[1] || lth.ta.posts[1].time>time_checked))) {this.store_rescan(lth); return;}
+                if (oneshot_active) posts_new = posts_all;
+                else {
+                  var posts_src = (th.posts[1] && th.posts[1].time<=time_checked)? th.posts : lth.ta.posts;
+                  var i = posts_src.length;
+                  while (i>0 && posts_src[i-1].time>time_checked) i--;
+                  posts_new = posts_src.slice(i); // posts_src contains posts_new always.
+                }
               }
               if (posts_new.length!=0) {
+                if (pref.debug_mode['28']) console.log('archive: '+th.key+', '+posts_new.length);
                 var reqs = [];
                 if (tn || tn_idb)                       img_dl('tn',  th, lth, posts_new, tn,  tn_idb,  webm, webm_idb, reqs);
                 if (img || img_idb || webm || webm_idb) img_dl('img', th, lth, posts_new, img, img_idb, webm, webm_idb, reqs);
@@ -15385,8 +16417,9 @@ if (!pref.test_mode['66']) {
               }
             }
           }
-          if (post && posts_all && (!reqs || reqs.length===0) && pref.archive.tar) flush_req();
+          if (post && (deletedPosts || posts_all) && (!reqs || reqs.length===0 || th.domain!==site.nickname) && pref.archive.tar) flush_req();
           lth.archived &= 0x02;
+          this.update_archived_time(th.key);
         }
       },
       store_rescan: function(lth){
@@ -15397,15 +16430,35 @@ if (!pref.test_mode['66']) {
 //        var xhr = download_url2(url, '4chan_test_xxxx_image_'+ url.replace(/.*\//g,''));
 //        xhr.onprogress = function(e){console.log(e.target.responseURL+': '+e.loaded+'/'+e.total);};
 //      },
-      restore_entry: function(files, imgs, clear_func){
+      restore_entry: function(files, imgs, clear_func, posts_deleted){
         var archive = {};
-        for (var i=0;i<imgs.length;i++) archive[imgs[i].name] = imgs[i];
+        for (var i=0;i<imgs.length;i++) {
+          if (archive[imgs[i].name]===undefined) archive[imgs[i].name] = {file:imgs[i]}; // force to remake url because of having different lifetimes. Old version was '= imgs[i];'
+          else if (Array.isArray(archive[imgs[i].name])) archive[imgs[i].name].push({file:imgs[i]});
+          else archive[imgs[i].name] = [archive[imgs[i].name], {file:imgs[i]}];
+        }
+//        for (var i=0;i<imgs.length;i++) archive[imgs[i].name] = {file:imgs[i]}; // force to remake url because of having different lifetimes. Old version was '= imgs[i];'
+        var deleted = {};
+        if (pref.test_mode['64'] && pref[cataLog.embed_mode].deleted_posts.merge) for (var i=0;i<posts_deleted.length;i++) deleted[posts_deleted[i].name] = posts_deleted[i];
         var count = 0;
         if (pref.archive.clear_threads && cataLog.threads) cataLog.catalog_clear_threads(0);
         var fileReader = new FileReader();
+        var name_deleted;
         fileReader.onerror = function (e){console.log('ERROR at loading json file, '+e);};
-        fileReader.onload = function(){
-          restore(files[count-1], fileReader.result, archive);
+        fileReader.onload = function(e){
+          if (!name_deleted) {
+            restore(files[count-1], fileReader.result, archive);
+            if (pref.test_mode['64'] && pref[cataLog.embed_mode].deleted_posts.merge) {
+              name_deleted = files[count-1].name.replace(/(_|\.).*/,'')+'_deleted.json';
+              if (deleted[name_deleted]) {fileReader.readAsText(deleted[name_deleted]); return;}
+            }
+          } else {
+            var name = name_deleted.slice(0,-13).replace(/\-/g,'/');
+            if (pref.test_mode['80']) name = name.replace(/\/\d+$/,'_File$&');
+            var lth = liveTag.mems.getFromName(name);
+            archiver.prep_deleted_posts(lth.th, lth, fileReader.result);
+          }
+          name_deleted = null;
           if (files.length>count) fileReader.readAsText(files[count++]);
           else if (pref.archive.clear_files) clear_func();
         }
@@ -15414,8 +16467,9 @@ if (!pref.test_mode['66']) {
       url2file: function(archive, url){
         var file = archive[url.replace(/[^\/]*\//g,'')];
         if (file) {
-          if (!file.url) file.url = window.URL.createObjectURL(file);
-          return file.url + ((file.type==='video/webm')? '" data-ext=".webm' : '');
+          if (Array.isArray(file)) file = (url.search(/thumb/)!=-1)? file[0] : file[file.length-1];
+          if (!file.url) file.url = window.URL.createObjectURL(file.file);
+          return file.url + ((file.file.type==='video/webm')? '" data-ext=".webm' : '');
         } else return url;
       },
 //      url2file: function(archive, th){ // cause network access because post_json2html makes url begore this.
@@ -15435,12 +16489,13 @@ if (!pref.test_mode['66']) {
 //            }
 //          }
 //      },
-      prep_deleted_posts: function(th,lth,src){
-        var posts_deleted = (src)? JSON.parse(src) :
+      prep_deleted_posts: function(th,lth,src, src_obj){
+        var posts_deleted = (src)? src_obj || JSON.parse(src) :
           (pref[cataLog.embed_mode].deleted_posts.store==='LS' && localStorage)? sanitize(JSON.parse(localStorage[site2[th.domain].ls_key_deletedPosts + th.board + th.no] || null)) :
           (pref[cataLog.embed_mode].deleted_posts.store==='SS' && sessionStorage)?      JSON.parse(sessionStorage[site2[th.domain].ls_key_deletedPosts + th.board + th.no] || null) : null;
         if (posts_deleted) {
 //          for (var i=0;i<posts_deleted.length;i++) delete posts_deleted[i].pn;
+          posts_deleted = site2[th.domain].parse_funcs.thread_json.rip_from_archive(posts_deleted);
           var th_deleted = {posts:[th.posts[0]].concat(posts_deleted),
                             parse_funcs: site2[th.domain].parse_funcs.thread_json,
 ////                            parse_funcs_html: site2[th.domain].parse_funcs.thread_html,
@@ -15452,8 +16507,15 @@ if (!pref.test_mode['66']) {
 //                            nof_posts:th.nof_posts - th.posts.length + posts_deleted.length+1,
                             __proto__:th};
           site2[th.domain].wrap_to_parse.posts(th_deleted);
-          if (src && lth.ta) {  // NOT DESCRIBED ALL, UNDER IMPLEMENTATION....
-            lth.pd = site2[th.domain].update_posts_merge_prep(th_deleted.posts, lth.pd, -1, true);
+          if (src && lth.th) {  // NOT DESCRIBED ALL, UNDER IMPLEMENTATION....
+            lth.pd = (lth.pd)? site2[th.domain].update_posts_merge_prep(th_deleted.posts, lth.pd, -1, true).slice(1) : posts_deleted;
+            if ((cataLog.embed_mode==='page' || cataLog.embed_mode==='thread') && pref.test_mode['64'] && pref[cataLog.embed_mode].deleted_posts.merge) {
+              th.posts = site2[th.domain].update_posts_merge_prep(th.posts, lth.pd, -1, true);
+//              cataLog.format_html.update_posts_in_page(th,th.key, null, true);
+              cataLog.threads[th.key][16].th = th;
+              cataLog.show_catalog(th.key);
+            }
+            cataLog.insert_footer3(th.key);
             // CALL UPDATE_POSTS HERE.
           } else lth.pd = posts_deleted;
 //          if (src) archiver.check_deleted_posts({date:date_load}, th, {archived:true}, th_deleted); // sourced from pipe.
@@ -15464,6 +16526,31 @@ if (!pref.test_mode['66']) {
         save_list(); // for browser's crash, but this make conflicts when multiple window is opened.
         timestamp=null;
       },
+      list_all_obj_downloading: list_all_obj_downloading,
+      download_url3: download_url3,
+      tar: tar,
+      sub_funcs: function(args){
+        if (args[0]==='SUB_INIT') {
+          cataLog.catalog_clear_threads(0);
+          pref[cataLog.embed_mode].t2h_sel='All';
+          if (args[1].IDB) IDB.req(args[1].domain, args[1].board, args[1].no, null, archiver.event_funcs['restore3'].bind(archiver.event_funcs), 'get_all');
+          else {
+            var tgt = args[1];
+            var sel = parseInt(tgt.files_sel,10);
+            var files = window.opener.document.getElementsByClassName(pref.script_prefix)[0].querySelectorAll('span[name="FILES_ARCHIVE'+sel+'"]')[0].querySelectorAll('input[type="file"]');
+            for (var i=0;i<files.length;i++)
+              for (var j=0;j<files[i].files.length;j++) {
+                var src = files[i].files[j];
+                if (src.name===tgt.name && src.size===tgt.size && src.lastModified===tgt.lastModified) {
+                  archiver.event_funcs['restore2'](null, Array.prototype.slice.call(files[i+sel].files), [src]);
+                  return;
+                }
+              }
+          }
+        }
+      },
+      restore: restore,
+      event_funcs:pref_func.settings.onchange_funcs.archive,
     };
   })();
  
@@ -15627,7 +16714,7 @@ if (!pref.test_mode['66']) {
               }
             }
           } else {
-            for (var i=0;i<pref.scan.max;i++) {
+            for (var i=0;i<pref.scan.max;i++) if (liveTag.tags_array_old[i]) {
               for (var bt of liveTag.tags[liveTag.tags_array_old[i].key].mems.keys())
                 if (!bt.no) this.add_board(bt, null, force_thread);
                 else this.add(bt, null, force_thread);
@@ -15797,7 +16884,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           else if (dbt[2].search(/^t*[0-9]+/)===0) scan_refresh_ex_list.add(liveTag.mems[dbt[0]][dbt[1]][(dbt[2][0]==='t')? dbt[2].substr(1) : dbt[2]]); // redundant.
         }
         scan.scan('t', null, priority);
-        if (!pref.liveTag.use)
+        if (pref.liveTag.from==='none')
           for (var tag in liveTag.tags) // activate selected tags for NOT liveTag mode. In this case, tags are not many.
             if (liveTag.tags[tag].pk)
               for (var bt of liveTag.tags[tag].mems.keys())
@@ -15805,7 +16892,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                   if (bt.no) scan.list_nup.add(bt,2);
                   else scan.list_nup.add_board(bt,2);
         for (var d in liveTag.mems) {
-          if (pref.liveTag.use) {
+          if (pref.liveTag.from!=='none') {
             if (site2[d].utilize_boards_json && pref.liveTag.utilize_boards_json) {
               if (list_nup.scan_boards_enumerate(d, null, scan_refresh_ex_list))
                 site2[d].get_boards_json('boards_'+d,(function(domain){return function(){scan.scan_refresh_1(domain, true);}})(d),true,health_indicator);
@@ -16224,15 +17311,19 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             if (!stat) return; // when indicator was pruned.
             var prog = stat.prog; // prepare for being overwritten.
             if (obj) for (var i in obj) {
-              if (i==='err_str') stat[i] = ((stat[i])? stat[i]+', ':'') + obj[i];
-              else stat[i] = obj[i];
+              if (i==='err_str') {
+                if (!stat.err_str) this.set('orange');
+                stat[i] = ((stat[i])? stat[i]+', ':'') + obj[i];
+              } else stat[i] = obj[i];
               if (i==='end') {
                 if (prog) {
-                  stat.prog_str = prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+'/'+prog.max;
+                  stat.prog_str = (stat.prog.IDX)? prog.IDX+'/'+prog.tgts.length :
+                                                   prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+'/'+prog.max;
                   stat.prog = null; // remove reference loop.
                 }
-                var result = (!stat.err_str)? '\u25cf' :
-                             (prog && Object.keys(prog.error_obj).length<prog.max)? '\u25b2' : 'X';
+                var result = (!stat.err_str || stat.initiator==='IDB')? '\u25cf' :
+                             (prog && prog.SUC)? '\u25b2' : 'X';
+//                             (prog && Object.keys(prog.error_obj).length<prog.max)? '\u25b2' : 'X';
                 this.set((result==='X')?'red':null, result);
               }
             }
@@ -16247,18 +17338,21 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var name = this.name || this.getAttribute('name');
           var stat = status[name];
           if (!stat) return; // retired already.
-          if (stat.prog) stat.prog_str = stat.prog.found_threads+'/'+stat.prog.scanned+', '+stat.prog.found_boards+'/'+stat.prog.idx+'/'+stat.prog.max+', ' + stat.tgt;
-          var cancel_button = !stat.end && !pref.healthIndicator.cancel;
-          var html = 'Initiator: '+stat.initiator+'&emsp;'+
-                     ((cancel_button)? '<button name="'+name+'">Cancel</button>' : '')+ '<br>' +
-                     ((stat.start)? 'Start: '+ new Date(stat.start).toLocaleTimeString()+'<br>' : '')+
-                     ((stat.prog_str)? 'Progress: '+ stat.prog_str+'<br>' : '')+
-                     'Priority: '+ stat.priority+'<br>'+
-                     ((stat.start && !stat.end && stat.prog)? 'Crawler: '+ stat.prog.crawler+'<br>' : '')+
-                     ((stat.err_str)? '<span style="color:red">Errors: '+ stat.err_str+'</span><br>' : '')+
-                     ((stat.abort_str)? '<span style="color:red">Abort: '+ stat.abort_str+'</span><br>' : '')+
-                     ((stat.end)? 'End: '+ new Date(stat.end).toLocaleTimeString()+'<br>' : '');
-          if (src && src.getAttribute('name')===name) pref_func.tooltips.show_1.call(src, e, html, (cancel_button)? tooltip_func : null, true);
+          if (stat.prog) stat.prog_str = (stat.prog.IDX)? stat.prog.IDX+'/'+stat.prog.tgts.length+', ' + stat.tgt :
+                                                          stat.prog.found_threads+'/'+stat.prog.scanned+', '+stat.prog.found_boards+'/'+stat.prog.idx+'/'+stat.prog.max+', ' + stat.tgt;
+          if (src && src.getAttribute('name')===name) {
+            var cancel_button = !stat.end && !pref.healthIndicator.cancel;
+            var html = 'Initiator: '+stat.initiator+'&emsp;'+
+                       ((cancel_button)? '<button name="'+name+'">Cancel</button>' : '')+ '<br>' +
+                       ((stat.start)? 'Start: '+ new Date(stat.start).toLocaleTimeString()+'<br>' : '')+
+                       ((stat.prog_str)? 'Progress: '+ stat.prog_str+'<br>' : '')+
+                      'Priority: '+ stat.priority+'<br>'+
+                       ((stat.start && !stat.end && stat.prog)? 'Crawler: '+ stat.prog.crawler+'<br>' : '')+
+                       ((stat.err_str)? '<span style="color:red">Errors: '+ stat.err_str+'</span><br>' : '')+
+                       ((stat.abort_str)? '<span style="color:red">Abort: '+ stat.abort_str+'</span><br>' : '')+
+                       ((stat.end)? 'End: '+ new Date(stat.end).toLocaleTimeString()+'<br>' : '');
+            pref_func.tooltips.show_1.call(src, e, html, (cancel_button)? tooltip_func : null, true);
+          }
           if (!e && pref.healthIndicator.expand_running && stat.start && !stat.end) this.set(null,' :'+stat.prog_str);
         }
         function mouseout(e){
@@ -16291,7 +17385,14 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       })();
       cataLog.healthIndicator = healthIndicator;
       var health_indicator = new healthIndicator.HealthIndicator();
+      httpd.set_health_indicator(health_indicator);
       pn12_0.childNodes[3].appendChild(health_indicator.pn);
+      var IDB_spacer = document.createElement('span');
+      IDB_spacer.textContent = ' ';
+      pn12_0.childNodes[3].appendChild(IDB_spacer);
+      var IDB_indicator = new healthIndicator.HealthIndicator();
+      IDB.set_indicator(IDB_indicator);
+      pn12_0.childNodes[3].appendChild(IDB_indicator.pn);
 
 ////      var health_indicator = (function(){ // working code.
 ////        var pn_hi = document.createElement('span');
@@ -16523,9 +17624,9 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             if (pref.catalog.auto_save_filter) onchange_funcs.save(catalog_board_list_sel_old);
             if (pref.catalog.refresh.at_switch) catalog_clear_threads(0);
             prep_reserved_tags(false,catalog_board_list_sel_old);
-            catalog_refresh(pref.catalog.refresh.at_switch,null,false);
           }
           if (pref.catalog.auto_load_filter) onchange_funcs.load();
+          if (!init) catalog_refresh(pref.catalog.refresh.at_switch,null,false, true);
           if (pref[embed_mode].auto_config_posts_search) {
             pref.catalog.filter.kwd.post = false;
             pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.kwd.post'],true);
@@ -16709,7 +17810,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
               if (scan_boards.args[key].indicator) scan_boards.args[key].indicator.report({abort_str:'canceled'});
             } else {
 ////////              if (scan_boards.args[key].crawler_watchdog) scan_boards.args[key].crawler_watchdog.stop();
-              crawler.watchdog.abort(key);
+////              crawler.watchdog.abort(key);
               if (scan_boards.args[key].indicator) scan_boards.args[key].indicator.report({abort_str:'aborted', end:Date.now()});
               delete scan_boards.args[key];
             }
@@ -16737,6 +17838,41 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
           }
           scan_boards_init(key, mem, args);
         }
+        scan_boards.args_proto = { // for httpd
+          callback_1: function(req,value,REQ){
+            scan_boards_keyword_callback2(req.key2,value,[null,REQ]);
+          },
+          get_tgt_func: function(req){
+            if (req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads)) {
+              do {
+                var tgt = scan_boards_keyword_make_tgt(req,req.IDX++);
+              } while (req.IDX<req.max && (!tgt || (pref.catalog.board.ex_list && pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,{hit:false}).hit)));  // 'if (tgt)' is for tgts_iterator
+              if (req.IDX<=req.max) {
+                var archived = scan.list_nup.issued(tgt);
+                var dbt = common_func.name2dbt(tgt);
+                var url = site2[dbt[0]].make_url4(dbt);
+                var key2 = dbt.join(',');
+                return {REQ:req, url:url[0], responseType:(archived)? 'text' : (url[1]==='html')? 'document' : url[1], tgt:tgt, key2:key2, data_type:url[1], domain:dbt[0]};
+              }
+            }
+          },
+          callback: function(req){
+            if (req.found_threads>=req.max_threads) req.INDICATOR.report({err_str:'Aborted.(Reached upper limit)'});
+            delete scan_boards.args[req.key];
+            if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
+            if (req.callback2) req.callback2(req.callback_args);
+          },
+          init_func: function(req){
+            Object.defineProperty(req,'idx',{get:function(){return this.IDX;}, configurable:true}); // for test.
+            Object.defineProperty(req,'indicator',{get:function(){return this.INDICATOR;}, configurable:true}); // for test.
+            Object.defineProperty(req,'tgts',{get:function(){return this.obj;}, configurable:true}); // for test.
+            Object.defineProperty(req,'initiator',{get:function(){return this.key;}, configurable:true}); // for test.
+            if (req.hasOwnProperty('callback')) {
+              req.callback2 = req.callback;
+              delete req.callback;
+            }
+          },
+        };
         function scan_boards_init(key, obj, args){
           if (!scan_boards.pool) scan_boards.pool = {
             div: document.createElement('div'), parser: new DOMParser(), doc: null, ths: null, dbt: null, tgts: null, tags:{cs:{}, ci:{}},
@@ -16753,7 +17889,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
                 found_boards: 0,
                 scanned: 0,
 ////////                error: '',
-                error_obj: {},
+//                error_obj: {},
                 crawler: 0,
 ////////                crawler_max : pref.scan.crawler,
                 obj: obj,
@@ -16776,6 +17912,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
                 senders_returned:[],
                 priority: 0,
                 tgts_iterator: null,
+            __proto__: scan_boards.args_proto
           };
           for (var i in args) scan_boards.args[key][i] = args[i];
           var sb = scan_boards.args[key];
@@ -16810,136 +17947,134 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
               drawn_idx = 0;
             }
           }
-////////          if (sb.crawler_watchdog) sb.crawler_watchdog = new CrawlerWatchdog(sb);
-//          while (obj[sb.max-1].max===null) sb.max--;
-//if (pref.debug_mode['5']) {
-//  console.log('scan_boards: '+key+', '+scan_boards.args[key].obj.length);
-//  console.log(scan_boards.args[key].obj);
-//}
-          if (!sb.indicator) sb.indicator = health_indicator.shift('limegreen','r',sb.key,sb.priority);
-          sb.indicator.report({start:Date.now(), prog:sb}); // make reference loop.
-          while (sb.crawler<pref.scan.crawler) {
-////////            scan_boards_spawn_crawler(key, true);
-            crawler.spawn(key, true);
-            if (pref.scan.crawler_adaptive) break;
-          }
+
+          scan_boards.args_proto.init_func(sb);
+          httpd.req(sb, (sb.priority<7)? sb.priority+1 : 1); // patch
+          
+////          if (!sb.indicator) sb.indicator = health_indicator.shift('limegreen','r',sb.key,sb.priority); // working code.
+////          sb.indicator.report({start:Date.now(), prog:sb}); // make reference loop.
+////          while (sb.crawler<pref.scan.crawler) {
+////////////            scan_boards_spawn_crawler(key, true);
+////            crawler.spawn(key, true);
+////            if (pref.scan.crawler_adaptive) break;
+////          }
         }
-        var crawler = {
-          key: null,
-          priority: 0,
-          num: 0, // dangerous, may hang up, all crawlers must be returned.
-          wdg_spawn: null,
-          spawn_req: function(sb){
-            this.clear_req(sb);
-            if (sb.priority>=this.priority) {
-              if (this.num<pref.scan.crawler || sb.priority>this.priority) {
-                this.wdg_spawn.start(pref.scan.crawler_idle_time_to_spawn);
-                this.key = sb.key;
-                this.priority = sb.priority;
-              }
-            }
-          },
-          spawn: function(key, init){
-            var sb = scan_boards.args[(key || this.key)]; // not to keep greping 'sb' object, 'key' and 'priority' are primitives.
-            if (sb && sb.idx<sb.max) {
-              var sender = (sb.senders_returned.length>0)? sb.senders_returned.shift() : sb.key+':'+sb.crawler;
-              sb.crawler++;
-              this.num++;
-              this.watchdog.add(sb, sender);
-              if (pref.debug_mode['5']) console.log('crawler_spawn: '+sender+'/'+sb.crawler);
-              scan_boards_keyword([sender,sb],200);
-              if (!init && !pref.scan.crawler_adaptive) this.spawn_req(sb);
-            }
-          },
-          clear_req: function(sb){
-            if (sb.priority>=this.priority) this.wdg_spawn.stop();
-          },
-          check_priority: function(sb, sender){
-            if (sb.priority>=this.priority || sb.crawler==1) return true;
-            else {
-              this.finish(sb, sender);
-//              sb.senders_returned.push(sender);  // THIS CAUSED A BUG,
-                                                   // crawler with status 1200(now changed to -200) call 'finish' immediately,
-                                                   // but this is respawned and causes multiple call of 'watchdog.add'.
-                                                   // For easy debug, this was moved to 'finish'.
-              return false;
-            }
-          },
-          finish: function(sb, sender){
-            this.clear_req(sb);
-            http_req.close(sender);
-            this.watchdog.end(sender);
-            sb.senders_returned.push(sender); // shold be here, but slightly redundant for end.
-            sb.crawler--;
-            this.num--;
-            if (pref.debug_mode['5']) console.log('crawler_finish: '+sender+'/'+sb.crawler);
-          },
-          finish_all: function(sb){
-            this.priority = 0;
-            if (Object.keys(scan_boards.args).length==0) this.reset(); // for safety.
-            else for (var key in scan_boards.args) if (scan_boards.args[key].senders_returned.length>0) this.spawn(key);
-          },
-          reset: function(){
-            this.num = 0;
-            this.watchdog.reset();
-          },
-          watchdog: {
-            list: [],
-            sbs: Object.create(null),
-            add: function(sb,sender){
-              this.list.push(sender);
-              this.sbs[sender] = sb;
-              if (this.list.length===1) this.wdg.start();
-            },
-            end: function(sender){
-              this.report_alive(sender);
-              delete this.sbs[sender];
-              this.list.splice(this.list.indexOf(sender),1);
-              if (this.list.length===0) this.wdg.stop();
-//              else this.wdg.restart(); // this is redundant because report_alive exists before
-            },
-            wdg: null,
-            report_alive: function(sender){
-              if (sender===this.list[0]) {
-                this.list.push(this.list.shift());
-                this.wdg.restart();
-              }
-            },
-            respawn: function(){
-              var sender = this.list[0];
-              var sb = this.sbs[sender];
-              if (pref.debug_mode['7']) console.log('crawler_respawn: '+sender+'/'+((sb)?sb.crawler:'undefined'));
-              scan_boards_keyword([sender,sb],200);
-              this.report_alive(sender);
-            },
-            reset: function(){
-              this.list = [];
-              this.sbs = Object.create(null);
-              this.wdg.stop();
-            },
-            abort: function(key){
-              for (var i=this.list.length-1;i>=0;i--) if (this.list[i].indexOf(key+':')===0) this.end(this.list[i]);
-            },
-          },
-          priority_up: null,
-          priority_release: null,
-          priority_wdg: null,
-          priority_count: 0,
-        };
-        crawler.wdg_spawn = new Watchdog(crawler.spawn.bind(crawler), 100);
-        crawler.watchdog.wdg = new Watchdog(crawler.watchdog.respawn.bind(crawler.watchdog), 30000);
-        crawler.priority_up = function(p){
-                                this.priority = p;
-                                this.priority_count++;
-                                this.priority_wdg.start();
-                              }.bind(crawler);
-        crawler.priority_release = function(){
-                                     if (--this.priority_count<=0) {
-                                       this.priority=0;
-                                       this.priority_wdg.stop();
-                                     } else this.priority_wdg.restart();
-                                   }.bind(crawler);
-        crawler.priority_wdg = new Watchdog(crawler.priority_release, 10000);
+////        var crawler = { // working code.
+////          key: null,
+////          priority: 0,
+////          num: 0, // dangerous, may hang up, all crawlers must be returned.
+////          wdg_spawn: null,
+////          spawn_req: function(sb){
+////            this.clear_req(sb);
+////            if (sb.priority>=this.priority) {
+////              if (this.num<pref.scan.crawler || sb.priority>this.priority) {
+////                this.wdg_spawn.start(pref.scan.crawler_idle_time_to_spawn);
+////                this.key = sb.key;
+////                this.priority = sb.priority;
+////              }
+////            }
+////          },
+////          spawn: function(key, init){
+////            var sb = scan_boards.args[(key || this.key)]; // not to keep greping 'sb' object, 'key' and 'priority' are primitives.
+////            if (sb && sb.idx<sb.max) {
+////              var sender = (sb.senders_returned.length>0)? sb.senders_returned.shift() : sb.key+':'+sb.crawler;
+////              sb.crawler++;
+////              this.num++;
+////              this.watchdog.add(sb, sender);
+////              if (pref.debug_mode['5']) console.log('crawler_spawn: '+sender+'/'+sb.crawler);
+////              scan_boards_keyword([sender,sb],200);
+////              if (!init && !pref.scan.crawler_adaptive) this.spawn_req(sb);
+////            }
+////          },
+////          clear_req: function(sb){
+////            if (sb.priority>=this.priority) this.wdg_spawn.stop();
+////          },
+////          check_priority: function(sb, sender){
+////            if (sb.priority>=this.priority || sb.crawler==1) return true;
+////            else {
+////              this.finish(sb, sender);
+//////              sb.senders_returned.push(sender);  // THIS CAUSED A BUG,
+////                                                   // crawler with status 1200(now changed to -200) call 'finish' immediately,
+////                                                   // but this is respawned and causes multiple call of 'watchdog.add'.
+////                                                   // For easy debug, this was moved to 'finish'.
+////              return false;
+////            }
+////          },
+////          finish: function(sb, sender){
+////            this.clear_req(sb);
+////            http_req.close(sender);
+////            this.watchdog.end(sender);
+////            sb.senders_returned.push(sender); // shold be here, but slightly redundant for end.
+////            sb.crawler--;
+////            this.num--;
+////            if (pref.debug_mode['5']) console.log('crawler_finish: '+sender+'/'+sb.crawler);
+////          },
+////          finish_all: function(sb){
+////            this.priority = 0;
+////            if (Object.keys(scan_boards.args).length==0) this.reset(); // for safety.
+////            else for (var key in scan_boards.args) if (scan_boards.args[key].senders_returned.length>0) this.spawn(key);
+////          },
+////          reset: function(){
+////            this.num = 0;
+////            this.watchdog.reset();
+////          },
+////          watchdog: {
+////            list: [],
+////            sbs: Object.create(null),
+////            add: function(sb,sender){
+////              this.list.push(sender);
+////              this.sbs[sender] = sb;
+////              if (this.list.length===1) this.wdg.start();
+////            },
+////            end: function(sender){
+////              this.report_alive(sender);
+////              delete this.sbs[sender];
+////              this.list.splice(this.list.indexOf(sender),1);
+////              if (this.list.length===0) this.wdg.stop();
+//////              else this.wdg.restart(); // this is redundant because report_alive exists before
+////            },
+////            wdg: null,
+////            report_alive: function(sender){
+////              if (sender===this.list[0]) {
+////                this.list.push(this.list.shift());
+////                this.wdg.restart();
+////              }
+////            },
+////            respawn: function(){
+////              var sender = this.list[0];
+////              var sb = this.sbs[sender];
+////              if (pref.debug_mode['7']) console.log('crawler_respawn: '+sender+'/'+((sb)?sb.crawler:'undefined'));
+////              scan_boards_keyword([sender,sb],200);
+////              this.report_alive(sender);
+////            },
+////            reset: function(){
+////              this.list = [];
+////              this.sbs = Object.create(null);
+////              this.wdg.stop();
+////            },
+////            abort: function(key){
+////              for (var i=this.list.length-1;i>=0;i--) if (this.list[i].indexOf(key+':')===0) this.end(this.list[i]);
+////            },
+////          },
+////          priority_up: null,
+////          priority_release: null,
+////          priority_wdg: null,
+////          priority_count: 0,
+////        };
+////        crawler.wdg_spawn = new Watchdog(crawler.spawn.bind(crawler), 100);
+////        crawler.watchdog.wdg = new Watchdog(crawler.watchdog.respawn.bind(crawler.watchdog), 30000);
+////        crawler.priority_up = function(p){
+////                                this.priority = p;
+////                                this.priority_count++;
+////                                this.priority_wdg.start();
+////                              }.bind(crawler);
+////        crawler.priority_release = function(){
+////                                     if (--this.priority_count<=0) {
+////                                       this.priority=0;
+////                                       this.priority_wdg.stop();
+////                                     } else this.priority_wdg.restart();
+////                                   }.bind(crawler);
+////        crawler.priority_wdg = new Watchdog(crawler.priority_release, 10000);
 
 ////////        function scan_boards_spawn_crawler_timer(sb){ // working code.
 ////////          scan_boards_crawler_timer_clear();
@@ -17001,74 +18136,74 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
                  (dbt[2]==='')? tgt + ((pref.catalog.catalog_json | force_json)? 'j0' : 'c0') :
                  (pref.catalog.catalog_json && dbt[2][0].search(/[0-9]/)!=-1)? dbt[0]+dbt[1]+'t'+dbt[2] : tgt;
         }
-        function scan_boards_keyword(args,status){
-          var sender = args[0];
-          var sb = args[1];
-          crawler.watchdog.report_alive(sender);
-          if (sb.watchdog) sb.watchdog();
-          if (pref.scan.crawler_adaptive) if (!crawler.check_priority(sb,sender)) return;
-////////          if (sb.crawler_watchdog) sb.crawler_watchdog.report_alive(sender);
-//if (pref.debug_mode['5']) console.log('request_entry: '+sb.idx+'/'+sb.max+', '+sb.found_threads+'/'+sb.max_threads+', '+status);
-if (pref.debug_mode['5'] && sb.idx!=0 && sb.idx%1000==0) console.log('request_progress: '+sb.key+', '+sb.idx+'/'+sb.max+', '+sb.found_threads+'/'+sb.max_threads+', '+status);
-          if (sb.idx<sb.max && (sb.refresh || sb.found_threads<sb.max_threads) && status<500) {
-            var tgt = scan_boards_keyword_make_tgt(sb,sb.idx);
-            sb.idx++;
-////////            scan_progress(sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.idx+'/'+sb.max+', ' + tgt);
-            if (tgt && (!pref.catalog.board.ex_list || !pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,{hit:false}).hit)) { // 'if (tgt)' is for tgts_iterator
-              if (sb.indicator) sb.indicator.report({tgt:tgt});
-              http_req.get(sender,tgt,'',scan_boards_keyword_callback2,sb.lifetime,sb.cache_write,args, scan.list_nup.issued(tgt));
-////////              if (sb.idx<sb.max && pref.scan.crawler_adaptive) scan_boards_spawn_crawler_timer(sb);
-              if (pref.scan.crawler_adaptive) crawler.spawn_req(sb);
-            } else scan_boards_keyword(args,200);
-          } else {
-            crawler.finish(sb, sender);
-////////            http_req.close(sender);
-            if (sb.crawler===0) {
-////////              if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
-////////              if (sb.crawler_watchdog) sb.crawler_watchdog.stop();
-////////              var prog_str = sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.max
-////////                            + '<span style="color:red">'
-////////                            +( (sb.error!=='')? ', Error at loading '+sb.error :
-////////                              ((!sb.refresh && sb.found_threads>=sb.max_threads)? ', Aborted.(Reached upper limit)' : ''))
-////////                            + '</span>';
-////////              scan_progress(prog_str);
-//              sb.max = sb.idx;
-//              if (sb.key==='scan') scan_button.innerHTML = 'scanSite';
-if (pref.test_mode['22']) {
-              if (sb.store_tag) {
-  //console.log(new Date());
-  //              scan_tags_init(sb.pool.tags);
-                var ret_obj = scan_tags_common_b(sb.pool.tags,'',site3[site.nickname].tags);
-                site3[site.nickname].tags = ret_obj[1];
-                scan_tags_init(ret_obj[0],true);
-  //              sb.pool.div.innerHTML = '';
-  //console.log(new Date());
-              }
-}
-//              sb = null;
-              if (sb.indicator) {
-////////                var keys = Object.keys(sb.error_obj);
-////////                if (keys.length==0) sb.indicator.set(null,'\u25cf');
-////////                else if (keys.length>=sb.max) sb.indicator.set('red','X');
-////////                else sb.indicator.set(null,'\u25b2');
-                if (sb.found_threads>=sb.max_threads) sb.indicator.report({err_str:'Aborted.(Reached upper limit)'});
-                sb.indicator.report({end:Date.now()});
-              }
-              delete scan_boards.args[sb.key];
-if (pref.debug_mode['5']) console.log('scan_boards_end: '+sb.key+', Running:'+Object.keys(scan_boards.args));
-              crawler.finish_all(sb);
-              if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
-              if (sb.callback) sb.callback(sb.callback_args);
-            }
-          }
-        }
+////        function scan_boards_keyword(args,status){ // working code.
+////          var sender = args[0];
+////          var sb = args[1];
+////          crawler.watchdog.report_alive(sender);
+////          if (sb.watchdog) sb.watchdog();
+////          if (pref.scan.crawler_adaptive) if (!crawler.check_priority(sb,sender)) return;
+////////////          if (sb.crawler_watchdog) sb.crawler_watchdog.report_alive(sender);
+//////if (pref.debug_mode['5']) console.log('request_entry: '+sb.idx+'/'+sb.max+', '+sb.found_threads+'/'+sb.max_threads+', '+status);
+////if (pref.debug_mode['5'] && sb.idx!=0 && sb.idx%1000==0) console.log('request_progress: '+sb.key+', '+sb.idx+'/'+sb.max+', '+sb.found_threads+'/'+sb.max_threads+', '+status);
+////          if (sb.idx<sb.max && (sb.refresh || sb.found_threads<sb.max_threads) && status<500) {
+////            var tgt = scan_boards_keyword_make_tgt(sb,sb.idx);
+////            sb.idx++;
+////////////            scan_progress(sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.idx+'/'+sb.max+', ' + tgt);
+////            if (tgt && (!pref.catalog.board.ex_list || !pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,{hit:false}).hit)) { // 'if (tgt)' is for tgts_iterator
+////              if (sb.indicator) sb.indicator.report({tgt:tgt});
+////              http_req.get(sender,tgt,'',scan_boards_keyword_callback2,sb.lifetime,sb.cache_write,args, scan.list_nup.issued(tgt));
+////////////              if (sb.idx<sb.max && pref.scan.crawler_adaptive) scan_boards_spawn_crawler_timer(sb);
+////              if (pref.scan.crawler_adaptive) crawler.spawn_req(sb);
+////            } else scan_boards_keyword(args,200);
+////          } else {
+////            crawler.finish(sb, sender);
+////////////            http_req.close(sender);
+////            if (sb.crawler===0) {
+////////////              if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
+////////////              if (sb.crawler_watchdog) sb.crawler_watchdog.stop();
+////////////              var prog_str = sb.found_threads+'/'+sb.scanned+', '+sb.found_boards+'/'+sb.max
+////////////                            + '<span style="color:red">'
+////////////                            +( (sb.error!=='')? ', Error at loading '+sb.error :
+////////////                              ((!sb.refresh && sb.found_threads>=sb.max_threads)? ', Aborted.(Reached upper limit)' : ''))
+////////////                            + '</span>';
+////////////              scan_progress(prog_str);
+//////              sb.max = sb.idx;
+//////              if (sb.key==='scan') scan_button.innerHTML = 'scanSite';
+////if (pref.test_mode['22']) {
+////              if (sb.store_tag) {
+////  //console.log(new Date());
+////  //              scan_tags_init(sb.pool.tags);
+////                var ret_obj = scan_tags_common_b(sb.pool.tags,'',site3[site.nickname].tags);
+////                site3[site.nickname].tags = ret_obj[1];
+////                scan_tags_init(ret_obj[0],true);
+////  //              sb.pool.div.innerHTML = '';
+////  //console.log(new Date());
+////              }
+////}
+//////              sb = null;
+////              if (sb.indicator) {
+////////////                var keys = Object.keys(sb.error_obj);
+////////////                if (keys.length==0) sb.indicator.set(null,'\u25cf');
+////////////                else if (keys.length>=sb.max) sb.indicator.set('red','X');
+////////////                else sb.indicator.set(null,'\u25b2');
+////                if (sb.found_threads>=sb.max_threads) sb.indicator.report({err_str:'Aborted.(Reached upper limit)'});
+////                sb.indicator.report({end:Date.now()});
+////              }
+////              delete scan_boards.args[sb.key];
+////if (pref.debug_mode['5']) console.log('scan_boards_end: '+sb.key+', Running:'+Object.keys(scan_boards.args));
+////              crawler.finish_all(sb);
+////              if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
+////              if (sb.callback) sb.callback(sb.callback_args);
+////            }
+////          }
+////        }
 
         var threads_meguca = {};
         function scan_boards_keyword_callback2(key,value,args){ // requires snoop and on demand rendering for merge.
 ////////  if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
           var sb = args[1];
           var dbt = key.split(',');
-          if (pref.scan.crawler_adaptive) crawler.clear_req(sb);
+////          if (pref.scan.crawler_adaptive) crawler.clear_req(sb);
           if ((value.status==200 || value.status==304) && value.response && sb.found_threads<sb.max_threads) { // Checking 'value.response' is a patch for 8chan's inconsistency, 8chan sometimes return 200 with null. // checking 304 is a patch.
 if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             for (var i=0;i<value.response.length;i++) {
@@ -17174,13 +18309,13 @@ if (pref.test_mode['22']) {
                                              // some threads which are there in catalog sometimes returns 404 if it gets as a thread.
                                              // However, 8chan doesn't return 404, but fails at send(null), so system like watchdog is required.
 //                  if (pref.debug_mode['3']) console.log('Check tags: '+th.key+', '+lth.nof_posts);
-                  if (lth.archived || pref[embed_mode].deleted_posts.detect!=='no') if (pref.test_mode['67'] && !sb.localArchive) archiver.store(value, th, lth, updated.posts, updated.time_check_old);
+                  if (lth.archived || pref[embed_mode].deleted_posts.detect!=='no') if (pref.test_mode['67'] && !sb.localArchive) if (!sb.localArchive || !pref.test_mode['80']) archiver.store(value, th, lth, updated.posts, updated.time_check_old);
                 } else { // if (!(th.parse_funcs.has_posts && !th.last_replies))
                   scan.list_nup.add(th.key, sb.priority);
 //                  if (pref.debug_mode['3']) console.log('Schedule to check tags: '+th.key+', '+lth.nof_posts);
                 }
               } else {
-                scan.list_nup.got_200(th);
+                if (!sb.localArchive) scan.list_nup.got_200(th);
 //                  if (lth.nof_posts==th.nof_posts || !pref.network.fetch_actively || // only active when count is changed,
 //                      // 'th.parse_funcs.missing_info' doesn't have state if the thread is not stored(tgt_th===undefined),
 //                      //and all members will be fetched forever.
@@ -17188,7 +18323,7 @@ if (pref.test_mode['22']) {
 //                  else th.parse_funcs.missing_info_fetch(th);
 ////                if (th.parse_funcs.has_editing) updated = {posts:th.posts.slice(lth.nof_posts || 0)}; // BUG, REDUNDANT.
                 if (lth.rescan_dp || lth.force_ar ||
-                    (lth.nof_posts<th.nof_posts && th.parse_funcs.has_posts && (lth.archived || pref[embed_mode].deleted_posts.detect!=='no'))) if (pref.test_mode['67'] && !sb.localArchive) archiver.store(value, th, lth); // for initial if watched already // BUG!!! THIS DOESN'T WORK IF 304 IS RETURNED.
+                    (lth.nof_posts<th.nof_posts && th.parse_funcs.has_posts && (lth.archived || pref[embed_mode].deleted_posts.detect!=='no'))) if (pref.test_mode['67'] && !sb.localArchive) if (!sb.localArchive || !pref.test_mode['80']) archiver.store(value, th, lth); // for initial if watched already // BUG!!! THIS DOESN'T WORK IF 304 IS RETURNED.
 ////                if (lth.nof_posts!=th.nof_posts)
 ////                  if(!th.parse_funcs.has_editing || th.parse_funcs.has_posts || embed_mode==='catalog') lth.nof_posts = th.nof_posts; // to get updated in next loop. // BUG, REDUNDANT.
                 if (lth.nof_posts!=th.nof_posts) lth.nof_posts = th.nof_posts;
@@ -17334,17 +18469,17 @@ if (pref.test_mode['22']) {
 ////////              sb.error += ((sb.error==='')? '' : ', ') + key;
 ////////              sb.error_obj[key] = value.status;
               if (value.status==404) comment_out_bookmark(key);
-              if (sb.indicator) {
-                sb.indicator.report({err_str:key+'('+value.status+')'});
-                sb.indicator.set('orange');
-              }
+////              if (sb.indicator) {
+////                sb.indicator.report({err_str:key+'('+value.status+')'});
+////                sb.indicator.set('orange');
+////              }
             }
             if (value.response===null && value.status==200) { // patch for 8chan's inconsistency.
               if (pref.debug_mode['16']) console.log('ERROR!!! Inconsistency in server. Server returned null with status 200 for '+site2[dbt[0]].make_url4(dbt)[0]+' , '+key);
               value.status=-200;
             }
           }
-          scan_boards_keyword(args,value.status);
+////          scan_boards_keyword(args,value.status);
         }
         cataLog.scan_boards_keyword_callback2 = scan_boards_keyword_callback2;
   
@@ -17521,8 +18656,8 @@ if (pref.test_mode['22']) {
           scan_abort: function(key){scan_init(key, {}, {});},
           scan_boards_keyword_callback2: scan_boards_keyword_callback2,
 //          update_thread: update_thread,
-          priority_up: crawler.priority_up,
-          priority_release: crawler.priority_release,
+////          priority_up: crawler.priority_up,
+////          priority_release: crawler.priority_release,
         }
       }());
       cataLog.scan_boards = scan_boards;
@@ -18355,11 +19490,11 @@ if (pref.test_mode['19']) { // stability test.
 //          if (name in threads_last_deleted) tgt_th[8][4] = threads_last_deleted[name].last_post_time;
           tgt_th[17] = liveTag.prep_tags(th);
           tgt_th[19] = liveTag.mems[th.domain][th.board][th.no][2];
-          if (th.type_source==='catalog' && !(embed_mode==='catalog' && th.domain===site.nickname) &&
+          if ((th.type_source==='catalog' || th.posts[0].editing) && !(embed_mode==='catalog' && th.domain===site.nickname) &&
               (th.domain==='KC' || // doesn't have time info
                th.domain==='meguca')) { // doesn't have op.
             tgt_th[16].needs_update = true;
-            scan.list_nup.add(th.key);
+            if (th.type_source==='catalog') scan.list_nup.add(th.key);
           }
 ////          if (th.parse_funcs.missing_info) { // working code.
 ////            tgt_th[23] = common_func.shallow_copy_1(th.parse_funcs.missing_info);
@@ -18432,7 +19567,7 @@ if (pref.test_mode['19']) { // stability test.
 //        if (!pref.test_mode['49'] && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && !flag_posts_stored) tgt_th[7] = th; // BUG at catalog.
         threads[name][9][2] = null;
 //        tgt_th[9] = (pref.filter.disable_list_when_kwd_active && picked_up_by_kwd_filter)? [true] : catalog_filter_query(name);
-        tgt_th[9] = catalog_filter_query(name); // slightly redundant.
+        tgt_th[9] = catalog_filter_query(name, true); // slightly redundant.
 
         catalog_attr_set(th.key,tgt_th[0]); // for cmd '!show'.
         if (insert_thread_from_native || (tgt_th[16].expand_posts && tgt_th[1] && !pref.catalog.filter.kwd.posts_active) || pref.test_mode['36']) insert_thread_prepare_html_lazy(tgt_th, init_new, insert_thread_from_native, null, th);
@@ -18522,10 +19657,16 @@ if (pref.test_mode['19']) { // stability test.
         site2['DEFAULT'].check_reply.set_own_posts(th);
 //        if (th.type_source==='page') threads[name][16].t2h_page = th.posts.length-1;
         if (init_new) {
-//          if (embed_mode==='page' || embed_mode==='thread') {
-          if (embed_mode==='page' && threads[name][16].posts && threads[name][16].posts!==th.posts) format_html.update_posts_in_page(th,name,null, true);
+
+// working code, but BUG. this makes 'threads[name][16].posts === th.posts' BEFORE merging th.posts which contains deleted posts in 'embed_mode==='thread', so no merge will occur.
+// But I remember I had troubled here..., safe1309-1308.
+          if ((embed_mode==='page' || embed_mode=='thread') && threads[name][16].posts && threads[name][16].posts!==th.posts) format_html.update_posts_in_page(th,name,null, true);
           else threads[name][16].posts = th.posts;
-          if ((embed_mode==='page' || embed_mode==='thread') && pref.test_mode['64'] && pref[embed_mode].deleted_posts.merge && th.lth.pd) format_html.update_posts_in_page(th,name,null, true);
+ ////          if (embed_mode==='page' || embed_mode==='thread') {
+//          if (embed_mode==='page' && threads[name][16].posts && threads[name][16].posts!==th.posts) format_html.update_posts_in_page(th,name,null, true);
+//          else threads[name][16].posts = th.posts;
+//          if ((embed_mode==='page' || embed_mode==='thread') && pref.test_mode['64'] && pref[embed_mode].deleted_posts.merge && th.lth.pd) format_html.update_posts_in_page(th,name,null, true);
+
 ////            var t2h_num_of_posts = format_html.get_t2h_num_of_posts(threads[name], th.type_source);
 ////            if (t2h_num_of_posts!==false)
 ////              if (t2h_num_of_posts+1>th.posts.length && th.posts.length<th.nof_posts) {
@@ -19234,9 +20375,12 @@ if (footer) { // temporal
           this.onmouseout = image_hover_remove;
           if (!divert) site.script_body.appendChild(img_ex);
           e.preventDefault();
-          scan_boards.priority_up(8);
-          img_ex.onload  = scan_boards.priority_release;
-          img_ex.onerror = scan_boards.priority_release;
+////          scan_boards.priority_up(8);
+////          img_ex.onload  = scan_boards.priority_release;
+////          img_ex.onerror = scan_boards.priority_release;
+          httpd.pause_req();
+          img_ex.onload  = httpd.pause_cancel;
+          img_ex.onerror = httpd.pause_cancel;
           if (image_hover_instance) image_hover_remove();
           image_hover_instance = img_ex;
         }
@@ -19304,6 +20448,10 @@ if (footer) { // temporal
         if (!src) src = clone_img_make_src(img, inline_or_hover, from_initial);
         if (!src) return; // return when native dynamic function works.
         var ext = (src.search(/^blob/)===0)? site2['DEFAULT'].parse_funcs.post_html.img2ext(img) : '';
+        if (src.indexOf('data-ext')!=-1) { // PATCH for archive
+          ext = src.slice(src.indexOf('data-ext')+10).replace(/".*/,'');
+          src = src.replace(/".*/,'');
+        }
         if (src.substr(-5,5)==='.webm' || ext==='.webm' || img.getAttribute('data-ext')==='.webm') {
           if (pref[embed_mode].thumbnail[inline_or_hover].webm && !from_initial) {
             if (image_hover_instance && image_hover_instance.src===src) {
@@ -19478,18 +20626,22 @@ if (!pref.test_mode['63']) {
 //        return date_mark;
 //      }
       function open_new_thread(url, name){
-        if (url===null) {
-          var dbt = common_func.fullname2dbt(name);
-          url = site2[dbt[0]].make_url4(common_func.name2dbt(name))[0]; // temporal
-          if (pref.catalog_open_last50!=='no') {
-            var short_link = document.createElement('div');
-            short_link.innerHTML = site2[dbt[0]].short_link(name, threads[name][8][2], null, '', '');
-            var as = short_link.getElementsByTagName('a');
-            for (var i=0;i<as.length;i++) {
-              if (pref.catalog_open_last50==='exist' || !(threads[name][19][0]&0x000c0000) || (parseInt(as[i].textContent,10)>(threads[name][19][1]&0x0000ffff))) {
-                url = as[i].getAttribute('href');
-                break;
-        }}}}
+        var dbt = common_func.fullname2dbt(name);
+        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4([site.nickname, site.board, '0','page_html'])[0];
+//        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4(common_func.name2dbt(name).slice(0,2).concat(['0','page_html']))[0];
+        else {
+          if (url===null) {
+            url = site2[dbt[0]].make_url4(common_func.name2dbt(name))[0]; // temporal
+            if (pref.catalog_open_last50!=='no') {
+              var short_link = document.createElement('div');
+              short_link.innerHTML = site2[dbt[0]].short_link(name, threads[name][8][2], null, '', '');
+              var as = short_link.getElementsByTagName('a');
+              for (var i=0;i<as.length;i++) {
+                if (pref.catalog_open_last50==='exist' || !(threads[name][19][0]&0x000c0000) || (parseInt(as[i].textContent,10)>(threads[name][19][1]&0x0000ffff))) {
+                  url = as[i].getAttribute('href');
+                  break;
+          }}}}
+        }
 //////////        if (url===null) url = site2[threads[name][16].dbt[0]].make_url3(threads[name][16].dbt[1], threads[name][16].dbt[2], '0'); // temporal // working code.
 ////////        if (url===null) url = site2[threads[name][16].dbt[0]].make_url4(common_func.name2dbt(name))[0]; // temporal
 ////////        if (typeof(url)==='string') url = [url];
@@ -19518,6 +20670,11 @@ if (!pref.test_mode['63']) {
         var time_marked = (pref[embed_mode].mark_new_posts)? get_watch_time_of_a_thread(name,threads[name][8][1]) : 0;
         send_message(window_name, [['MARK',time_marked]],cw);
         if (pref.catalog.auto_watch) triage_exe_0(name,'WATCH','',true);
+        if (threads[name][16].archiveFile) {
+          var file = threads[name][16].archiveFile;
+          send_message(window_name, ['ARCHIVER',['SUB_INIT',(file==='IDB')? {IDB:true, domain:dbt[0], board:(pref.test_mode['80'])? dbt[1].slice(0,-5)+'/' : dbt[1], no:dbt[2]} : // cut '_IDB'
+                                                                            {name:file.name, size:file.size, lastModified:file.lastModified, files_sel:pref.archive.files_sel} ]]);
+        }
       }
       function mark_read_thread(name,read){
         if (read) site2['DEFAULT'].check_reply.set_watched_to_last(threads[name][19], (threads[name][8][4]||threads[name][8][0]), name);
@@ -20505,14 +21662,16 @@ if (!pref.test_mode['49'] && pref.catalog.filter.kwd.posts_active && th) {
         else  pn.style.bottom = document.documentElement.clientHeight - e.clientY + 10 + 'px';
         if (pref[embed_mode].popup2!=='chart') {
 if (!pref.test_mode['49']) {
-          var lth = th.lth;
-          th = (pref[embed_mode].popup2==='dp')? {posts:[{search_result:false, __proto__:th.posts[0]}].concat(lth.pd || []), __proto__:th} :
-               (pref[embed_mode].popup2!=='pv' && search_result && {posts:search_result, __proto__:th}) || th;
-          format_html.prepare_html_prep_posts(th); // REDUNDANT for 2nd times or later.
-//          insert_thread_prepare_html_lazy(threads[name], !threads[name][0], false, true); // is this the better? not debugged yet.
-          var pn_result = site2[site.nickname].page_json2html3(th,th.board,th.op_img_url, true);
-//          if ((search_result || pref[embed_mode].popup2==='dp') && th.posts[0].search_result===false) site2[th.domain_html].update_posts0_class(th.posts[0].pn, th.posts[0].search_result);
-          for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, lth.q && lth.q[th.posts[i].no], null, th.posts[i]);
+          if (th) {
+            var lth = th.lth;
+            th = (pref[embed_mode].popup2==='dp')? {posts:[{search_result:false, __proto__:th.posts[0]}].concat(lth && lth.pd || []), __proto__:th} :
+                 (pref[embed_mode].popup2!=='pv' && search_result && {posts:search_result, __proto__:th}) || th;
+            format_html.prepare_html_prep_posts(th); // REDUNDANT for 2nd times or later.
+//            insert_thread_prepare_html_lazy(threads[name], !threads[name][0], false, true); // is this the better? not debugged yet.
+            var pn_result = site2[site.nickname].page_json2html3(th,th.board,th.op_img_url, true);
+//            if ((search_result || pref[embed_mode].popup2==='dp') && th.posts[0].search_result===false) site2[th.domain_html].update_posts0_class(th.posts[0].pn, th.posts[0].search_result);
+            for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, lth && lth.q && lth.q[th.posts[i].no], null, th.posts[i]);
+          } else pn_result = document.createTextNode('You must be set to store posts at least 1, see \'Catalog\' tab in settings.');
           pn.appendChild(pn_result);
           catalog_attr_set(name,pn.childNodes[0]);
 } else {
@@ -20671,7 +21830,7 @@ if (!pref.test_mode['49']) {
           }
         }
         if (mode==='page' && embed_init) { // patch
-          if (pref.liveTag.use || pref.liveTag.from==='post') {
+          if (pref.liveTag.from!=='none') {
             var bds = {};
             for (var i=0;i<tgts.length;i++) {
               var dbt = cnst.name2domainboardthread(tgts[i],true);
@@ -20704,7 +21863,7 @@ if (!pref.test_mode['49']) {
         }
         for (var i=tgts.length-1;i>=0;i--) {
           var dbt = common_func.name2dbt(tgts[i]);
-          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.use)); // trim for 4chan.
+          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.from!=='none')); // trim for 4chan.
           if (!url) tgts.splice(i,1);
           else if (url[2] && url[2]!==tgts[i]) {
             if (tgts.indexOf(url[2])!=-1) tgts.splice(i,1);
@@ -20816,22 +21975,30 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
 ////////          boards[dbt[0]+dbt[1]] = null;
 ////////        }
 ////////      }
-      function catalog_refresh(refresh, embed_init, from_auto) {
+      function catalog_refresh(refresh, embed_init, from_auto, from_switch) {
         if (pref.test_mode['67'] && !embed_init) archiver.refresh_start();
-        if (!embed_init && pref.catalog.auto_save_filter_at_refresh) onchange_funcs['save']();
-        var result = catalog_refresh_1(embed_mode, refresh, embed_init, from_auto, 'refresh', board_sel.selectedIndex, pref.catalog.filter.bookmark_list_str, false);
+        if (!from_switch && !embed_init && pref.catalog.auto_save_filter_at_refresh) onchange_funcs['save']();
+        var result = catalog_refresh_1(embed_mode, refresh, embed_init, from_auto, 'refresh', board_sel.selectedIndex, pref.catalog.filter.bookmark_list_str, false, undefined, from_switch);
         if (typeof(result)==='function') result(function(){catalog_refresh(refresh, embed_init, from_auto);});
       }
-      function catalog_refresh_1(mode, refresh, embed_init, from_auto, scan_name, sel, bookmark_list_str, get_board_list, callback) {
+      function catalog_refresh_1(mode, refresh, embed_init, from_auto, scan_name, sel, bookmark_list_str, get_board_list, callback, from_switch) {
         var tgts = make_refresh_list(sel, bookmark_list_str);
         if (typeof(tgts)==='function') return tgts; // must be reentried.
-        if (get_board_list) { // patch
+        var IDB_restore = pref.test_mode['65'] && refresh && (embed_init || from_switch) && pref.archive.IDB.auto_restore;
+        if (get_board_list || IDB_restore) { // patch
           var bds = {};
           for (var i=0;i<tgts.length;i++) {
             var dbt = common_func.name2domainboardthread(tgts[i],true);
             if (dbt[2][0].search(/^[pqcj]/)!=-1) bds[dbt[0]+dbt[1]] = null;
             else bds[dbt[0]+dbt[1]+dbt[2].replace(/^t/,'')] = null; // patch
           }
+          if (IDB_restore)
+            for (var i in bds) {
+              var dbt = common_func.name2domainboardthread(i,true);
+              IDB.req(dbt[0], dbt[1], null, null, function(domain, board, nos){
+                for (var i=0;i<nos.length;i++) IDB.req(site.nickname, board, nos[i], null, archiver.event_funcs['restore3'].bind(archiver.event_funcs), 'get_all');
+              }, 'list_os');
+            }
         }
         if (scan_name && pref3.stats.use && pref.stats.auto_acquisition_all) stats.register_auto_acquisition(sel);
         tgts = trim_list(tgts,embed_init, mode);
@@ -21124,7 +22291,8 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
 ////////        },0);
 ////////      }
 
-    if (embed_mode!=='thread') setTimeout(function(){ // patch for liveTag.
+//    if (embed_mode!=='thread') setTimeout(function(){ // patch for liveTag.
+    if (!window.opener) setTimeout(function(){ // patch for liveTag and archive.
       catalog_refresh(pref.catalog.refresh.initial && site.whereami!=='boards', embed_embed, false);
     },1);
 
@@ -21253,7 +22421,12 @@ if (pref.test_mode['0']) {
           for (var i=0;i<ths.length;i++) nos[ths[i].no] = null; // patch, should be consolidated.
           archiver.clean_list_all(nos, domain, board);
         }
-        if (!liveTag.mems[domain][board].LS_synced) site2[domain].clean_up_LS(domain, board, nos);
+        var lbd = liveTag.mems[domain][board];
+        if (!lbd.LS_synced) {
+          site2[domain].clean_up_LS(domain, board, nos);
+          lbd.LS_synced = 1;
+        }
+        if (pref.test_mode['65'] && !lbd.IDB_synced && pref.archive.IDB.auto_clean_init) IDB.clean_up(domain, board, nos);
       }
       function rm_items_404(db,nos){
 //console.log('rrr');
