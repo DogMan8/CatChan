@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.11.13.1
+// @version 2016.11.13.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2891,7 +2891,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.11.13.1<br>'+
+          'Version 2016.11.13.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -16185,7 +16185,7 @@ if (!pref.test_mode['79']) {
             if (lth.archived) {
               if (list_all_obj_downloading[lth.key]) tgt_tmp[t] = list_all_obj_downloading[lth.key];
               else if (!tgt_tmp[t] || tgt_tmp[t]<time_checked) tgt_tmp[t] = time_checked;
-            } else if (lth.posts_saved) tgt_tmp[t] = - time_checked;
+            } else if (lth.posts_saved) tgt_tmp[t] = - time_checked; // 'lth.time_checked/time_unit;' can be used here.
 //            if (lth.archived && !(lth.key in pref3.archive.list_obj2)) list_all_obj[lth.key] = lth.time_checked; // BUG. NOT implemented yet.
           }
           if (!tgt && Object.keys(tgt_tmp).length!==0) {
@@ -16264,7 +16264,7 @@ if (!pref.test_mode['79']) {
           var posts = (th.posts && th.posts.length>1 && th.nof_posts>th.posts.length && lth.ta && pref[cataLog.embed_mode].deleted_posts.detect!=='passive')?
                       site2[th.domain].update_posts_replace_prep(th.posts, lth.ta.posts, -1) :
                       (th.parse_funcs.has_posts)? th.posts : lth.ta && lth.ta.posts || th.posts;
-          if (pref.test_mode['65'] && (pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB')) {
+          if (pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB')) {
             var time_checked;
             if (lth.ta) time_checked = lth.ta.posts[lth.ta.posts.length-1].time;
             else {
