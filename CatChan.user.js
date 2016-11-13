@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.11.13.0
+// @version 2016.11.13.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2891,7 +2891,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.11.13.0<br>'+
+          'Version 2016.11.13.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -16278,7 +16278,7 @@ if (!pref.test_mode['79']) {
               posts_saved = th.posts.slice(i);
             } else posts_saved = th.posts;
             if (posts_saved.length>0) {
-              if (th.type_data==='html') this.prepare_html_extract_params(th);
+              if (th.type_data==='html') cataLog.format_html.prepare_html_extract_params(th);
               IDB.req(th.domain, th.board, th.no, 'posts', posts_saved, 'put');
               lth.posts_saved = 1;
             }
