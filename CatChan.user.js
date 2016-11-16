@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.10.16.2
+// @version 2016.10.16.3
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2818,7 +2818,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.10.16.2<br>'+
+          'Version 2016.10.16.3<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -21249,10 +21249,8 @@ if (pref.test_mode['0']) {
         for (var i=0;i<ths.length;i++) nos[ths[i].key] = true;
         if (flag_item) rm_items_404(db,nos);
         if (pref.liveTag.rm_404_immediately) liveTag.rm_404(domain, board, nos); // call remove_thread in this.
-        if (pref.test_mode['67']) {
-          for (var i=0;i<ths.length;i++) nos[ths[i].no] = null; // patch, should be consolidated.
-          archiver.clean_list_all(nos, domain, board);
-        }
+        for (var i=0;i<ths.length;i++) nos[ths[i].no] = null; // patch, should be consolidated.
+        if (pref.test_mode['67']) archiver.clean_list_all(nos, domain, board);
         if (!liveTag.mems[domain][board].LS_synced) site2[domain].clean_up_LS(domain, board, nos);
       }
       function rm_items_404(db,nos){
