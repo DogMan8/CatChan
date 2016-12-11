@@ -46,6 +46,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2016.12.11.1-0: Fixed bugs, added Full_IDB mode, gave a quick patch for meguca v3<br>
 v2016.12.04.0, v2016.11.13.3-1: Fixed bugs.<br>
 v2016.11.13.0: Archiver/Delayed Pruning are added.<br>
 v2016.10.16.3: Fixed a bug.(degrade)<br>
