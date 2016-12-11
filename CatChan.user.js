@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.12.11.0
+// @version 2016.12.11.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.12.11.0<br>'+
+          'Version 2016.12.11.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10708,7 +10708,9 @@ if (pref.test_mode['35']) return;
             if (hist[i].textContent==='Expand' || hist[i].textContent==='Last 100') hist[i].setAttribute('class',pref.script_prefix+'_link');
             else hist[i].removeAttribute('class');
           }
-          return this.ths_array(doc,doc.pn.getElementsByTagName('article'));
+          var ths = this.ths_array(doc,doc.pn.getElementsByTagName('article'));
+          if (site.board==='/all/') for (var i=ths.length-1;i>=0;i--) ths[i].board = ths[i].pn.getElementsByTagName('a')[0].getAttribute('href').replace(/\d+$/,''); // for v3.
+          return ths;
         },
         no : function(th){return th.pn.getElementsByTagName('a')[0].getAttribute('href').replace(/.*\//g,'');}, // 'replace' for ve.
 //        no : function(th){return th.pn.getElementsByTagName('a')[0].getAttribute('href');},
@@ -11025,6 +11027,7 @@ if (pref.test_mode['35']) return;
           th.posts = posts;
           th.nof_posts = th.posts.length; // for not being reduced if posts are sliced.
           obj.__proto__ = parse_obj;
+          if (pref.catalog.filter.kwd.post) site2['DEFAULT'].wrap_to_parse.posts(th); // patch for each posts' "com".
           return [th];
         },
         get_op_src: function(obj){return site2[obj.domain].protocol + '//' + site2[obj.domain].domain_url + site2[obj.domain].catalog_json2html3_src(obj.posts[0]);},
