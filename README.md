@@ -18,7 +18,7 @@ Copyright (c) 2014 DogMan8<br>
 See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 You can contact with me in following threads for development.<br>
-[meguca.org/g](https://meguca.org/g/1802324)<br>
+[meguca.org/g](https://meguca.org/g/1841607)<br>
 [lainchan.org/λ](https://lainchan.org/%CE%BB/res/10247.html)<br>
 
 <h1>Note</h1><br>
