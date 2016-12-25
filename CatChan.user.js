@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2016.12.11.1
+// @version 2016.12.25.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2016.12.11.1<br>'+
+          'Version 2016.12.25.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3524,7 +3524,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               }
             },
             'restore3': function(domain, board, no, result){
-              var obj = this['consolidate_IDB_result'](result);
+              var obj = this['consolidate_IDB_result'](result, domain);
               if (obj.posts.length>0) {
                 var th = archiver.restore({name:(site.nickname+board+no).replace(/\//,'-')}, site2[domain].parse_funcs.thread_json.prep_to_archive(obj.posts), obj.tn, true);
                 if (obj.posts_deleted.length>0) {
@@ -3534,7 +3534,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 }
               }
             },
-            'consolidate_IDB_result': function(result){
+            'consolidate_IDB_result': function(result, domain){
               var posts = [];
               var posts_deleted = [];
               var images = {};
@@ -3572,6 +3572,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 while (j<posts.length && posts[j].no<posts_deleted[i].no) j++;
                 if (j<posts.length && posts[j].no===posts_deleted[i].no) posts.splice(j,1);
               }
+              var func_init = domain && site2[domain].parse_funcs.thread_json.consolidate_IDB_result_sub;
+              if (func_init && posts.length!==0) func_init(posts);
               return {posts:posts, posts_deleted:posts_deleted, img:images, tn:thumbs};
             },
             'consolidate_IDB_sort_func': function(a,b){return (a.no!==b.no)? a.no - b.no : (a.com<b.com)? -1:1},
@@ -3605,7 +3607,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               for (var i=0;i<ths.length;i++) IDB.req(ths[i].domain, ths[i].board, ths[i].no, null, callback, 'get_all');
             },
             'export_thread': function(domain, board, no, result, file_id, filename){
-              var obj = this['consolidate_IDB_result'](result);
+              var obj = this['consolidate_IDB_result'](result, domain);
 //            var file_id = 'CatChan_IDB_'+domain+'-'+board.slice(1,-1)+'-'+no+'.tar';
               var props = Object.keys(obj);
               for (var i=0;i<props.length;i++) {
@@ -5115,6 +5117,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
         pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
         site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:out};
+        site2['DEFAULT'].popups_set_waiting(th_q[0],parseInt(th_q[1],10));
       } else {
         if (site2['DEFAULT'].popup_info) site2['DEFAULT'].popup_info.func_out();
 //        if (site2['DEFAULT'].popup_info) et.onmouseout(); // BUG at editing, sometimes out is never issued because of being replaced.
@@ -5533,16 +5536,19 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////            if (boards[key_split[0]+key_split[1]]===undefined) parse_objs[keys[i]] = null;
 ////          }
 ////        }
-        posts: function(th){
+        posts: function(th, start){
           var proto_obj = prep_pfunc(th.domain, th.board, 'post_'+th.type_data);
-          if (th.localArchive) proto_obj = {localArchive:th.localArchive, __proto__:proto_obj};
+          var localArchive = th.localArchive;
+          if (localArchive) proto_obj = {localArchive:localArchive, __proto__:proto_obj};
 //          var proto_obj = {domain:th.domain, board:th.board, domain_html:th.domain_html, parse_funcs:th.parse_funcs};
-          if (th.posts) for (var i=0;i<th.posts.length;i++) {
-            if (th.posts[i].extra_files) for (var j=0;j<th.posts[i].extra_files.length;j++)
-              if (!th.posts[i].extra_files.domain) th.posts[i].extra_files[j].__proto__ = proto_obj;
-           if (!th.posts[i].domain) th.posts[i].__proto__ = proto_obj;
+          if (th.posts) for (var i=start||0;i<th.posts.length;i++) {
+            if (!th.posts[i].domain || localArchive) {
+              if (th.posts[i].extra_files) for (var j=0;j<th.posts[i].extra_files.length;j++)
+                if (!th.posts[i].extra_files.domain) th.posts[i].extra_files[j].__proto__ = proto_obj;
+              th.posts[i].__proto__ = proto_obj;
+            }
           }
-         if (th.extra_files) for (var j=0;j<th.extra_files.length;j++) if (!th.extra_files[j].domain) th.extra_files[j].__proto__ = proto_obj;
+          if (th.extra_files) if (!th.extra_files[0].domain || localArchive) for (var j=0;j<th.extra_files.length;j++) th.extra_files[j].__proto__ = proto_obj;
 ////      if (th.posts) for (var i=0;i<th.posts.length;i++) {
 ////        if (th.posts[i].extra_files) for (var j=0;j<th.posts[i].extra_files.length;j++) th.posts[i].extra_files[j].__proto__ = th.__proto__;
 ////        th.posts[i].__proto__ = th.__proto__;
@@ -6190,8 +6196,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
     page_json2html3_add_omitted_info: function(){}, // temporal
     post_json2html_fname_server: function(post){return post.tim+post.ext;},
     post_json2html_fname: function(post){return post.filename+post.ext;},
-    post_com2txt: function(com){
-      return com.replace(/<[^>]*>/g,' ').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&'); // most of lainchan, speed: 9.4/1.99, misshit 4%
+    post_com2txt: function(post){
+      return (post.com)? post.com.replace(/<[^>]*>/g,' ').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&') : ''; // most of lainchan, speed: 9.4/1.99, misshit 4%
     },
     patch:{},
   };
@@ -10044,6 +10050,12 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
                  (th.ext)? th.op_img_url.replace(/s(\.\w+)$/, th.ext) : img.src;
 //          return (th.ext)? th.op_img_url.replace(/s(\.\w+)$/, th.ext) : img.src;
         },
+        consolidate_IDB_result_sub: function(posts){
+          posts[0].nof_posts = posts.length;
+          var nof_files = 0;
+          for (var i=0;i<posts.length;i++) if (posts[i].filename) nof_files++;
+          posts[0].nof_files = nof_files;
+        },
         proto: 'DEFAULT.thread_json'
       },
       'post_html': {
@@ -10211,8 +10223,8 @@ if (pref.test_mode['35']) return;
 
 //    post_json2html : site2['vichan'].post_json2html,
     //    post_json2html_file : site2['vichan'].post_json2html_file,
-    post_com2txt: function(com){
-      return com.replace(/<[^>]*>/g,' ').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&quot;/g,'"').replace(/&#039;/g,"'").replace(/&#0*44;/g,',').replace(/&amp;/g,'&'); // most of 4chan. speed: 13.07/2.38 inlainchan.
+    post_com2txt: function(post){
+      return (post.com)? post.com.replace(/<[^>]*>/g,' ').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&quot;/g,'"').replace(/&#039;/g,"'").replace(/&#0*44;/g,',').replace(/&amp;/g,'&') : ''; // most of 4chan. speed: 13.07/2.38 inlainchan.
     },
     post_json2html : function(post, board, op, short_link, op_no) {
       var pn = document.createElement('div');
@@ -10984,7 +10996,8 @@ if (pref.test_mode['35']) return;
     catalog_json2html3_thumbnail: function(post){
       return (post.image)? this.protocol + '//' + this.domain_url + // fullpath is required for desktopNotification.
         ((post.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? '/assets/spoil/default.jpg' :
-        '/images/thumb/' + post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png')) : undefined;
+        '/images/thumb/' + post.image.SHA1 + ((post.image.thumbType===0 || post.image.thumbType===undefined && post.image.fileType===0)? '.jpg' : '.png')) : undefined;
+//        '/images/thumb/' + post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png')) : undefined;
     },
 //    catalog_json2html3_src: (function(){
 //      var fileType = ['jpg', 'png', 'gif', 'webm', 'pdf', 'svg', 'mp4', 'mp3', 'ogg'];
@@ -11136,7 +11149,7 @@ if (pref.test_mode['35']) return;
                   c2t_count = 0;
                   com = com.replace(/^#(pyu|flip|\d*d\d+|8ball)$/mg,command2txt.bind(this.commands));
                 }
-                com = com.replace(/https*:\/\/[^\s]*(\s|$)/mg,'<a href="$&" target="_blank">$&</a>');
+                com = com.replace(/(https*:\/\/[^\s]*)(\s|$)/mg,'<a href="$1" target="_blank">$1</a>$2');
                 return com.replace(/\n/g,'<br>');
               }, enumerable:true, configurable:true});
             return this.com;}, // return Object.defineProperty(...).com doesn't work, because 'this' refers site2['meguca'].parse_funcs.post_json_template.
@@ -11161,6 +11174,9 @@ if (pref.test_mode['35']) return;
       })(),
     },
     mimic_always: true,
+    post_com2txt: function(post){
+      return (post.body)? post.body.replace(/\*\*([^(\*\*)\n]*)((\*\*)|$)/mg,' $1 ') : '';
+    },
     proto: 'meguca1'
   };
   site2['meguca'] = { // meguca.org v3
@@ -14304,7 +14320,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
                                       num:0, ur:ur, __proto__:this.tags_proto};
 //                                      pn:null, pn_num:0, ur:ur, __proto__:this.tags_proto};
                 if (k!==k_ci) this.tags[k] = this.tags_ci[k_ci]; // this is equiavlent to 'if (this.tags[k]===undefined)' because this.tags.__proto__ === this.tags_ci
-                this.tags_array_old[this.tags_array_old.length] = this.tags_ci[k_ci];
+                if (this.key_dirty[k_ci]!==null) this.tags_array_old[this.tags_array_old.length] = this.tags_ci[k_ci];
 //                this.key_dirty_creation[k_ci] = null; // for pickup in 'update_pn'
 //                if (pref.debug_mode['3']) console.log('Added: '+k);
               } else this.tags[k] = this.tags_ci[k_ci];
@@ -14839,7 +14855,7 @@ if (!pref.test_mode['24']) {
             } else if (pn) pos_insert++;
           } else {
             tags_array.splice(i--,1); // for deleted tags, didn't checked in 'delete_tags'.
-            if (--dirty_count_deleted<=0 && !historical_filter_active) break;
+//            if (--dirty_count_deleted<=0 && !historical_filter_active) break; // redundant.
           }
           if (dirty && --dirty_count<=0 && !historical_filter_active) break;
         }
@@ -16694,7 +16710,8 @@ if (!pref.test_mode['79']) {
                 else delete storage[ls_key];
               }
             }
-            if (pref.test_mode['65']) IDB.req(th.domain, th.board, th.no, 'posts_deleted', JSON.stringify(othpd, store_json_func), (othpd.length>0)? 'put' : 'delete');
+            if (pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB'))
+              IDB.req(th.domain, th.board, th.no, 'posts_deleted', JSON.stringify(othpd, store_json_func), (othpd.length>0)? 'put' : 'delete');
           }
           if (posts_offline && posts_offline.length>0) {
             if (th.domain!==site.nickname) posts_offline = JSON.parse(JSON.stringify(posts_offline, store_json_func)); // for structual clone, remove pn.
@@ -16854,7 +16871,7 @@ if (!pref.test_mode['79']) {
 ////                            domain_html: th.domain,
 //                            nof_posts:th.nof_posts - th.posts.length + posts_deleted.length+1,
                             __proto__:th};
-          site2[th.domain].wrap_to_parse.posts(th_deleted);
+          site2[th.domain].wrap_to_parse.posts(th_deleted, 1);
           if (src && lth.th) {  // NOT DESCRIBED ALL, UNDER IMPLEMENTATION....
             lth.pd = (lth.pd)? site2[th.domain].update_posts_merge_prep(th_deleted.posts, lth.pd, -1, true).slice(1) : posts_deleted;
             if ((cataLog.embed_mode==='page' || cataLog.embed_mode==='thread') && pref.test_mode['64'] && pref[cataLog.embed_mode].deleted_posts.merge) {
@@ -18605,7 +18622,7 @@ if (pref.test_mode['22']) {
               }
             }
             var post_updated_static = pref.liveTag.from==='post' || pref.stats.use || pref[embed_mode].deleted_posts.detect.indexOf('full')===0 ||
-              site2[dbt[0]].parse_funcs[dbt[3]].has_editing && (embed_mode==='page' || embed_mode==='thread');
+                pref[embed_mode].t2h_sel==='ALL_agg' || site2[dbt[0]].parse_funcs[dbt[3]].has_editing && (embed_mode==='page' || embed_mode==='thread');
 //            var post_updated_static = pref.liveTag.from==='post' || pref.stats.use || pref[embed_mode].deleted_posts.detect==='full';
             for (var i=0;i<ths.length;i++) {
               var th = ths[i];
@@ -21767,19 +21784,22 @@ if (!pref.test_mode['59']) {
         function query_11(kwd, rexp, pst, domain){
           if (kwd.sub)  if (pst.sub  && rexp.test(pst.sub )) return true;
           if (kwd.name) if (pst.name && rexp.test(pst.name)) return true;
-          if (kwd.com)  if (pst.com) {
+//          if (kwd.com)  if (pst.com) {
+          if (kwd.com) {
             if (pst.parse_funcs && pst.parse_funcs.type_com==='txt' || pref.test_mode['53']) {
               if (rexp.test(pst.body || pst.com)) return true; // fastest, speed ratio: part/total = 1/1.
             } else {
-              if (!pref.test_mode['54']) {
+//              if (!pref.test_mode['54']) {
 ////                if (!pref.test_mode['57']) {
-                  var txt = site2[domain].post_com2txt(pst.com); // 9.4/1.99 for lainchan, 13.07/2.38 for 4chan.
+                var txt = site2[domain].post_com2txt(pst); // 9.4/1.99 for lainchan, 13.07/2.38 for 4chan.
+                if (txt) {
                   if (txt.search(/&[#\w\d]+;/)!=-1 && !pref.test_mode['58']) {
                     if (pref.debug_mode['17']) console.log('not interpreted html: '+txt);
                     pn_com.innerHTML = pst.com; // giving com is faster than giving txt.
                     txt = pn_com[brwsr.innerText];
                   }
                   if (rexp.test(txt)) return true;
+                }
 ////                } else { // SLOW.
 ////                  com2txt_flag = false;
 //////                  var txt = pst.com.replace(com2txt_rexp, com2txt); // StringReplaceGlobalRegexpWithfunction is heavy. 19.76/3.33
@@ -21790,11 +21810,11 @@ if (!pref.test_mode['59']) {
 ////                  }
 ////                  if (rexp.test(txt)) return true;
 ////                }
-              } else {
-                pn_com.innerHTML = (!pref.test_mode['55'])? pst.com :  // TOO SLOW!!!. 53.72/7.65
-                                                            pst.com.replace(/<[^>]*>/g,' ');  // TOO SLOW, FURTHER!!!. 60.51/8.21
-                if (rexp.test(pn_com[brwsr.innerText])) return true;
-              }
+//              } else {
+//                pn_com.innerHTML = (!pref.test_mode['55'])? pst.com :  // TOO SLOW!!!. 53.72/7.65
+//                                                            pst.com.replace(/<[^>]*>/g,' ');  // TOO SLOW, FURTHER!!!. 60.51/8.21
+//                if (rexp.test(pn_com[brwsr.innerText])) return true;
+//              }
             }
           }
 //          if (kwd.trip) if (pst.trip && kwd.test(pst.trip)) return true;
