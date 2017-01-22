@@ -19,7 +19,6 @@ See the LICENSE file for license rights and limitations (GPLv3).<br>
 
 You can contact with me in following threads for development.<br>
 [meguca.org/g](https://meguca.org/g/1841607)<br>
-[lainchan.org/λ](https://lainchan.org/%CE%BB/res/10247.html)<br>
 
 <h1>Note</h1><br>
 Chrome 48 may have a memory leak. Use chrome 50, 49 or 47 instead of 48 if you can. In my environment,<br>
@@ -46,6 +45,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2017.01.22.0: Functions of archiving were changed to opt-out.<br>
 v2016.12.25.0: Fixed bugs.<br>
 v2016.12.11.1-0: Fixed bugs, added Full_IDB mode, gave a quick patch for meguca v3<br>
 v2016.12.04.0, v2016.11.13.3-1: Fixed bugs.<br>
