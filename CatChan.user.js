@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.02.05.0
+// @version 2017.02.19.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.02.05.0<br>'+
+          'Version 2017.02.19.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3465,7 +3465,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             },
             'queryList': function(){
               if (!pref.test_mode['65']) if (!pref4.archive.IDB_board_sel_options)
-                if (!brwsr.ff) window.indexedDB.webkitGetDatabaseNames().onsuccess = this['showList'].bind(this);
+              if (!brwsr.ff) window.indexedDB.webkitGetDatabaseNames().onsuccess = this['showList'].bind(this);
                 else setTimeout(function(){this.showList({target:{result:Object.keys(liveTag.mems[site.nickname])}})}.bind(this),0);
             },
             'showList': function(e){
@@ -4878,7 +4878,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             }
 //            watch[2] = 0;
             watch[1] = 0;
-            watch[0] = ((watch[0]&0xfffb0000) | 0x00080000)+ ((th.omitted_posts)? th.omitted_posts+1 : 0); // number of replies so far, patch for 4chan catalog_json.
+            watch[0] = ((watch[0]&0xff7b0000) | 0x00080000)+ ((th.omitted_posts)? th.omitted_posts+1 : 0); // number of replies so far, patch for 4chan catalog_json.
+                      // &=0xff7fffff for entry by clicking WATCH triage.
 //            init     = true;
             watchtime_changed = true;
           }
@@ -5081,6 +5082,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       pn.setAttribute('class',pn.getAttribute('class')+' reply');
 //      pn.insertBefore(thq[no].pn.parentNode.querySelector('.files').cloneNode(true),pn.firstChild);
     },
+    popups_post_fetch: function(th, dbt){
+      cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
+    },
     popup_info:null,
     popups_post_entry: function(e){
 //      var th_q = site2[site.nickname].popups_href2th_q(this.getAttribute('href')); // TEMPORAL
@@ -5117,7 +5121,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
       }
       if (th_q[0][th_q[1]]===undefined || Array.isArray(th_q[0][th_q[1]])) { // 'th_q[0][th_q[1]]===undefined' for multilevel popups.
-        cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
+        site2[th.domain].popups_post_fetch(th, dbt);
+//        cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
         pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
         site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:out};
         site2['DEFAULT'].popups_set_waiting(th_q[0],parseInt(th_q[1],10));
@@ -5390,24 +5395,25 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       if (idx!=-1) thq.waiting.splice(idx,1);
       if (thq.waiting.length===0) delete thq.waiting;
     },
-    popups_fetched: function(th, lth){ // 'if (lth.q && lth.q.waiting)' is checked by caller.
+    popups_fetched: function(th, lth, start){ // 'if (lth.q && lth.q.waiting)' is checked by caller.
+      if (!start) start = 0;
       var j=th.posts.length-1;
       for (var i=lth.q.waiting.length-1;i>=0;i--) {
         var no = lth.q.waiting[i];
-        while (j>0 && no<th.posts[j].no) j--;
+        while (j>start && no<th.posts[j].no) j--;
         if (no===th.posts[j].no) {
 //          th.posts[j].parse_funcs = th.parse_funcs; // redundant???  // CAUSED A BUG, parse_funcs are archived and stop its prototype chain.
           if (th.type_data==='html') this.popups_fetched_html(th.posts[j], th); // wrap_to_parse.post and prepare_html_extract_params should be used, but not debugged, left this.
           site2[th.domain].wrap_to_parse.posts({posts:[th.posts[j]], __proto__:th});
           cataLog.format_html.prepare_html_post(th, th.posts[j]);
           this.popups_add_1(th, th.posts[j], pref[cataLog.embed_mode].popup, lth.q, no===th.no, false); // cut quote link.
-//          this.popups_set(lth.q, no, th.posts[j]); // BUG, this doesn't update quotes, in multiple popup mode, this will be appear, use popups_add_1.
-//                                                   // In single popup mode, thie cut quote links and reduce memory consumption.
+//          this.popups_set(lth.q, no, th.posts[j]); // BUG, this doesn't update quotes, this will be appear in multiple popup mode, use popups_add_1.
+//                                                   // In single popup mode, this cut quote links and reduce memory consumption.
 ////          this.popups_set(lth.q, i, (th.type_data==='json')? th.posts[j] : this.popups_fetched_html(th.posts[j], th)); // BUG, this deletes quote.
         } else if (th.type_source==='thread') {
           if (pref.test_mode['64']) this.popups_set(lth.q, no, {time: 0, com:'DELETED'});
           else this.popups_set(lth.q, no, {time: 0, com:'DELETED'}); // referring deleted posts should be here.
-        } else if (j===0) break;
+        } // else if (j===start) break;
         if (this.popup_info && this.popup_info.key===th.key+'#'+th.posts[j].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
       }
     },
@@ -5539,8 +5545,12 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////            if (boards[key_split[0]+key_split[1]]===undefined) parse_objs[keys[i]] = null;
 ////          }
 ////        }
-        posts: function(th, start){
+        posts: function(th, start, proto_options){
           var proto_obj = prep_pfunc(th.domain, th.board, 'post_'+th.type_data);
+          if (proto_options) {
+            proto_options.__proto__ = proto_obj;
+            proto_obj = proto_options;
+          }
           var localArchive = th.localArchive;
           if (localArchive) proto_obj = {localArchive:localArchive, __proto__:proto_obj};
 //          var proto_obj = {domain:th.domain, board:th.board, domain_html:th.domain_html, parse_funcs:th.parse_funcs};
@@ -11103,7 +11113,7 @@ if (pref.test_mode['35']) return;
       },
       'catalog_json_template': {
         dont_have_com: true,
-        get nof_posts(){return this.postCtr;},
+        get nof_posts(){return this.postCtr;}, // v3
 //        get nof_posts(){return this.postCtr+1;}, // v2
         com: '', // doesn't have this.
 //        get max(){return this.lastUpdated;},
@@ -11135,10 +11145,12 @@ if (pref.test_mode['35']) return;
 //            var txt2com = site2[site.nickname].parse_funcs.post_html.txt2com;
             var anchor_class = (site2[site.nickname].parse_funcs.post_html.txt2com_anchor_class)? '" class="' + site2[site.nickname].parse_funcs.post_html.txt2com_anchor_class : '';
             var anchor_regex = /(>>)([0-9]+)/g;
-            function anchor_func(board, str,arrow,no){ // v3
+            var anchor_func_tgt = null;
+            function anchor_func(str,arrow,no){ // v3
+              var links = anchor_func_tgt.links;
               var i=0;
-              while (i<this.length && this[i][0]!=no) i++;
-              return (i<this.length)? '<a href="/' + board + '/' + this[i][1] + '#' + no + anchor_class +
+              while (i<links.length && links[i][0]!=no) i++;
+              return (i<links.length)? '<a href="' + ((anchor_func_tgt.op==links[i][1])? anchor_func_tgt.board : '/cross/') + links[i][1] + '#' + no + anchor_class +
                 '">&gt;&gt;' + no + '</a>' : str; // links isn't provided while editing
             }
 //            function anchor_func(board, str,arrow,no){ // v2
@@ -11154,7 +11166,11 @@ if (pref.test_mode['35']) return;
             Object.defineProperty(site2['meguca'].parse_funcs.post_json_template,'com',{get:function(){
                 if (!this.body) return '';
                 var com = common_func.escape_text(this.body);
-                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1)));
+                if (this.links) { // v3
+                  anchor_func_tgt = this;
+                  com = com.replace(anchor_regex,anchor_func);
+                }
+//                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1))); // v2
                 com = com.replace(/(^>[^>].*$)/mg,'<span class="quote">$1</span>');
                 com = com.replace(/\*\*([^(\*\*)\n]*)((\*\*)|$)/mg,spoiler_replace_txt);
                 if (this.commands) {
@@ -11205,6 +11221,41 @@ if (pref.test_mode['35']) return;
     utilize_boards_json: false,
     pref_default: {
       pref2:{ meguca:{ utilize_boards_json:false, utilize_boards_json_domain:false}},
+    },
+    short_link:function(name, nof_posts, num, kwd_head, kwd_tail){
+      var url = this.make_url4(common_func.name2dbt(name))[0];
+      var th_class = pref.script_prefix +'_link';
+      return '<a href="' + url + '?last=100' + '" class="' + th_class + '">' + kwd_head + '100' + kwd_tail + '</a>';
+    },
+    wrap_to_parse: {
+      get: site2['DEFAULT'].wrap_to_parse.get,
+      posts: function(th, start){site2['DEFAULT'].wrap_to_parse.posts(th, start, {op:th.no || th.id});},
+    },
+    lth_init: function(th){
+      liveTag.mems.init({board:'/cross/', domain:th.domain});
+      Object.defineProperty(liveTag.mems['meguca'],'/cross/',{value:liveTag.mems['meguca']['/cross/'], configurable:true, enumerable:false, writable:true});
+    },
+    popups_post_fetch: function(th, dbt){
+      httpd.req({initiator:'popup',
+                 tgts:[{url:'https://meguca.org/json/post/'+dbt[3], responseType:'json', tgt:dbt[0]+'/*/'+dbt[2]+'#'+dbt[3], data_type:'json', domain:th.domain}],
+                 callback_1:site2[th.domain].popups_post_fetch_callback.bind(site2[th.domain]),
+//                 INDICATOR: {shift:function(){}, report:function(){}},
+                 IDX:0, FINISHED:0, SUC:0, max:1,
+                 dbt:dbt,
+                },8);
+    },
+    popups_post_fetch_callback: function(req,val, REQ){
+      var post_0 = {domain:REQ.dbt[0], board:REQ.dbt[1], no:REQ.dbt[2], type_data:'json', domain_html:site.nickname, key:REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]};
+//      var post_0 = {domain:REQ.dbt[0], board:'/'+val.response.board+'/', no:REQ.dbt[2], type_data:'json', domain_html:site.nickname};
+      delete val.response.board;
+      var th = {posts:[post_0, val.response], __proto__:post_0};
+      site2[th.domain].wrap_to_parse.posts(th);
+      var lth = liveTag.mems.init(th);
+//      var lth = liveTag.prep_tags(th);
+      this.popups_fetched(th,lth, 1);
+//      cataLog.format_html.prepare_html_post(th, th.posts[1]);
+//      this.popups_add_1(th, th.posts[1], pref[cataLog.embed_mode].popup, lth.q, th.no===th.posts[1].no, false); // cut quote link.
+//      if (this.popup_info && this.popup_info.key===REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]+'#'+th.posts[1].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
     },
     proto: 'meguca2'
   };
@@ -13953,6 +14004,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
                                           {p:{value:Object.create(null)}, // pool of parse_funcs
 //                                         u:{value:0, writable:true}, // for 'add_domain'
                                           });
+          if (site2[th.domain].lth_init) site2[th.domain].lth_init(th); 
         }
         function prep_board(th){
           var btag = '#'+th.board.substr(1,th.board.length-2);
