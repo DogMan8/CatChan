@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.02.19.0
+// @version 2017.03.19.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.02.19.0<br>'+
+          'Version 2017.03.19.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11030,9 +11030,16 @@ if (pref.test_mode['35']) return;
       },
       'thread_json' : {
         ths: function(obj, parse_obj) {
+          var th = this.prep_th_posts(obj);
+          th.nof_posts = th.posts.length; // for not being reduced if posts are sliced.
+          obj.__proto__ = parse_obj;
+          if (pref.catalog.filter.kwd.post) site2['DEFAULT'].wrap_to_parse.posts(th); // patch for each posts' "com".
+          return [th];
+        },
+        prep_th_posts: function(obj){ // API was changed on 2017.02.19.
           var th = Object.create(obj); // keep original as it is for archiving.
-//          if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
-          th.board = '/' + th.board +'/';
+          if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
+          th.board = '/' + obj.board +'/';
           obj.no = obj.id;
           delete obj.id;
           var posts = [obj];
@@ -11040,7 +11047,7 @@ if (pref.test_mode['35']) return;
 ////          var max_no = 0;
 ////          for (var i in th.posts) {
           for (var i=0;i<obj.posts.length;i++) {
-            var post = th.posts[i];
+            var post = obj.posts[i];
 //            if (pref.test_mode['72'] && post.editing) break; // static for live tagging and archiving, extraction will be done before finishing the posts.
             if (post.id) {
               post.no = post.id;
@@ -11053,10 +11060,7 @@ if (pref.test_mode['35']) return;
 ////          if (flag) posts.sort(function(a,b){return a.no - b.no;});
 ////          th.posts_obj = th.posts;
           th.posts = posts;
-          th.nof_posts = th.posts.length; // for not being reduced if posts are sliced.
-          obj.__proto__ = parse_obj;
-          if (pref.catalog.filter.kwd.post) site2['DEFAULT'].wrap_to_parse.posts(th); // patch for each posts' "com".
-          return [th];
+          return th;
         },
         get_op_src: function(obj){return site2[obj.domain].protocol + '//' + site2[obj.domain].domain_url + site2[obj.domain].catalog_json2html3_src(obj.posts[0]);},
         op_img_url: 'DEFAULT.common', // function(th) {return site2['meguca'].catalog_json2html3_thumbnail(th, th.board);},
@@ -11085,16 +11089,16 @@ if (pref.test_mode['35']) return;
           var ths = [];
           if (obj.threads) obj = obj.threads; // for v2
           for (var j=0;j<obj.length;j++) {
-            var th = Object.create(obj[j]); // keep original as it is for archiving.
+            var th = this.prep_th_posts(obj[j]);
             th.page = '0.' + j;
-            if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
-            th.board = '/' + th.board +'/';
-            obj[j].no = th.id;
-            delete obj[j].id;
-            th.posts = [th.__proto__];
-            th.posts_obj = {};
-            th.posts_obj[th.no] = th.posts[0];
-            th.__proto__.__proto__ = parse_obj;
+//            if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
+//            th.board = '/' + th.board +'/';
+//            obj[j].no = th.id;
+//            delete obj[j].id;
+//            th.posts = [th.__proto__];
+//            th.posts_obj = {};
+//            th.posts_obj[th.no] = th.posts[0];
+            obj[j].__proto__ = parse_obj;
             ths[ths.length] = th;
           }
           return ths;
@@ -11107,8 +11111,8 @@ if (pref.test_mode['35']) return;
 //          return posts;
 //        },
 //        has_editing: false,
-        has_posts: false,
-        missing_info: 1, // com is missing.
+        has_posts: true, // API was changed on 2017.02.19. // false,
+//        missing_info: 1, // API was changed on 2017.02.19. // com is missing.
         proto: 'thread_json',
       },
       'catalog_json_template': {
@@ -11172,7 +11176,7 @@ if (pref.test_mode['35']) return;
                 }
 //                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1))); // v2
                 com = com.replace(/(^>[^>].*$)/mg,'<span class="quote">$1</span>');
-                com = com.replace(/\*\*([^(\*\*)\n]*)((\*\*)|$)/mg,spoiler_replace_txt);
+                com = com.replace(/\*\*(.*?)((\*\*)|$)/mg,spoiler_replace_txt);
                 if (this.commands) {
                   c2t_count = 0;
                   com = com.replace(/^#(pyu|flip|\d*d\d+|8ball)$/mg,command2txt.bind(this.commands));
