@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.03.19.0
+// @version 2017.04.02.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2525,7 +2525,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '1,From:<br>'+
           '2,<IR"liveTag.from,op">OP<br>'+
           '2,<IR"liveTag.from,post">All posts<br>'+
-          '3,<ICBX"liveTag.use"> Live<br>'+
+          '1,<ICBX"liveTag.use"> Live<br>'+
 //          '4,<ICBX"stats.use"> Take statistics<br>'+
           '1,max: <ITB2"liveTag.max">'+
           ', max string length: <ITB2"liveTag.maxstr"><br>'+
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.03.19.0<br>'+
+          'Version 2017.04.02.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -15147,6 +15147,7 @@ if (!pref.test_mode['24']) {
         }
         this.exclude_tags(th.key, tags_b);
         if (tags_old) for (var i=0;i<2;i++) if (tags_old[i]) tags_b[i] = tags_b[i].concat(tags_old[i]);
+        if (th.parse_funcs.has_editing && th.posts[0].editing && tags_b[0].length!=0) tags_b[0] = this.extract_tags_trim_editing(th, tag, tags_b[0]);
         if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, watch, this.mems[th.domain][th.board]); // update this.keys_fix
         if (tags_b[1].length!=0) this.extract_tags(th, tags_b[1], this.keys_fix);
         else {
@@ -15156,34 +15157,37 @@ if (!pref.test_mode['24']) {
       }
       return tag;
     },
-    update_tags_in_editing_posts: function(th, lth){
-      var flag = true;
+    update_tags_in_editing_posts: function(th, lth){ // called only when th.parse_funcs.has_editing === true.
+      var flag_added = false;
       for (var i=lth.ed_t.length-1;i>=0;i--) if (lth.ed_t[i][0]!=='#') {
         var post = (th.posts_obj)? th.posts_obj[lth.ed_t[i]] : th.parse_funcs.posts_obj(th,lth.ed_t[i]); // posts_obj must be accessed in order
 ////        var post = th.posts_obj[lth.ed_t[i]]; // working code -2016.10.06
         if (post && !post.editing) {
           site2[th.domain].wrap_to_parse.posts({posts:[post], __proto__:th});
           var extracted_tags = site2[th.domain].check_reply.check_t1_op(post);
-          if (extracted_tags.length!=0) flag = false;
+          if (extracted_tags.length!=0) flag_added = true;
           lth.ed_t = lth.ed_t.slice(0,i).concat(extracted_tags).concat(lth.ed_t.slice(i+1));
         }
       }
-      if (pref.debug_mode['24']) console.log(th.key+': retag_req: '+extracted_tags+', '+flag+', '+lth.ed_t);
-      return (extracted_tags)? this.extract_tags(th, lth.ed_t, null, null, true, flag) : undefined;
+      if (pref.debug_mode['24']) console.log(th.key+': retag_req: '+extracted_tags+', '+flag_added+', '+lth.ed_t);
+      return (flag_added)? this.extract_tags(th, lth.ed_t, null, null, true) : // has extracted_tags always.
+        (extracted_tags)? this.extract_tags_trim_editing(th, lth, lth.ed_t, true) && undefined : // return undefined for update intentionally.
+        undefined;
     },
-    extract_tags : function(th, extracted_tags, keys_fix, clean, retag_editing, retag_editing_noexe){
-      var tag = this.mems[th.domain][th.board][th.no];
-      if (th.parse_funcs.has_editing) {
-        var ex_tags_keep = null;
-        for (var i=extracted_tags.length-1;i>=0;i--) if (extracted_tags[i][0]!=='#') { // tags are reverse ordered.
-          if (!ex_tags_keep) ex_tags_keep = extracted_tags.slice(0,i+1);
-          extracted_tags.splice(i,1);
-        }
-        if (ex_tags_keep || retag_editing) tag.ed_t = (retag_editing || !tag.ed_t)? ex_tags_keep :
-                                                      ex_tags_keep.concat(tag.ed_t); // reverse order
-        if (pref.debug_mode['24']) console.log(th.key+ ': lth.ed_t: '+tag.ed_t);
-        if (retag_editing_noexe) return;
+    extract_tags_trim_editing: function(th, tag, extracted_tags, retag_editing){
+      var ex_tags_keep = null;
+      for (var i=extracted_tags.length-1;i>=0;i--) if (extracted_tags[i][0]!=='#') { // tags are reverse ordered.
+        if (!ex_tags_keep) ex_tags_keep = extracted_tags.slice(0,i+1);
+        extracted_tags.splice(i,1);
       }
+      if (ex_tags_keep || retag_editing) tag.ed_t = (retag_editing || !tag.ed_t)? ex_tags_keep :
+                                                    ex_tags_keep.concat(tag.ed_t); // reverse order
+      if (pref.debug_mode['24']) console.log(th.key+ ': lth.ed_t: '+tag.ed_t);
+      return extracted_tags;
+    },
+    extract_tags : function(th, extracted_tags, keys_fix, clean, retag_editing){
+      var tag = this.mems[th.domain][th.board][th.no];
+      if (th.parse_funcs.has_editing) extracted_tags = this.extract_tags_trim_editing(th, tag, extracted_tags, retag_editing);
       if (!keys_fix) {
         this.keys_fix = {};
         var t0 = tag[0]; // runs getter 1 times only.
@@ -17324,7 +17328,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         }
         for (var i in list_domains) scan_refresh_ex_list.add(liveTag.mems[i]);
         scan.scan('t', null, priority);
-        if (pref.liveTag.from==='none') // DEAD CODE... WHY...
+        if (!pref.liveTag.use)
           for (var tag in liveTag.tags) // activate selected tags for NOT liveTag mode. In this case, tags are not many.
             if (liveTag.tags[tag].pk)
               for (var bt of liveTag.tags[tag].mems.keys())
@@ -17332,13 +17336,13 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                   if (bt.no) scan.list_nup.add(bt,2);
                   else scan.list_nup.add_board(bt,2);
         for (var d in liveTag.mems) {
-          if (pref.liveTag.from!=='none') { // ALWAYS TRUE... WHY...
+          if (pref.liveTag.use) {
             if (site2[d].utilize_boards_json && pref.pref2[d].utilize_boards_json) {
               if (list_nup.scan_boards_enumerate(d, null, scan_refresh_ex_list))
                 site2[d].get_boards_json('boards_'+d,(function(domain){return function(){scan.scan_refresh_1(domain, true);}})(d),true,health_indicator);
               else scan.scan('t', d);
             } else scan.scan_refresh_1(d, false);
-          } else scan.scan('b', d); // DEAD CODE... WHY...
+          } else scan.scan('b', d);
         }
       },
       scan_refresh_1: function(domain, use_boards_json){
@@ -22282,7 +22286,7 @@ if (!pref.test_mode['49']) {
           }
         }
         if (mode==='page' && embed_init) { // patch
-          if (pref.liveTag.from!=='none') {
+          if (pref.liveTag.from!=='none') { // ALWAYS TRUE, WHY...
             var bds = {};
             for (var i=0;i<tgts.length;i++) {
               var dbt = cnst.name2domainboardthread(tgts[i],true);
@@ -22315,7 +22319,7 @@ if (!pref.test_mode['49']) {
         }
         for (var i=tgts.length-1;i>=0;i--) {
           var dbt = common_func.name2dbt(tgts[i]);
-          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.from!=='none')); // trim for 4chan.
+          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.from!=='none')); // trim for 4chan. // !=='none' IS ALWAYS TRUE, WHY...
           if (!url) tgts.splice(i,1);
           else if (url[2] && url[2]!==tgts[i]) {
             if (tgts.indexOf(url[2])!=-1) tgts.splice(i,1);
