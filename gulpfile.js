@@ -1,4 +1,4 @@
-"use strict"
+﻿"use strict"
 
 const gulp = require('gulp'),
     minifier = require('gulp-uglify/minifier'),
@@ -13,7 +13,7 @@ gulp.task("default", () =>
             uglify
         ))
         .pipe(sourcemaps.write(".", {
-            sourceMappingURLPrefix: `https://raw.github.com/Dogman8/CatChan/develop`
+            sourceMappingURLPrefix: `https://raw.github.com/Dogman8/CatChan/master`
         }))
         .pipe(gulp.dest("."))
 )
