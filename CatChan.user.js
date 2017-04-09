@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.04.02.0
+// @version 2017.04.09.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.04.02.0<br>'+
+          'Version 2017.04.09.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -6049,7 +6049,12 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             if (!merge || show) if (th_old.posts[i].pn) this.update_posts_remove(th_old,i,pnode);
 //            scroll_back += this.update_posts_remove(th_old,i,pnode,now_height); // SLOW.
             th_old.posts.splice(i,1);
-          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn)) {
+          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn) && th_old.posts[i]!==th.posts[j]) { // meguca returns old data sometime since they uses cache.
+            // Meguca uses caches of 30 seconds, so they returns old data sometime, and last posts aren't contained in old data sometimes.
+            // CatChan takes this as a situation of "the posts was removed", so deleted_posts are fluctuate,
+            // and th.posts may contain shallow copies of th_old.posts because deleted_posts are merged with live posts.
+            // So, "insert-remove" method causes an error when the post is a shallow copy of an old post beacuse th.posts[j].pn.parentNode will be null.
+//          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn)) {
             var thq = liveTag.mems[th.domain][th.board][th.no].q;
             cataLog.format_html.prepare_html_post(th, th.posts[j]);
             this.popups_add_1(th, th.posts[j], true, thq, j===0, true);
@@ -18742,7 +18747,7 @@ if (pref.test_mode['22']) {
               }
 //              if (liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].f) scan.list_nup.add(th.key, sb.priority); // use dbt[0] instead of th.domain for /popular/
               if (lth.q && lth.q.waiting && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th, lth);
-
+              var updated = null;
               if (post_updated!==null && (lth.nof_posts<th.nof_posts || (watch[0]&0x00060000))) { // watch req || retag req
 //              if (post_updated!==null && (lth.nof_posts<th.nof_posts || watch[3]<0)) { // watch[3]<0 is a patch for retag.
 //if (th.parse_funcs.has_posts && th.last_replies) console.log(th.key+', '+th.last_replies.length+', '+th.nof_posts+', '+lth.nof_posts);
@@ -18752,7 +18757,7 @@ if (pref.test_mode['22']) {
                     (th.parse_funcs.has_posts && th.posts.length>th.nof_posts-lth.nof_posts && (lth.ta || pref[cataLog.embed_mode].deleted_posts.detect.indexOf('full')!==0)) ||
                     (th.nof_posts===1 && th.posts[0].time>=0 && !th.parse_funcs.dont_have_com)) {
                   post_updated = true;
-                  var updated = site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'.
+                  updated = site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'.
                   tag_updated = updated.tags || tag_updated;
                   scan.list_nup.got_200(th); // patch for 8chan. 8chan has an inconsistensy between catalog and threads,
                                              // some threads which are there in catalog sometimes returns 404 if it gets as a thread.
@@ -18784,7 +18789,7 @@ if (pref.test_mode['22']) {
                     if (lth.ed_p) lth.ed_p[lth.ed_p.length] = updated.posts[j].no;
                     else lth.ed_p = [updated.posts[j].no];
                 if (th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th &&
-                  (tgt_th[16].needs_update<th.lastUpdated || tgt_th[16].needs_update===null)) scan.list_nup.add(th.key, sb.priority);
+                  (tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null)) scan.list_nup.add(th.key, sb.priority);
 //                if (th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th && lth.ed_p) scan.list_nup.add(th.key, sb.priority);
               }
 //              if (th.domain==='meguca' && th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th && tgt_th[16].needs_update<th.logCtr) scan.list_nup.add(th.key, sb.priority);
@@ -18821,7 +18826,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
               var tgt_th_status = (tgt_th===undefined)? undefined : tgt_th[9][0];
 //              var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' && (tgt_th[16].needs_update===true || tgt_th[16].needs_update===1)))) || pick_up_for_search;
               var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' &&
-                (tgt_th[16].needs_update===true || (tgt_th[16].needs_update<th.lastUpdated || tgt_th[16].needs_update===null))))) || pick_up_for_search;
+                (tgt_th[16].needs_update===true || (tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null))))) || pick_up_for_search;
               if (refresh || (post_updated && tgt_th) || picked_up_by_filter || force_update) {
 //              if (!sb.tag_only && (sb.refresh || (post_updated && tgt_th) || picked_up_by_filter)) {
 //              if (!sb.tag_only && (sb.refresh || (filter_active && catalog_filter_query_scan(th.posts, th.tags)))) {
@@ -19939,9 +19944,10 @@ if (pref.test_mode['19']) { // stability test.
 //          if (name in threads_last_deleted) tgt_th[8][4] = threads_last_deleted[name].last_post_time;
           tgt_th[17] = liveTag.prep_tags(th);
           tgt_th[19] = liveTag.mems[th.domain][th.board][th.no][2];
-          if ((th.type_source==='catalog' || th.posts[0].editing) && !(embed_mode==='catalog' && th.domain===site.nickname) &&
-              (th.domain==='KC' || // doesn't have time info
-               th.domain==='meguca')) { // doesn't have op.
+          if (!(embed_mode==='catalog' && th.domain===site.nickname) &&
+              ((th.domain==='KC' && th.type_source==='catalog') // doesn't have time info
+              || th.posts[0].editing // th.domain==='meguca' // doesn't have op. FIXED in v3.
+              )) {
             tgt_th[16].needs_update = true;
             if (th.type_source==='catalog') scan.list_nup.add(th.key);
           }
@@ -20026,7 +20032,10 @@ if (pref.test_mode['19']) { // stability test.
 ////          else if (th.page) th_old.page = th.page;
 ////          catalog_attr_set(th.key,tgt_th[0]); // for 'show'.
 ////        }
-        if (th.domain==='meguca' && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = th.lastUpdated || ((th.lth.ed_p)? null : undefined); // lastUpdated may be undefined.
+        if (th.domain==='meguca' && tgt_th[16].needs_update!==true)
+          if (th.lth.ed_p || tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null)
+            tgt_th[16].needs_update = (th.lth.ed_p && !(th.posts[1] && th.posts[1].no<=th.lth.ed_p[0]))? null : th.replyTime;
+//        if (th.domain==='meguca' && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = th.lastUpdated || ((th.lth.ed_p)? null : undefined); // lastUpdated may be undefined.
 //        if (th.parse_funcs.has_editing && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = (th.lth.ed_p)? 1 : null;
         return reorder_thread_idx(name);
       }
