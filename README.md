@@ -45,6 +45,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2017.04.09.0: Fixed bugs.<br>
 v2017.04.02.0: Fixed bugs.<br>
 v2017.03.19.0: Bug fix and support new JSON/API of meguca.<br>
 v2017.02.19.0: Quick patch for meguca and bug fix.<br>
