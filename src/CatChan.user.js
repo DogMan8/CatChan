@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.01.22.0
+// @version 2017.04.09.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2525,7 +2525,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '1,From:<br>'+
           '2,<IR"liveTag.from,op">OP<br>'+
           '2,<IR"liveTag.from,post">All posts<br>'+
-          '3,<ICBX"liveTag.use"> Live<br>'+
+          '1,<ICBX"liveTag.use"> Live<br>'+
 //          '4,<ICBX"stats.use"> Take statistics<br>'+
           '1,max: <ITB2"liveTag.max">'+
           ', max string length: <ITB2"liveTag.maxstr"><br>'+
@@ -2780,7 +2780,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 html_funcs.rollup('&emsp;&emsp;<ICBX"archive.IDB_select_multiple"> Multiple select<br>'+
                                   '&emsp;&emsp;Export selected &emsp;&emsp;&emsp;&emsp;<BTN"archive.IDB.export_thread,Threads"><br>'+
                                   '&emsp;&emsp;Reset archived time of selected <BTN"archive.IDB.reset_time,Threads">')+
-                html_funcs.rollup('&emsp;&emsp;Delete selected <BTN"archive.IDB.delete_board,Boards"><BTN"archive.IDB.delete_thread,Threads">')+'<br>'+
+                html_funcs.rollup('&emsp;&emsp;Delete selected <BTN"archive.IDB.delete_board,Boards"><BTN"archive.IDB.delete_thread,Threads"><BTN"archive.IDB.delete_imgs,Images">')+'<br>'+
             '</span>'+
             '&emsp;&emsp;<BTN"archive.restore_button,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
             '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>';
@@ -2899,7 +2899,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.01.22.0<br>'+
+          'Version 2017.04.09.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3465,7 +3465,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             },
             'queryList': function(){
               if (!pref.test_mode['65']) if (!pref4.archive.IDB_board_sel_options)
-                if (!brwsr.ff) window.indexedDB.webkitGetDatabaseNames().onsuccess = this['showList'].bind(this);
+              if (!brwsr.ff) window.indexedDB.webkitGetDatabaseNames().onsuccess = this['showList'].bind(this);
                 else setTimeout(function(){this.showList({target:{result:Object.keys(liveTag.mems[site.nickname])}})}.bind(this),0);
             },
             'showList': function(e){
@@ -3591,6 +3591,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             'IDB.delete_thread': function(){
               this['IDB.selected_threads'](IDB.req, null, null, 'delete_th');
               this['IDB_board_sel'](null);
+            },
+            'IDB.delete_imgs': function(){
+              this['IDB.selected_threads'](IDB.req, IDBKeyRange.bound('img_', 'img`', false, true), null, 'delete');
             },
             'IDB.export_thread': function(){
               var ths = this['IDB.selected_threads']();
@@ -4875,7 +4878,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             }
 //            watch[2] = 0;
             watch[1] = 0;
-            watch[0] = ((watch[0]&0xfffb0000) | 0x00080000)+ ((th.omitted_posts)? th.omitted_posts+1 : 0); // number of replies so far, patch for 4chan catalog_json.
+            watch[0] = ((watch[0]&0xff7b0000) | 0x00080000)+ ((th.omitted_posts)? th.omitted_posts+1 : 0); // number of replies so far, patch for 4chan catalog_json.
+                      // &=0xff7fffff for entry by clicking WATCH triage.
 //            init     = true;
             watchtime_changed = true;
           }
@@ -5078,6 +5082,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       pn.setAttribute('class',pn.getAttribute('class')+' reply');
 //      pn.insertBefore(thq[no].pn.parentNode.querySelector('.files').cloneNode(true),pn.firstChild);
     },
+    popups_post_fetch: function(th, dbt){
+      cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
+    },
     popup_info:null,
     popups_post_entry: function(e){
 //      var th_q = site2[site.nickname].popups_href2th_q(this.getAttribute('href')); // TEMPORAL
@@ -5114,7 +5121,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         }
       }
       if (th_q[0][th_q[1]]===undefined || Array.isArray(th_q[0][th_q[1]])) { // 'th_q[0][th_q[1]]===undefined' for multilevel popups.
-        cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
+        site2[th.domain].popups_post_fetch(th, dbt);
+//        cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
         pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
         site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:out};
         site2['DEFAULT'].popups_set_waiting(th_q[0],parseInt(th_q[1],10));
@@ -5387,24 +5395,25 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       if (idx!=-1) thq.waiting.splice(idx,1);
       if (thq.waiting.length===0) delete thq.waiting;
     },
-    popups_fetched: function(th, lth){ // 'if (lth.q && lth.q.waiting)' is checked by caller.
+    popups_fetched: function(th, lth, start){ // 'if (lth.q && lth.q.waiting)' is checked by caller.
+      if (!start) start = 0;
       var j=th.posts.length-1;
       for (var i=lth.q.waiting.length-1;i>=0;i--) {
         var no = lth.q.waiting[i];
-        while (j>0 && no<th.posts[j].no) j--;
+        while (j>start && no<th.posts[j].no) j--;
         if (no===th.posts[j].no) {
 //          th.posts[j].parse_funcs = th.parse_funcs; // redundant???  // CAUSED A BUG, parse_funcs are archived and stop its prototype chain.
           if (th.type_data==='html') this.popups_fetched_html(th.posts[j], th); // wrap_to_parse.post and prepare_html_extract_params should be used, but not debugged, left this.
           site2[th.domain].wrap_to_parse.posts({posts:[th.posts[j]], __proto__:th});
           cataLog.format_html.prepare_html_post(th, th.posts[j]);
           this.popups_add_1(th, th.posts[j], pref[cataLog.embed_mode].popup, lth.q, no===th.no, false); // cut quote link.
-//          this.popups_set(lth.q, no, th.posts[j]); // BUG, this doesn't update quotes, in multiple popup mode, this will be appear, use popups_add_1.
-//                                                   // In single popup mode, thie cut quote links and reduce memory consumption.
+//          this.popups_set(lth.q, no, th.posts[j]); // BUG, this doesn't update quotes, this will be appear in multiple popup mode, use popups_add_1.
+//                                                   // In single popup mode, this cut quote links and reduce memory consumption.
 ////          this.popups_set(lth.q, i, (th.type_data==='json')? th.posts[j] : this.popups_fetched_html(th.posts[j], th)); // BUG, this deletes quote.
         } else if (th.type_source==='thread') {
           if (pref.test_mode['64']) this.popups_set(lth.q, no, {time: 0, com:'DELETED'});
           else this.popups_set(lth.q, no, {time: 0, com:'DELETED'}); // referring deleted posts should be here.
-        } else if (j===0) break;
+        } // else if (j===start) break;
         if (this.popup_info && this.popup_info.key===th.key+'#'+th.posts[j].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
       }
     },
@@ -5536,8 +5545,12 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////            if (boards[key_split[0]+key_split[1]]===undefined) parse_objs[keys[i]] = null;
 ////          }
 ////        }
-        posts: function(th, start){
+        posts: function(th, start, proto_options){
           var proto_obj = prep_pfunc(th.domain, th.board, 'post_'+th.type_data);
+          if (proto_options) {
+            proto_options.__proto__ = proto_obj;
+            proto_obj = proto_options;
+          }
           var localArchive = th.localArchive;
           if (localArchive) proto_obj = {localArchive:localArchive, __proto__:proto_obj};
 //          var proto_obj = {domain:th.domain, board:th.board, domain_html:th.domain_html, parse_funcs:th.parse_funcs};
@@ -6036,7 +6049,12 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             if (!merge || show) if (th_old.posts[i].pn) this.update_posts_remove(th_old,i,pnode);
 //            scroll_back += this.update_posts_remove(th_old,i,pnode,now_height); // SLOW.
             th_old.posts.splice(i,1);
-          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn)) {
+          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn) && th_old.posts[i]!==th.posts[j]) { // meguca returns old data sometime since they uses cache.
+            // Meguca uses caches of 30 seconds, so they returns old data sometime, and last posts aren't contained in old data sometimes.
+            // CatChan takes this as a situation of "the posts was removed", so deleted_posts are fluctuate,
+            // and th.posts may contain shallow copies of th_old.posts because deleted_posts are merged with live posts.
+            // So, "insert-remove" method causes an error when the post is a shallow copy of an old post beacuse th.posts[j].pn.parentNode will be null.
+//          } else if (th_old.posts[i].editing && (!merge || show) && (th_old.posts[i].pn)) {
             var thq = liveTag.mems[th.domain][th.board][th.no].q;
             cataLog.format_html.prepare_html_post(th, th.posts[j]);
             this.popups_add_1(th, th.posts[j], true, thq, j===0, true);
@@ -11003,7 +11021,9 @@ if (pref.test_mode['35']) return;
 //      var fileType = ['jpg', 'png', 'gif', 'webm', 'pdf', 'svg', 'mp4', 'mp3', 'ogg'];
 //      return function(post){return (post.image)? '/images/src/' + post.image.SHA1 + '.' + fileType[post.image.fileType] : undefined;};
 //    })(),
-    catalog_json2html3_src: function(post){return (post.image)? '/images/src/' + post.image.SHA1 + post.ext : undefined;},
+    catalog_json2html3_src: function(post){return (post.image)? '/images/src/' + post.image.SHA1 + (post.ext || Object.getOwnPropertyDescriptor(this.parse_funcs.post_json_template, 'ext').get.call(post)) :
+                                                                undefined;}, // for archive. It's before wrap.
+//    catalog_json2html3_src: function(post){return (post.image)? '/images/src/' + post.image.SHA1 + post.ext : undefined;},
     post_json2html_fname_server: function(post){return (post.image)? post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png') : undefined;},
     post_json2html_fname: function(post){return (post.image)? post.filename + post.ext : undefined;},
     parse_funcs: {
@@ -11015,9 +11035,16 @@ if (pref.test_mode['35']) return;
       },
       'thread_json' : {
         ths: function(obj, parse_obj) {
+          var th = this.prep_th_posts(obj);
+          th.nof_posts = th.posts.length; // for not being reduced if posts are sliced.
+          obj.__proto__ = parse_obj;
+          if (pref.catalog.filter.kwd.post) site2['DEFAULT'].wrap_to_parse.posts(th); // patch for each posts' "com".
+          return [th];
+        },
+        prep_th_posts: function(obj){ // API was changed on 2017.02.19.
           var th = Object.create(obj); // keep original as it is for archiving.
-//          if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
-          th.board = '/' + th.board +'/';
+          if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
+          th.board = '/' + obj.board +'/';
           obj.no = obj.id;
           delete obj.id;
           var posts = [obj];
@@ -11025,7 +11052,7 @@ if (pref.test_mode['35']) return;
 ////          var max_no = 0;
 ////          for (var i in th.posts) {
           for (var i=0;i<obj.posts.length;i++) {
-            var post = th.posts[i];
+            var post = obj.posts[i];
 //            if (pref.test_mode['72'] && post.editing) break; // static for live tagging and archiving, extraction will be done before finishing the posts.
             if (post.id) {
               post.no = post.id;
@@ -11038,10 +11065,7 @@ if (pref.test_mode['35']) return;
 ////          if (flag) posts.sort(function(a,b){return a.no - b.no;});
 ////          th.posts_obj = th.posts;
           th.posts = posts;
-          th.nof_posts = th.posts.length; // for not being reduced if posts are sliced.
-          obj.__proto__ = parse_obj;
-          if (pref.catalog.filter.kwd.post) site2['DEFAULT'].wrap_to_parse.posts(th); // patch for each posts' "com".
-          return [th];
+          return th;
         },
         get_op_src: function(obj){return site2[obj.domain].protocol + '//' + site2[obj.domain].domain_url + site2[obj.domain].catalog_json2html3_src(obj.posts[0]);},
         op_img_url: 'DEFAULT.common', // function(th) {return site2['meguca'].catalog_json2html3_thumbnail(th, th.board);},
@@ -11070,16 +11094,16 @@ if (pref.test_mode['35']) return;
           var ths = [];
           if (obj.threads) obj = obj.threads; // for v2
           for (var j=0;j<obj.length;j++) {
-            var th = Object.create(obj[j]); // keep original as it is for archiving.
+            var th = this.prep_th_posts(obj[j]);
             th.page = '0.' + j;
-            if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
-            th.board = '/' + th.board +'/';
-            obj[j].no = th.id;
-            delete obj[j].id;
-            th.posts = [th.__proto__];
-            th.posts_obj = {};
-            th.posts_obj[th.no] = th.posts[0];
-            th.__proto__.__proto__ = parse_obj;
+//            if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
+//            th.board = '/' + th.board +'/';
+//            obj[j].no = th.id;
+//            delete obj[j].id;
+//            th.posts = [th.__proto__];
+//            th.posts_obj = {};
+//            th.posts_obj[th.no] = th.posts[0];
+            obj[j].__proto__ = parse_obj;
             ths[ths.length] = th;
           }
           return ths;
@@ -11092,13 +11116,14 @@ if (pref.test_mode['35']) return;
 //          return posts;
 //        },
 //        has_editing: false,
-        has_posts: false,
-        missing_info: 1, // com is missing.
+        has_posts: true, // API was changed on 2017.02.19. // false,
+//        missing_info: 1, // API was changed on 2017.02.19. // com is missing.
         proto: 'thread_json',
       },
       'catalog_json_template': {
         dont_have_com: true,
-        get nof_posts(){return this.postCtr+1;},
+        get nof_posts(){return this.postCtr;}, // v3
+//        get nof_posts(){return this.postCtr+1;}, // v2
         com: '', // doesn't have this.
 //        get max(){return this.lastUpdated;},
         proto: 'thread_json_template'
@@ -11129,11 +11154,19 @@ if (pref.test_mode['35']) return;
 //            var txt2com = site2[site.nickname].parse_funcs.post_html.txt2com;
             var anchor_class = (site2[site.nickname].parse_funcs.post_html.txt2com_anchor_class)? '" class="' + site2[site.nickname].parse_funcs.post_html.txt2com_anchor_class : '';
             var anchor_regex = /(>>)([0-9]+)/g;
-            function anchor_func(board, str,arrow,no){
-              var link = this[no];
-              return (link)? '<a href="/' + link.board + '/' + link.op + '#' + no + anchor_class +
-                '">&gt;&gt;' + ((link.board!=board)? '&gt;/'+ link.board +'/' : '') + no + '</a>' : str; // links isn't provided while editing
+            var anchor_func_tgt = null;
+            function anchor_func(str,arrow,no){ // v3
+              var links = anchor_func_tgt.links;
+              var i=0;
+              while (i<links.length && links[i][0]!=no) i++;
+              return (i<links.length)? '<a href="' + ((anchor_func_tgt.op==links[i][1])? anchor_func_tgt.board : '/cross/') + links[i][1] + '#' + no + anchor_class +
+                '">&gt;&gt;' + no + '</a>' : str; // links isn't provided while editing
             }
+//            function anchor_func(board, str,arrow,no){ // v2
+//              var link = this[no];
+//              return (link)? '<a href="/' + link.board + '/' + link.op + '#' + no + anchor_class +
+//                '">&gt;&gt;' + ((link.board!=board)? '&gt;/'+ link.board +'/' : '') + no + '</a>' : str; // links isn't provided while editing
+//            }
             var spoiler_replace_txt = site2[site.nickname].parse_funcs.post_html.txt2com_spoiler_replace_txt || '<spoiler>$1</spoiler>';
             var c2t_count;
             function command2txt(str){
@@ -11142,9 +11175,13 @@ if (pref.test_mode['35']) return;
             Object.defineProperty(site2['meguca'].parse_funcs.post_json_template,'com',{get:function(){
                 if (!this.body) return '';
                 var com = common_func.escape_text(this.body);
-                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1)));
+                if (this.links) { // v3
+                  anchor_func_tgt = this;
+                  com = com.replace(anchor_regex,anchor_func);
+                }
+//                if (this.links) com = com.replace(anchor_regex,anchor_func.bind(this.links, this.board.slice(1,-1))); // v2
                 com = com.replace(/(^>[^>].*$)/mg,'<span class="quote">$1</span>');
-                com = com.replace(/\*\*([^(\*\*)\n]*)((\*\*)|$)/mg,spoiler_replace_txt);
+                com = com.replace(/\*\*(.*?)((\*\*)|$)/mg,spoiler_replace_txt);
                 if (this.commands) {
                   c2t_count = 0;
                   com = com.replace(/^#(pyu|flip|\d*d\d+|8ball)$/mg,command2txt.bind(this.commands));
@@ -11194,10 +11231,45 @@ if (pref.test_mode['35']) return;
     pref_default: {
       pref2:{ meguca:{ utilize_boards_json:false, utilize_boards_json_domain:false}},
     },
+    short_link:function(name, nof_posts, num, kwd_head, kwd_tail){
+      var url = this.make_url4(common_func.name2dbt(name))[0];
+      var th_class = pref.script_prefix +'_link';
+      return '<a href="' + url + '?last=100' + '" class="' + th_class + '">' + kwd_head + '100' + kwd_tail + '</a>';
+    },
+    wrap_to_parse: {
+      get: site2['DEFAULT'].wrap_to_parse.get,
+      posts: function(th, start){site2['DEFAULT'].wrap_to_parse.posts(th, start, {op:th.no || th.id});},
+    },
+    lth_init: function(th){
+      liveTag.mems.init({board:'/cross/', domain:th.domain});
+      Object.defineProperty(liveTag.mems['meguca'],'/cross/',{value:liveTag.mems['meguca']['/cross/'], configurable:true, enumerable:false, writable:true});
+    },
+    popups_post_fetch: function(th, dbt){
+      httpd.req({initiator:'popup',
+                 tgts:[{url:'https://meguca.org/json/post/'+dbt[3], responseType:'json', tgt:dbt[0]+'/*/'+dbt[2]+'#'+dbt[3], data_type:'json', domain:th.domain}],
+                 callback_1:site2[th.domain].popups_post_fetch_callback.bind(site2[th.domain]),
+//                 INDICATOR: {shift:function(){}, report:function(){}},
+                 IDX:0, FINISHED:0, SUC:0, max:1,
+                 dbt:dbt,
+                },8);
+    },
+    popups_post_fetch_callback: function(req,val, REQ){
+      var post_0 = {domain:REQ.dbt[0], board:REQ.dbt[1], no:REQ.dbt[2], type_data:'json', domain_html:site.nickname, key:REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]};
+//      var post_0 = {domain:REQ.dbt[0], board:'/'+val.response.board+'/', no:REQ.dbt[2], type_data:'json', domain_html:site.nickname};
+      delete val.response.board;
+      var th = {posts:[post_0, val.response], __proto__:post_0};
+      site2[th.domain].wrap_to_parse.posts(th);
+      var lth = liveTag.mems.init(th);
+//      var lth = liveTag.prep_tags(th);
+      this.popups_fetched(th,lth, 1);
+//      cataLog.format_html.prepare_html_post(th, th.posts[1]);
+//      this.popups_add_1(th, th.posts[1], pref[cataLog.embed_mode].popup, lth.q, th.no===th.posts[1].no, false); // cut quote link.
+//      if (this.popup_info && this.popup_info.key===REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]+'#'+th.posts[1].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
+    },
     proto: 'meguca2'
   };
   
-  site2['lain'] = { //lainchan.org
+  site2['lain'] = { //lainchan.org // 5.1.3
     nickname : 'lain',
     home : site.protocol + '//lainchan.org/q/index.html',
 //    home : site.protocol + '//lainchan.org',
@@ -12184,7 +12256,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     }
     function url2tgt(url){return url.substr(url.lastIndexOf('/')+1);}
     function reload_reqs(req,p){
-      if (reqs[p].length>1) reqs[p].shift();
+      if (reqs && reqs[p].length>1) reqs[p].shift();
       else reqs[p] = null;
       reqs_waiting_finish[reqs_waiting_finish.length] = req;
     }
@@ -13941,6 +14013,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
                                           {p:{value:Object.create(null)}, // pool of parse_funcs
 //                                         u:{value:0, writable:true}, // for 'add_domain'
                                           });
+          if (site2[th.domain].lth_init) site2[th.domain].lth_init(th); 
         }
         function prep_board(th){
           var btag = '#'+th.board.substr(1,th.board.length-2);
@@ -15079,6 +15152,7 @@ if (!pref.test_mode['24']) {
         }
         this.exclude_tags(th.key, tags_b);
         if (tags_old) for (var i=0;i<2;i++) if (tags_old[i]) tags_b[i] = tags_b[i].concat(tags_old[i]);
+        if (th.parse_funcs.has_editing && th.posts[0].editing && tags_b[0].length!=0) tags_b[0] = this.extract_tags_trim_editing(th, tag, tags_b[0]);
         if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, watch, this.mems[th.domain][th.board]); // update this.keys_fix
         if (tags_b[1].length!=0) this.extract_tags(th, tags_b[1], this.keys_fix);
         else {
@@ -15088,34 +15162,37 @@ if (!pref.test_mode['24']) {
       }
       return tag;
     },
-    update_tags_in_editing_posts: function(th, lth){
-      var flag = true;
+    update_tags_in_editing_posts: function(th, lth){ // called only when th.parse_funcs.has_editing === true.
+      var flag_added = false;
       for (var i=lth.ed_t.length-1;i>=0;i--) if (lth.ed_t[i][0]!=='#') {
         var post = (th.posts_obj)? th.posts_obj[lth.ed_t[i]] : th.parse_funcs.posts_obj(th,lth.ed_t[i]); // posts_obj must be accessed in order
 ////        var post = th.posts_obj[lth.ed_t[i]]; // working code -2016.10.06
         if (post && !post.editing) {
           site2[th.domain].wrap_to_parse.posts({posts:[post], __proto__:th});
           var extracted_tags = site2[th.domain].check_reply.check_t1_op(post);
-          if (extracted_tags.length!=0) flag = false;
+          if (extracted_tags.length!=0) flag_added = true;
           lth.ed_t = lth.ed_t.slice(0,i).concat(extracted_tags).concat(lth.ed_t.slice(i+1));
         }
       }
-      if (pref.debug_mode['24']) console.log(th.key+': retag_req: '+extracted_tags+', '+flag+', '+lth.ed_t);
-      return (extracted_tags)? this.extract_tags(th, lth.ed_t, null, null, true, flag) : undefined;
+      if (pref.debug_mode['24']) console.log(th.key+': retag_req: '+extracted_tags+', '+flag_added+', '+lth.ed_t);
+      return (flag_added)? this.extract_tags(th, lth.ed_t, null, null, true) : // has extracted_tags always.
+        (extracted_tags)? this.extract_tags_trim_editing(th, lth, lth.ed_t, true) && undefined : // return undefined for update intentionally.
+        undefined;
     },
-    extract_tags : function(th, extracted_tags, keys_fix, clean, retag_editing, retag_editing_noexe){
-      var tag = this.mems[th.domain][th.board][th.no];
-      if (th.parse_funcs.has_editing) {
-        var ex_tags_keep = null;
-        for (var i=extracted_tags.length-1;i>=0;i--) if (extracted_tags[i][0]!=='#') { // tags are reverse ordered.
-          if (!ex_tags_keep) ex_tags_keep = extracted_tags.slice(0,i+1);
-          extracted_tags.splice(i,1);
-        }
-        if (ex_tags_keep || retag_editing) tag.ed_t = (retag_editing || !tag.ed_t)? ex_tags_keep :
-                                                      ex_tags_keep.concat(tag.ed_t); // reverse order
-        if (pref.debug_mode['24']) console.log(th.key+ ': lth.ed_t: '+tag.ed_t);
-        if (retag_editing_noexe) return;
+    extract_tags_trim_editing: function(th, tag, extracted_tags, retag_editing){
+      var ex_tags_keep = null;
+      for (var i=extracted_tags.length-1;i>=0;i--) if (extracted_tags[i][0]!=='#') { // tags are reverse ordered.
+        if (!ex_tags_keep) ex_tags_keep = extracted_tags.slice(0,i+1);
+        extracted_tags.splice(i,1);
       }
+      if (ex_tags_keep || retag_editing) tag.ed_t = (retag_editing || !tag.ed_t)? ex_tags_keep :
+                                                    ex_tags_keep.concat(tag.ed_t); // reverse order
+      if (pref.debug_mode['24']) console.log(th.key+ ': lth.ed_t: '+tag.ed_t);
+      return extracted_tags;
+    },
+    extract_tags : function(th, extracted_tags, keys_fix, clean, retag_editing){
+      var tag = this.mems[th.domain][th.board][th.no];
+      if (th.parse_funcs.has_editing) extracted_tags = this.extract_tags_trim_editing(th, tag, extracted_tags, retag_editing);
       if (!keys_fix) {
         this.keys_fix = {};
         var t0 = tag[0]; // runs getter 1 times only.
@@ -17256,7 +17333,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         }
         for (var i in list_domains) scan_refresh_ex_list.add(liveTag.mems[i]);
         scan.scan('t', null, priority);
-        if (pref.liveTag.from==='none') // DEAD CODE... WHY...
+        if (!pref.liveTag.use)
           for (var tag in liveTag.tags) // activate selected tags for NOT liveTag mode. In this case, tags are not many.
             if (liveTag.tags[tag].pk)
               for (var bt of liveTag.tags[tag].mems.keys())
@@ -17264,13 +17341,13 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                   if (bt.no) scan.list_nup.add(bt,2);
                   else scan.list_nup.add_board(bt,2);
         for (var d in liveTag.mems) {
-          if (pref.liveTag.from!=='none') { // ALWAYS TRUE... WHY...
+          if (pref.liveTag.use) {
             if (site2[d].utilize_boards_json && pref.pref2[d].utilize_boards_json) {
               if (list_nup.scan_boards_enumerate(d, null, scan_refresh_ex_list))
                 site2[d].get_boards_json('boards_'+d,(function(domain){return function(){scan.scan_refresh_1(domain, true);}})(d),true,health_indicator);
               else scan.scan('t', d);
             } else scan.scan_refresh_1(d, false);
-          } else scan.scan('b', d); // DEAD CODE... WHY...
+          } else scan.scan('b', d);
         }
       },
       scan_refresh_1: function(domain, use_boards_json){
@@ -18670,7 +18747,7 @@ if (pref.test_mode['22']) {
               }
 //              if (liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].f) scan.list_nup.add(th.key, sb.priority); // use dbt[0] instead of th.domain for /popular/
               if (lth.q && lth.q.waiting && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th, lth);
-
+              var updated = null;
               if (post_updated!==null && (lth.nof_posts<th.nof_posts || (watch[0]&0x00060000))) { // watch req || retag req
 //              if (post_updated!==null && (lth.nof_posts<th.nof_posts || watch[3]<0)) { // watch[3]<0 is a patch for retag.
 //if (th.parse_funcs.has_posts && th.last_replies) console.log(th.key+', '+th.last_replies.length+', '+th.nof_posts+', '+lth.nof_posts);
@@ -18680,7 +18757,7 @@ if (pref.test_mode['22']) {
                     (th.parse_funcs.has_posts && th.posts.length>th.nof_posts-lth.nof_posts && (lth.ta || pref[cataLog.embed_mode].deleted_posts.detect.indexOf('full')!==0)) ||
                     (th.nof_posts===1 && th.posts[0].time>=0 && !th.parse_funcs.dont_have_com)) {
                   post_updated = true;
-                  var updated = site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'.
+                  updated = site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'.
                   tag_updated = updated.tags || tag_updated;
                   scan.list_nup.got_200(th); // patch for 8chan. 8chan has an inconsistensy between catalog and threads,
                                              // some threads which are there in catalog sometimes returns 404 if it gets as a thread.
@@ -18712,7 +18789,7 @@ if (pref.test_mode['22']) {
                     if (lth.ed_p) lth.ed_p[lth.ed_p.length] = updated.posts[j].no;
                     else lth.ed_p = [updated.posts[j].no];
                 if (th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th &&
-                  (tgt_th[16].needs_update<th.lastUpdated || tgt_th[16].needs_update===null)) scan.list_nup.add(th.key, sb.priority);
+                  (tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null)) scan.list_nup.add(th.key, sb.priority);
 //                if (th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th && lth.ed_p) scan.list_nup.add(th.key, sb.priority);
               }
 //              if (th.domain==='meguca' && th.type_source==='catalog' && embed_mode!=='catalog' && tgt_th && tgt_th[16].needs_update<th.logCtr) scan.list_nup.add(th.key, sb.priority);
@@ -18749,7 +18826,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
               var tgt_th_status = (tgt_th===undefined)? undefined : tgt_th[9][0];
 //              var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' && (tgt_th[16].needs_update===true || tgt_th[16].needs_update===1)))) || pick_up_for_search;
               var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' &&
-                (tgt_th[16].needs_update===true || (tgt_th[16].needs_update<th.lastUpdated || tgt_th[16].needs_update===null))))) || pick_up_for_search;
+                (tgt_th[16].needs_update===true || (tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null))))) || pick_up_for_search;
               if (refresh || (post_updated && tgt_th) || picked_up_by_filter || force_update) {
 //              if (!sb.tag_only && (sb.refresh || (post_updated && tgt_th) || picked_up_by_filter)) {
 //              if (!sb.tag_only && (sb.refresh || (filter_active && catalog_filter_query_scan(th.posts, th.tags)))) {
@@ -19867,9 +19944,10 @@ if (pref.test_mode['19']) { // stability test.
 //          if (name in threads_last_deleted) tgt_th[8][4] = threads_last_deleted[name].last_post_time;
           tgt_th[17] = liveTag.prep_tags(th);
           tgt_th[19] = liveTag.mems[th.domain][th.board][th.no][2];
-          if ((th.type_source==='catalog' || th.posts[0].editing) && !(embed_mode==='catalog' && th.domain===site.nickname) &&
-              (th.domain==='KC' || // doesn't have time info
-               th.domain==='meguca')) { // doesn't have op.
+          if (!(embed_mode==='catalog' && th.domain===site.nickname) &&
+              ((th.domain==='KC' && th.type_source==='catalog') // doesn't have time info
+              || th.posts[0].editing // th.domain==='meguca' // doesn't have op. FIXED in v3.
+              )) {
             tgt_th[16].needs_update = true;
             if (th.type_source==='catalog') scan.list_nup.add(th.key);
           }
@@ -19954,7 +20032,10 @@ if (pref.test_mode['19']) { // stability test.
 ////          else if (th.page) th_old.page = th.page;
 ////          catalog_attr_set(th.key,tgt_th[0]); // for 'show'.
 ////        }
-        if (th.domain==='meguca' && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = th.lastUpdated || ((th.lth.ed_p)? null : undefined); // lastUpdated may be undefined.
+        if (th.domain==='meguca' && tgt_th[16].needs_update!==true)
+          if (th.lth.ed_p || tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null)
+            tgt_th[16].needs_update = (th.lth.ed_p && !(th.posts[1] && th.posts[1].no<=th.lth.ed_p[0]))? null : th.replyTime;
+//        if (th.domain==='meguca' && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = th.lastUpdated || ((th.lth.ed_p)? null : undefined); // lastUpdated may be undefined.
 //        if (th.parse_funcs.has_editing && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = (th.lth.ed_p)? 1 : null;
         return reorder_thread_idx(name);
       }
@@ -22214,7 +22295,7 @@ if (!pref.test_mode['49']) {
           }
         }
         if (mode==='page' && embed_init) { // patch
-          if (pref.liveTag.from!=='none') {
+          if (pref.liveTag.from!=='none') { // ALWAYS TRUE, WHY...
             var bds = {};
             for (var i=0;i<tgts.length;i++) {
               var dbt = cnst.name2domainboardthread(tgts[i],true);
@@ -22247,7 +22328,7 @@ if (!pref.test_mode['49']) {
         }
         for (var i=tgts.length-1;i>=0;i--) {
           var dbt = common_func.name2dbt(tgts[i]);
-          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.from!=='none')); // trim for 4chan.
+          var url = site2[dbt[0]].make_url4(dbt, pref.catalog.design!=='page' && (pref.catalog.indexing!==0 || pref.liveTag.from!=='none')); // trim for 4chan. // !=='none' IS ALWAYS TRUE, WHY...
           if (!url) tgts.splice(i,1);
           else if (url[2] && url[2]!==tgts[i]) {
             if (tgts.indexOf(url[2])!=-1) tgts.splice(i,1);
