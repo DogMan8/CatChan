@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.01.22.0
+// @version 2017.04.09.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
