@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.05.07.0
+// @version 2017.05.07.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -516,7 +516,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       },
       recovery:{comment:true, interval:10, auto_clean:true},
       healthIndicator: {show:true, max:10, expand_running:false, dont_retire_running:true, cancel:true},
-      network: {fetch_actively:true, adaptive:true, th100:5, th100_delay:500, th20:10, th20_delay:100, timeout:15},
+      network: {fetch_actively:true, adaptive:true, th100:5, th100_delay:500, th20:10, th20_delay:100, timeout:15, overXFO:false, overCSPF:false},
       stats: {use:false, retain_404:true, draw_delay:10, estimate_posts:true,
               save:true, load:true, len_capture:1440, auto_acquisition:true, auto_acquisition_scan:true, auto_acquisition_scan_delay:120, auto_acquisition_all:false, 
               tolerant:true, tolerance:90,},
@@ -525,7 +525,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                     show: {np:true, p:false, ep:false, nt:false, t:true, et:false}, clip_np:false, clip_np_val:0,
                     options: {bezierCurve: false, animation:false, pointDot:true, pointDotRadius:4}}},
       archive:{load_img:true, restore_auto:true, clear_threads:true, clear_files:false, format:'auto', domain:0, board:'',
-               src:'shown', store_auto:false, dir_dled:null,
+               src:'shown', store_auto:false, dir_dled:null, open_local:false,
                oneshot: {post:true, tn:true, img:true,  webm:true , post_idb:true, tn_idb:true, img_idb:true,  webm_idb:true},
                live:    {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
                deleted: {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
@@ -2708,7 +2708,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '3',
           function(html_funcs){
             archiver.event_funcs['queryQuota']();
-            return 'JSON Archiver: Store (under implementation)<br>'+
+            return 'JSON Archiver: Store<br>'+
 //            '1,Store:<br>'+
             '<br>'+
             '1,1. Make sure DOWNLOAD DIRECTORY to be set correctly.'+html_funcs.rollup(
@@ -2756,7 +2756,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             '1,4d. You can select target threads individually using triage<br>';},
           function(html_funcs){
             if (pref.archive.files_sel===2) archiver.event_funcs['queryList']();
-            return 'JSON Archiver: Restore (under implementation)<br>'+
+            return 'JSON Archiver: Restore<br>'+
 //            '1,Restore:<br>'+
             '<br>'+
             '1,1. Open a live catalog, index page or thread to be overriden.<br>'+
@@ -2784,7 +2784,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 html_funcs.rollup('&emsp;&emsp;Delete selected <BTN"archive.IDB.delete_board,Boards"><BTN"archive.IDB.delete_thread,Threads"><BTN"archive.IDB.delete_imgs,Images">')+'<br>'+
             '</span>'+
             '&emsp;&emsp;<BTN"archive.restore_button,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
-            '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>';
+            '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>'+
+            '3,<ICBX"archive.open_local"> Open remote archive in local environment<br>';
 //            '1,5. <BTN"archive.clear_files_button,Clear Files"> <ICBX"archive.clear_files"> Auto clear after open<br>';
           },
           'UIP tracker for 4chan:<br>'+
@@ -2813,6 +2814,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;Cross domain connection:<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_cross_domain_connection" value="direct"> Direct connection<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_cross_domain_connection" value="indirect"> Indirect connection<br>'+
+          '3,<ICBX"network.overXFO"> Over X-Frame-Options<br>'+
+          '3,<ICBX"network.overCSPF"> Over Content security policy frame<br>'+
 //          '&emsp;&emsp;<input type="checkbox" name="catalog_fake_access"> Fake access made by human to avoid poor administration<br>'+
 //          '&emsp;&emsp;&emsp;(This causes heavier network traffic and server load,<br>'+
 //          '&emsp;&emsp;&emsp;but administrators can\'t see what script you are using)<br>'+
@@ -2900,7 +2903,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.05.07.0<br>'+
+          'Version 2017.05.07.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -7858,6 +7861,7 @@ if (pref.test_mode['0']) {
         replace_omitted_info2 : function(dst, src){dst.childNodes[0].textContent = (src)? src.childNodes[0].textContent : '';},
         filename: 'thread_html',
         get_op_src: 'thread_json',
+        get_filename_from_dom: 'thread_html',
       },
       'thread_html' : {
         after_test  : ['time_created',':ITER',':FLx','posts',['sub','name','com','flag'],':ITER',':GFLx','posts',['flags','flag']],
@@ -7884,11 +7888,11 @@ if (pref.test_mode['0']) {
               if (i===1) th.extra_files = [];
               if (i>=1) th.extra_files[i-1] = {domain:th.domain, board:th.board};
               var tgt = (i===0)? th : th.extra_files[i-1];
-              tgt.filename = files[i].getElementsByTagName('a')[1].getAttribute('download'); // lainchan 2017.04.25- 
-//              tgt.filename = files[i].getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
+              tgt.filename = this.get_filename_from_dom(files[i]);
               tgt.ext = fname.substr(  fname.indexOf('.'));
               tgt.tim = fname.substr(0,fname.indexOf('.'));
-              var info = files[i].getElementsByClassName('details')[0].textContent.split(',');
+              var info = (th.domain!=='lainjp')? files[i].getElementsByClassName('details')[0].textContent.split(',')
+                                               : files[i].getElementsByClassName('unimportant')[0].textContent.split(',');
               tgt.w = parseInt(info[1].substr(0,info[1].indexOf('x')  ),10);
               tgt.h = parseInt(info[1].substr(  info[1].indexOf('x')+1),10);
               var fsize = info[0].split(/\s/);
@@ -7902,6 +7906,9 @@ if (pref.test_mode['0']) {
             }
           }
           return (files)? th.filename : undefined;
+        },
+        get_filename_from_dom: function(dom){
+          return dom.getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
         },
         proto: 'page_html',
       },
@@ -11276,6 +11283,7 @@ if (pref.test_mode['35']) return;
     nickname : 'lain',
     home : site.protocol + '//lainchan.org/q/index.html',
 //    home : site.protocol + '//lainchan.org',
+    CONTENT_SECURITY_POLICY_FRAME: true,
     protocol: 'https:',
     domain_url: 'lainchan.org',
     postform_rules: null,
@@ -11292,7 +11300,7 @@ if (pref.test_mode['35']) return;
     boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
     check_func : function(){
       var href = window.location.href;
-      if (href.indexOf('/lainchan.org/')!=-1) {
+      if (href.indexOf(new RegExp(this.domain_url))!=-1) {
         site.whereami = (href.indexOf('/catalog.html')!=-1)? 'catalog'
                       : (href.indexOf('/res/')!=-1)? 'thread'
                       : (document.getElementsByTagName('title')[0] && document.getElementsByTagName('title')[0].textContent==='404')? '404' 
@@ -11301,7 +11309,7 @@ if (pref.test_mode['35']) return;
                       : 'page';
 //                      : (href.search(/\/$|(index|[0-9]+)\.html|\/all$|\/popular$/)!=-1)? 'page'
 //                      : 'other';
-        site.config('lainchan.org','lain');
+        site.config(this.domain_url, this.nickname);
         site.max_page = 7;
         site.header_height = function(){
           var header = document.getElementsByClassName('boardlist')[0];
@@ -11335,8 +11343,10 @@ if (pref.test_mode['35']) return;
 //        var ss = document.querySelector('link[href^="/stylesheets/"]');
         // http://stackoverflow.com/questions/2635814/javascript-capturing-load-event-on-link
         // But https://pie.gd/test/script-link-events/
-        styleSheet.add_to_watch(document.getElementById('stylesheet'));
-        styleSheet.add_to_watch(document.getElementById('code_stylesheet'));
+        if (this.nickname==='lain') {
+          styleSheet.add_to_watch(document.getElementById('stylesheet'));
+          styleSheet.add_to_watch(document.getElementById('code_stylesheet'));
+        }
 //        var ss = document.getElementById('stylesheet'); // doesn't work because chrome and FF don't support onload event from link tag.
 //        ss.addEventListener('load',styleSheet.styles_changed,false);
         return true;
@@ -11372,7 +11382,12 @@ if (pref.test_mode['35']) return;
         var pn3 = pn_tb.removeChild(pn_tb.childNodes[3]);
         while (pn3.firstChild) pn_tb.appendChild(pn3.firstChild); // rip from div to span
 //        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
-        document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        if (this.nickname==='lain') {
+          document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        } else {
+          var threads0 = document.getElementsByClassName('threads')[0];
+          threads0.parentNode.insertBefore(pn_tb,threads0);
+        }
         node_ref.parentNode.insertBefore(pn_filter,node_ref);
       } else { // if (site.whereami==='page') {
         var pctrls = document.getElementsByName('postcontrols')[0];
@@ -11463,9 +11478,15 @@ if (pref.test_mode['35']) return;
           }
           return ths;
         },
+        get_filename_from_dom: 'thread_html',
       },
       'catalog_json' : {
         time_unit: 1000,
+      },
+      'thread_html' : {
+        get_filename_from_dom: function(dom){
+          return dom.getElementsByTagName('a')[1].getAttribute('download'); // lainchan 2017.04.25- 
+        },
       },
       'post_html' : {
         img2src: function(img){
@@ -11529,7 +11550,9 @@ if (pref.test_mode['35']) return;
     nickname : 'lainjp',
 //    home : site.protocol + '//lainchan.jp/q/index.html',
     home : site.protocol + '//lainchan.jp/lainicon.ico',
-    x_frame_options_DENY: true,
+    X_FRAME_OPTIONS: true,
+    CONTENT_SECURITY_POLICY_DATAURI: true,
+    CONTENT_SECURITY_POLICY_FRAME: true,
     protocol: 'https:',
     domain_url: 'lainchan.jp',
     postform_rules: null,
@@ -11544,6 +11567,59 @@ if (pref.test_mode['35']) return;
       easy2:{limits:1},
     },
     boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
+    check_func: site2['lain'].check_func,
+    components: {
+      boardlist: '#overheader',
+      postform_comment: ['textarea[name="body"]',0],
+      postform_comment2: ['textarea[name="body"]',1],
+      postform_submit: ['input[name="post"]',0],
+      postform_submit2: ['input[name="post"]',1],
+    },
+    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+//      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
+      var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('threads')[0]
+                                                : document.getElementsByName('postcontrols')[0];
+      site4.tb_prep_for_embed(pn_tb);
+      if (site.whereami==='catalog') {
+        var selector_native = document.getElementById('sort_by');
+        if (selector_native.selectedIndex!=0) {
+          selector_native.selectedIndex = 0;
+          var evt = document.createEvent('UIEvents');
+          evt.initUIEvent('change', false, true, window, 1);
+          selector_native.dispatchEvent(evt);
+        }
+        selector_native.style.display = 'none';
+        document.getElementById('image_size').addEventListener('change', site2['lain'].catalog_native_size_changed, false);
+        var pn_tb_new = document.createElement('span'); // rip from div to span
+        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+        pn_tb = pn_tb_new;
+        var pn3 = pn_tb.removeChild(pn_tb.childNodes[3]);
+        while (pn3.firstChild) pn_tb.appendChild(pn3.firstChild); // rip from div to span
+//        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+        if (this.nickname==='lain') {
+          document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        } else {
+          var threads0 = document.getElementsByClassName('threads')[0];
+          threads0.parentNode.insertBefore(pn_tb,threads0);
+        }
+        node_ref.parentNode.insertBefore(pn_filter,node_ref);
+      } else { // if (site.whereami==='page') {
+        var pctrls = document.getElementsByName('postcontrols')[0];
+        pctrls.parentNode.insertBefore(pn_filter,pctrls);
+        pctrls.parentNode.insertBefore(pn_tb,pctrls);
+      }
+//      node_ref.parentNode.insertBefore(pn_hi,node_ref);
+//      if (site.whereami==='catalog') node_ref.previousElementSibling.appendChild(pn_tb);
+//      if (site.whereami==='catalog') node_ref.previousSibling.appendChild(pn_tb);
+//      else node_ref.parentNode.insertBefore(pn_tb,node_ref);
+//      node_ref.parentNode.insertBefore(pn_filter,node_ref);
+      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
+      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
+      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
+//      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
+//      pn_tb.childNodes[1].setAttribute('style',pn_tb.childNodes[1].getAttribute('style')+';display:none');
+////////      return site2['lain'].catalog_from_native(date,document,site.board,site.whereami+'_html');
+    },
     proto: 'lain'
   };
 
@@ -13068,7 +13144,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         pref_func.add_onchange(parent[tgt].childNodes[1],onchange_func);
       },
       make_iframe: function(name){
-        if (site2[name].x_frame_options_DENY) {
+        if (site2[name].X_FRAME_OPTIONS && pref.network.overXFO || site2[site.nickname].CONTENT_SECURITY_POLICY_FRAME && pref.network.overCSPF) {
 //           setTimeout(function(){window.focus();},2000); // this doesn't effect.
           return;
         }
@@ -17704,11 +17780,11 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var pn12_0_2 = cnst.add_to_tb(pn12,
 //        '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
 //        '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
-        '<button name="filter"><img src="' + cnst.icons.filter + '" style="width:14px;height:14px"></button>' +
-        '<button name="settings"><img src="' + cnst.icons.settings + '" style="width:14px;height:14px"></button>'+
+        '<button name="filter">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'F' : '<img src="' + cnst.icons.filter + '" style="width:14px;height:14px">') +'</button>' +
+        '<button name="settings">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'S' : '<img src="' + cnst.icons.settings + '" style="width:14px;height:14px">') +'</button>'+
 //        '<button name="refresh">Refresh</button>'+
 //        '<button name="refresh">\u27f3</button>'+
-        '<button name="refresh"><img src="' + cnst.icons.refresh + '" style="width:14px;height:14px"></button>'+
+        '<button name="refresh">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'R' : '<img src="' + cnst.icons.refresh + '" style="width:14px;height:14px">') +'</button>'+
         '<span name="num_of_pages">'+
           '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></span>'+
         '<span name="boards_selector"><select name="catalog_board_list_sel"></select></span>');
@@ -21115,7 +21191,7 @@ if (!pref.test_mode['63']) {
 //      }
       function open_new_thread(url, name){
         var dbt = common_func.fullname2dbt(name);
-        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4([site.nickname, site.board, '0','page_html'])[0];
+        if (threads[name][16].archiveFile) url = site2[(pref.archive.open_local)? site.nickname : dbt[0]].make_url4([site.nickname, site.board, '0','page_html'])[0];
 //        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4(common_func.name2dbt(name).slice(0,2).concat(['0','page_html']))[0];
         else {
           if (url===null) {
