@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.04.09.0
+// @version 2017.05.07.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -9,6 +9,7 @@
 // @include http*://8chan.co/*
 // @include http*://8ch.net/*
 // @include http*://lainchan.org/*
+// @include http*://lainchan.jp/*
 // @include http*://meguca.org/*
 // @require https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1-beta.4/Chart.min.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
@@ -2899,7 +2900,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.04.09.0<br>'+
+          'Version 2017.05.07.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -7883,7 +7884,8 @@ if (pref.test_mode['0']) {
               if (i===1) th.extra_files = [];
               if (i>=1) th.extra_files[i-1] = {domain:th.domain, board:th.board};
               var tgt = (i===0)? th : th.extra_files[i-1];
-              tgt.filename = files[i].getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
+              tgt.filename = files[i].getElementsByTagName('a')[1].getAttribute('download'); // lainchan 2017.04.25- 
+//              tgt.filename = files[i].getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
               tgt.ext = fname.substr(  fname.indexOf('.'));
               tgt.tim = fname.substr(0,fname.indexOf('.'));
               var info = files[i].getElementsByClassName('details')[0].textContent.split(',');
@@ -10730,7 +10732,8 @@ if (pref.test_mode['35']) return;
         proto: 'DEFAULT.thread_json'
       },
       'catalog_html' : {
-        footer: function(th){return th.pn.getElementsByTagName('small')[0].getElementsByTagName('span')[0];},
+        footer: function(th){return th.pn.getElementsByClassName('counters')[0];}, // v3.
+//        footer: function(th){return th.pn.getElementsByTagName('small')[0].getElementsByTagName('span')[0];}, // working code for v1, v2.
         footer_clear: function(th){th.footer.textContent = '';},
         ths: function(doc) {
           var hist = doc.pn.getElementsByClassName('history');
@@ -11344,7 +11347,8 @@ if (pref.test_mode['35']) return;
     max_page : function(){return 10;},
     all_boards: ['/popular/','/all/','/mega/','/random/'],
     make_url4: function(dbt){
-      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt);
+      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : site2['vichan'].make_url4.call(this,dbt);
+//      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt); // cause error from lainjp
     },
 
     catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
@@ -11521,6 +11525,28 @@ if (pref.test_mode['35']) return;
     },
     proto : 'vichan'
   };
+  site2['lainjp'] = { //lainchan.jp // ?.?.?
+    nickname : 'lainjp',
+//    home : site.protocol + '//lainchan.jp/q/index.html',
+    home : site.protocol + '//lainchan.jp/lainicon.ico',
+    x_frame_options_DENY: true,
+    protocol: 'https:',
+    domain_url: 'lainchan.jp',
+    postform_rules: null,
+    features : {page: false, graph: true, setting2: false},
+    pref_default: {
+      page:{ env:{ disp_offset:1}},
+      catalog:{image_hover:true, board:{all_boards:true}},
+      proto:{ env:{ localtime_native:false,
+                    colorID_native: false}},
+      stats:{ time_unit:3, estimate_posts:false}, // estimation doesn't work because lainchan has disorder of No.
+      chart: {inst:{show: {np:false, p:true}, time_sel:3}},
+      easy2:{limits:1},
+    },
+    boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
+    proto: 'lain'
+  };
+
 
   if (!site2['futaba']) site2['futaba'] = {
     nickname : 'futaba',
@@ -13042,6 +13068,10 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         pref_func.add_onchange(parent[tgt].childNodes[1],onchange_func);
       },
       make_iframe: function(name){
+        if (site2[name].x_frame_options_DENY) {
+//           setTimeout(function(){window.focus();},2000); // this doesn't effect.
+          return;
+        }
         var ifrm = document.createElement('iframe');
         ifrm.name = name;
         ifrm.setAttribute('style','display:none');
@@ -18650,7 +18680,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////        }
 
         var threads_meguca = {};
-        function scan_boards_keyword_callback2(key,value,args){ // requires snoop and on demand rendering for merge.
+        function scan_boards_keyword_callback2(key,value,args, insert_thread_from_native){ // requires snoop and on demand rendering for merge.
 ////////  if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
           var sb = args[1];
           var dbt = key.split(',');
@@ -18838,7 +18868,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
                 }
                 if (post_updated || picked_up_by_filter || tgt_th_status===undefined || force_update) {
                   if (pref[embed_mode].scroll_lock) show_catalog_scroll_lock.set();
-                  insert_thread(th, value.date, picked_up_by_kwd_filter);
+                  insert_thread(th, value.date, picked_up_by_kwd_filter, insert_thread_from_native);
                   tgts[th.key] = true;
                   tgt_th = threads[th.key];
                 } // else if (pref[embed_mode].load_on_demand) reorder_thread_idx(th.key); // place thread before ODL. // changed. // implementation is changed.
@@ -19857,9 +19887,8 @@ if (!pref.test_mode['13']) {
 ////////
 //////// Memory leak was found with None (document leaks when I read KC's one), but I'll go with None.
 ////////
-      var insert_thread_from_native = false;
 //      function insert_thread(src, nickname, page_no, date_load, name, html_org, src2, url, from_native, th, type){
-      function insert_thread(th, date_load, picked_up_by_kwd_filter){
+      function insert_thread(th, date_load, picked_up_by_kwd_filter, insert_thread_from_native){
         var date_load = date_load;
         var name = th.key;
 if (!pref.test_mode['28']) {
@@ -20082,8 +20111,8 @@ if (pref.test_mode['19']) { // stability test.
           if (pref[embed_mode].format.thumb.resize) // BUG, should be moved into show_catalog() because threads aren't shown all the time and cause memory leak.
             for (var i=0;i<th.tn_imgs.length;i++) th.tn_imgs[i].addEventListener('load',(i==0)?image_resize1_onload : image_resize2_onload, false);
 
-          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
-                                                                                       site2[th.domain].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
+          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain_html].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
+                                                                                       site2[th.domain_html].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
           catalog_attr_set(th.key,tgt_th[0]);
   
           if (embed_mode==='float' && pref.catalog.text_mode.mode==='text') { // place after th.op_img_url. // NEED TO MODIFY REMOVE_THREAD TO PREVENT MEMORY LEAK.
@@ -22733,15 +22762,13 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
       }
       var insert_myself_init_flag = true; // PATCH
       function insert_myself(){
-          insert_thread_from_native = true;
 //          var ths = scan_boards.scan_boards_keyword_callback2(site.nickname+','+site.board+','+site.no+','+((embed_catalog)?'catalog':'page')+'_html',
           var new_posts = [];
           var ths = scan_boards.scan_boards_keyword_callback2(site.nickname+','+site.board+','+((embed_mode==='thread')?site.no:'0')+','+embed_mode+'_html',
                                                               {date:Date.now(), status:200, response:document},
-                                                              ['native_prep',{native_prep:true, found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, ext_posts:new_posts}]);
+                                                              ['native_prep',{native_prep:true, found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, ext_posts:new_posts}], true);
           if (embed_mode==='thread' && common_obj.thread_reader && new_posts.length!==0) common_obj.thread_reader.updated(new_posts,insert_myself_init_flag);
           insert_myself_init_flag = false;
-          insert_thread_from_native = false;
           return ths;
       }
 ////////      if (embed_catalog || embed_page) {  // for native catalog // working code.
