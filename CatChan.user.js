@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.05.07.2
+// @version 2017.05.07.3
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -935,6 +935,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         tgt = pref[tgt];
         var bg_str = (site.whereami==='boards')? site2[site.nickname].boards_sel_from_tags() :
                      site.board + ((site.whereami==='thread')? site.no : '');
+        if (bg_str==='//') bg_str = '/ROOT_DUMMY/';
         bg_str += ',' + bg_str + '\n' + pref[key] + '\n';
         if (pref.catalog.board.recommendation) {
 //          var blotter = document.getElementsByClassName('blotter')[0];
@@ -2915,7 +2916,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.05.07.2<br>'+
+          'Version 2017.05.07.3<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4330,6 +4331,26 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       spoiler: /span.spoiler$/,
       open: /span.spoiler:hover/,
     },
+    postform:(function(){
+      function onoff(ref){
+//        if (this.tack && ref) ref.parentNode.insertBefore(this.tack, ref);
+        if (this.tack) this.tack.style.display = (this.tack.style.display==='none')? '' : 'none';
+      }
+      return {
+        tack: null,
+        init:function(){
+          if (site.postform) {
+            this.tack = document.createElement('i');
+            this.tack.setAttribute('class','fa fa-thumb-tack');
+            this.tack.setAttribute('style','float:right;font-size:2em');
+            site.postform.parentNode.insertBefore(this.tack,site.postform);
+          }
+          return this.tack;
+        },
+        on: onoff,
+        off:onoff,
+      };
+    })(),
     postform_prep: function(){ // the same as vichan.
       site.components.postform_submit2 = null;
       site.components.postform_submit2_observer = new MutationObserver(this.postform_submit2_find);
@@ -4991,7 +5012,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////        if (class_or_tag=='tag') while (posts[i].tagName.search(key)==-1) posts[i] = posts[i].parentNode;
 //        if (class_or_tag=='class') reply = posts[i].getElementsByClassName(key)[0];
 //        if (class_or_tag=='tag')  reply = posts[i].getElementsByTagName(key)[0];
-        var reply = (func)? func(posts[i]) : posts[i]; 
+        var reply = (func)? func(posts[i]) : posts[i];
         if (reply)
           if (date<site2[nickname].parse_funcs.post_html.time_pn(posts[i])) {
             reply.setAttribute('style', pref.style.post_new);
@@ -8388,6 +8409,16 @@ if (pref.test_mode['0']) {
       postform_comment: '#postform_comment',
       postform_submit: '#postform_submit',
     },
+    postform: {
+      init:function(){
+        this.tack = document.createElement('img');
+        this.tack.setAttribute('src','/images/sticky.gif');
+        this.tack.setAttribute('style','float:right;font-size:2em;');
+        site.postform.parentNode.insertBefore(this.tack,site.postform);
+        return this.tack;
+      },
+      __proto__:site2['DEFAULT'].postform
+    },
     pref_default: {
       thread_reader:{own_posts_tracker:true, check_num_of_children: false},
       proto:{
@@ -9387,11 +9418,21 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //    home : site.protocol + '//boards.4chan.org/int/',
     home : site.protocol + '//boards.4chan.org/favicon.ico',
     protocol: 'http:',
-    postform: document.getElementsByClassName('postForm')[0],
     postform_rules: null,
-    postform_activation : function(){
-      document.getElementById('togglePostFormLink').getElementsByTagName('a')[0].click();
-      site.postform = document.getElementsByClassName('postForm')[0];
+    postform: {
+      init:function(){
+        this.tack = document.createElement('img');
+        this.tack.setAttribute('src','//s.4cdn.org/image/sticky.gif');
+        this.tack.setAttribute('class','stickyIcon retina');
+        this.tack.setAttribute('style','float:right;font-size:2em;');
+        site.postform.parentNode.insertBefore(this.tack,site.postform);
+        return this.tack;
+      },
+      activation: function(){
+        document.getElementById('togglePostFormLink').getElementsByTagName('a')[0].click();
+        this.activation = null;
+      },
+      __proto__:site2['DEFAULT'].postform
     },
     features : {uip_tracker: true},
     components: {
@@ -9501,6 +9542,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           site.embed_to['top']    = document.getElementById('content').previousSibling;
           site.embed_to['bottom'] = document.getElementsByClassName('navLinksBottom')[0].nextSibling;
         }
+        site.postform = document.getElementsByClassName('postForm')[0];
         return true;
       } else return false;
     },
@@ -10964,8 +11006,8 @@ if (pref.test_mode['35']) return;
     check_func : function(){ // required to be a own property.
       var href = window.location.href;
       if (href.indexOf('/meguca.org/')!=-1) {
-        site.whereami = (href.search(/[0-9]+$/)!=-1)? 'thread' : 'catalog';
-//                      : 'other';
+        site.whereami = (href.search(/[0-9]+$/)!=-1)? 'thread' :
+                        (href.search(/catalog\/*$/)!=-1)? 'catalog' : 'other';
         site.config('meguca.org',this.nickname);
         site.max_page = 3;
         site.header_height = function(){
@@ -11333,6 +11375,55 @@ if (pref.test_mode['35']) return;
 //      this.popups_add_1(th, th.posts[1], pref[cataLog.embed_mode].popup, lth.q, th.no===th.posts[1].no, false); // cut quote link.
 //      if (this.popup_info && this.popup_info.key===REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]+'#'+th.posts[1].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
     },
+    catalog_json2html3 : function(obj,board,thumb_url) {
+      var th = document.createElement('article');
+      th.id = 'p'+obj.no;
+      th.class = 'glass media';
+      th.dataId = obj.no;
+      var th_url = site2[obj.domain].make_url4([obj.domain,obj.board,obj.no,'thread_html'])[0];
+      var tn_w = obj.tn_w || obj.posts[0].tn_w;
+      var tn_h = obj.tn_h || obj.posts[0].tn_h;
+      var tn_f = 150 / ((tn_w>tn_h)? tn_w : tn_h);
+      var th_class_tn = (pref.pref2.meguca.remove_history_class)? '' : 'history';
+      var th_class    = th_class_tn + ' ' + pref.script_prefix +'_link';
+      var short_link = site2[obj.domain].short_link(obj.key, obj.nof_posts, 1, 'Last ', '');
+      th.innerHTML = 
+        '<input type="checkbox" class="deleted-toggle">'+
+        '<figure>'+
+          '<a class="history" href="' + board + obj.no + '">'+
+          '<img width="' + (tn_w * tn_f) + '" height="' + (tn_h * tn_f) + '" class="catalog" src="'+ thumb_url + '"></a>'+
+        '</figure>'+
+        '<span class="spaced thread-links hide-empty">'+
+          '<b class="board">' + board + '</b>'+
+          '<span class="counters" title="Posts/Images">'+ (obj.nof_posts-1) + '/' + (obj.nof_files-1) +'</span>'+
+          '<span class="act">'+
+            ((obj.domain==='meguca')? '<a class="' + th_class_tn + ' lastN-link" href="' + board + obj.no + '?last=100">Last 100</a></span>' :
+                                      '<a href="' + th_url + '" class="'+ th_class + ' lastN-link">Expand</a>'+
+                                      ((short_link)? '] [' + short_link : ''))+
+          '</span>'+
+        '</span><br>'+
+        ((obj.sub)? '<h3>' + obj.sub + ' </h3>' : '')+
+        '<blockquote>' + ((obj.com)? obj.com : '') + '</blockquote>';
+      return th;
+    },
+    mark_newer_posts: function(th_pn,date,unmark, short_cut) {
+      date = date/this.parse_funcs.post_json.time_unit;
+      var marked_first_post = null;
+      var th = JSON.parse(th_pn.getElementById('post-data').innerHTML);
+      var th_posts = [th].concat(th.posts);
+      var th_posts_pn = th_pn.getElementsByTagName('article');
+      for (var i=th_posts.length-1;i>=0;i--) {
+        if (date<th_posts[i].time) {
+          th_posts_pn[i].setAttribute('style', pref.style.post_new);
+          if (unmark) th_posts_pn[i].addEventListener('mouseover', this.unmark_post_from_event, false);
+          marked_first_post = th_posts_pn[i];
+        } else {
+          if (th_posts_pn[i].getAttribute('style')!=null) th_posts_pn[i].removeAttribute('style');
+          if (short_cut) break;
+        }
+      }
+      return marked_first_post;
+    },
     proto: 'meguca2'
   };
   
@@ -11358,7 +11449,8 @@ if (pref.test_mode['35']) return;
     boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
     check_func : function(){
       var href = window.location.href;
-      if (href.indexOf(new RegExp(this.domain_url))!=-1) {
+      if (href.indexOf(this.domain_url)===-1 || href.search(new RegExp(this.domain_url+'\/*$'))!=-1) return false;
+//      if (href.indexOf(new RegExp(this.domain_url))!=-1) {
         site.whereami = (href.indexOf('/catalog.html')!=-1)? 'catalog'
                       : (href.indexOf('/res/')!=-1)? 'thread'
                       : (document.getElementsByTagName('title')[0] && document.getElementsByTagName('title')[0].textContent==='404')? '404' 
@@ -11408,7 +11500,7 @@ if (pref.test_mode['35']) return;
 //        var ss = document.getElementById('stylesheet'); // doesn't work because chrome and FF don't support onload event from link tag.
 //        ss.addEventListener('load',styleSheet.styles_changed,false);
         return true;
-      } else return false;
+//      } else return false;
     },
 //    catalog_threads_in_page : function(doc){return doc.getElementsByClassName('mix');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
@@ -13503,7 +13595,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       var pn8 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:settings2:Show2:tile:set:left',pn_st:pn_st});
       setting_obj = make_setting_obj(pn8);
     }
-    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform_activation)) {
+    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform.activation)) {
       wafd = make_wafd();
       var pn9 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:post_form:Show2:tile:set:left',pn_st:pn_st});
       post_form_obj = make_post_form_obj(pn9);
@@ -20148,17 +20240,20 @@ if (pref.test_mode['19']) { // stability test.
         if (init_new && tgt_th[0]) threads[name][16].posts = th.posts;
         if (th.type_source==='page' || th.domain==='4chan' && th.type_parse==='catalog_json') threads[name][16].t2h_page = th.posts.length-1;
 
+//        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) {
+////        if (embed_mode==='page' || embed_mode==='thread' || !pref.test_mode['49']) {
+////          if (!th.posts) th.posts = th.parse_funcs.posts(th); // patch for 4chan catalog.
+        var t2h_num_of_posts = format_html.get_t2h_num_of_posts(tgt_th, th.type_source);
+        if (t2h_num_of_posts!==false) {
+          if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts && embed_mode==='page') { // load to add
+//          if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts) { // doesn't work for short links(last 50 posts)
+            threads[name][16].expand_posts = true;
+            scan.list_nup.add_scan(th.key);
+//            catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
+          }
+        }
         if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) {
-//        if (embed_mode==='page' || embed_mode==='thread' || !pref.test_mode['49']) {
-          if (!th.posts) th.posts = th.parse_funcs.posts(th); // patch for 4chan catalog.
-          var t2h_num_of_posts = format_html.get_t2h_num_of_posts(tgt_th, th.type_source);
           if (t2h_num_of_posts!==false) {
-            if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts && embed_mode==='page') { // load to add
-//            if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts) { // doesn't work for short links(last 50 posts)
-              threads[name][16].expand_posts = true;
-              scan.list_nup.add_scan(th.key);
-//              catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
-            }
             if (tgt_th[16].th) th.posts = site2[th.domain].update_posts_replace_prep(th.posts, tgt_th[16].th.posts, t2h_num_of_posts); // merge
             if (tgt_th[16].posts) th.posts = site2[th.domain].update_posts_replace_prep(th.posts, tgt_th[16].posts, t2h_num_of_posts); // merge // MUST CHANGE ADDRESS OF th.posts, 'th.posts===th_old.posts' is used 'insert_thread_format_html'
             // CAUSE BUG??? may cayse mixing posts which should use different prototype, posts_html and posts_json.
@@ -25228,6 +25323,10 @@ if (pref.test_mode['17']) {
 //    var pn9 = div_init(9,'120px','30px','button','post_form');
 //    var pn9 = cnst.init('left:120px:bottom:30px:button:post_form:Show');
     pn9.addEventListener('click', show_hide, false);
+    if (site2[site.nickname].postform) {
+      var tack = site2[site.nickname].postform.init();
+      if (tack) tack.addEventListener('click', show_hide, false);
+    }
     var pn10 = null;
     var pn10_2 = null;
 //    var pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox">workaround for dollchan<input type="checkbox">prevent redirection');
@@ -25245,14 +25344,14 @@ if (pref.test_mode['17']) {
     var on = false;
     var hidden_elements = [];
     function show_hide(){
-      if (site2[site.nickname].postform_activation) {
-        site2[site.nickname].postform_activation();
-        site2[site.nickname].postform_activation=null;
-      }
+      if (site2[site.nickname].postform.activation) site2[site.nickname].postform.activation();
       var tgt    = site.postform;
       if (!on) {
         if (pn10==null) {
-          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+          var left = tgt.offsetLeft - tgt.scrollLeft;
+          var top = tgt.offsetTop - tgt.scrollTop;
+          pn10 = cnst.init('left:'+left+'px:top:'+top+'px:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+//          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
           pn10.id = 'pn10_debug';
 //          pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="workaround_for_dollchan">workaround for dollchan<input type="checkbox" name="prevent_redirection">prevent redirection');
           pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="prevent_redirection">prevent redirection');
@@ -25290,9 +25389,11 @@ if (pref.test_mode['17']) {
           site.postform_rules.style.display = 'none';
           hidden_elements.push(site.postform_rules);
         }
+        if (site2[site.nickname].postform) site2[site.nickname].postform.on(site.postform);
         site.components.postform_comment.focus();
-        cnst.bottom_top(pn10);
+//        cnst.bottom_top(pn10);
       } else {
+        if (site2[site.nickname].postform) site2[site.nickname].postform.off(pn10);
         while (hidden_elements.length!=0) hidden_elements.pop().style.display = '';
 //        site.root_body.removeChild(pn10); // working code.
 //        parent.insertBefore(tgt,parent.childNodes[no]);
