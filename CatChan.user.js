@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.05.07.3
+// @version 2017.05.07.4
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -535,7 +535,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                     show: {np:true, p:false, ep:false, nt:false, t:true, et:false}, clip_np:false, clip_np_val:0,
                     options: {bezierCurve: false, animation:false, pointDot:true, pointDotRadius:4}}},
       archive:{load_img:true, restore_auto:true, clear_threads:true, clear_files:false, format:'auto', domain:0, board:'',
-               src:'shown', store_auto:false, dir_dled:null, open_local:false,
+               src:'shown', store_auto:false, dir_dled:null, open_local:false, fix_inconsistency: true,
                oneshot: {post:true, tn:true, img:true,  webm:true , post_idb:true, tn_idb:true, img_idb:true,  webm_idb:true},
                live:    {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
                deleted: {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
@@ -2038,7 +2038,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         },
         files_store: function(){
           var files_archive = pref_func.mirror_targets.pn13_1.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0]; // out of w3c, but works in chrome and FF.
-          if (files_archive) site.script_body.appendChild(files_archive); // called also at initial.
+          if (files_archive) site.script_body.firstChild.appendChild(files_archive); // called also at initial. // firstChild is 'display:none'.
+//          if (files_archive) site.script_body.appendChild(files_archive); // called also at initial.
           var files = pref_func.settings.pn13.querySelectorAll('input[type=file]');
           if (files.length>0) pref_func.apply_prep_2(files,true);
         },
@@ -2796,6 +2797,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             '</span>'+
             '&emsp;&emsp;<BTN"archive.restore_button,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
             '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>'+
+            '3,<ICBX"archive.fix_inconsistency"> Fix inconsistencies at open<br>';
             '3,<ICBX"archive.open_local"> Open remote archive in local environment<br>';
 //            '1,5. <BTN"archive.clear_files_button,Clear Files"> <ICBX"archive.clear_files"> Auto clear after open<br>';
           },
@@ -2916,7 +2918,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.05.07.3<br>'+
+          'Version 2017.05.07.4<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10388,8 +10390,11 @@ if (pref.test_mode['35']) return;
             '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
             ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
             '<span class="nameBlock">'+
-              '<span class="name">' + name + '</span> </span> '+
-              ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
+              '<span class="name">' + name + '</span> '+
+              ((post.capcode)? '<strong class="capcode hand id_mod" title="Highlight posts by Moderators">##' + post.capcode + '</strong>' : '')+
+//              '<img src="//s.4cdn.org/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"></span>
+            '</span> '+
+            ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
             '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
             '<span class="postNum desktop">'+
               '<a href="thread/' + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
@@ -10892,92 +10897,6 @@ if (pref.test_mode['35']) return;
           var time_node = post_pn.getElementsByTagName('time')[0];
           return Date.parse(time_node.title || time_node.textContent) + (pref.localtime_offset - site2['meguca'].time_offset) * 3600000;}, // timezone -5
       },
-////////      'page_html' : {
-////////        ths: function(doc) {return this.ths_array(doc, doc.pn.getElementsByClassName('thread'));},
-////////        th_init: function(th) {th.pn.removeAttribute('class');},
-//////////        th_destroy: function(pn, parse_funcs){},
-////////        no : function(th){return parseInt(th.pn.id.substr(1),10) || parseInt(th.pn.id.substr(2),10)},
-//////////        ths: function(doc) { // working code.
-//////////          var ths = this.ths_array(doc, doc.pn.getElementsByClassName('thread'));
-//////////          for (var i=0;i<ths.length;i++) {
-//////////            Object.defineProperty(ths[i], 'no', {value:ths[i].pn.id.substr(1), enumerable:true, writable:true, configurable:true});
-//////////            ths[i].pn.removeAttribute('class'); // collection ISN'T writable? and if wrote, its enumerator doesn't work.
-//////////          }
-//////////          return ths;
-//////////        },
-//////////        no : function(th){return parseInt(th.pn.getElementsByClassName('postContainer')[0].id.substring(2),10);},
-////////        last_replies: 'catalog_json',
-////////        time: function(post){
-////////          return parseInt(post.pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10) * 1000;
-////////        },
-////////        nof_posts: function(th){
-////////          var nof_posts = th.pn.getElementsByClassName('postContainer').length;
-////////          var nof_files = th.pn.getElementsByClassName('fileText').length;
-////////          var om_info   = th.pn.getElementsByClassName('summary desktop')[0];
-////////          if (om_info) {
-////////            var str = om_info[brwsr.innerText].replace(/\n/g,'');
-////////            nof_posts += parseInt(str.replace(/\ post.*/,''),10);
-////////            nof_files += parseInt('0'+str.replace(/\ image.*/,'').replace(/[^\ ]*\ /g,''),10);
-////////          }
-////////          Object.defineProperty(th,'nof_files',{value:nof_files, enumerable:true, configurable:true, writable:true});
-////////          return nof_posts;
-////////        },
-////////        nof_files: function(th){
-////////          if (!th.hasOwnProperty('nof_posts')) this['nof_posts'](th);
-////////          return th.nof_files;
-////////        },
-////////        sub:  function(post){return post.pn.getElementsByClassName('subject')[0][brwsr.innerText];}, // same as 8chan
-////////        name: function(post){return post.pn.getElementsByClassName('name')[0][brwsr.innerText];}, // same as 8chan
-////////        com:  function(post){return post.pn.getElementsByClassName('postMessage')[0][brwsr.innerText];},
-////////        footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('postInfo desktop')[0]);},
-////////        sticky: function(th){return (th.pn.getElementsByClassName('stickyIcon').length!=0);},
-////////        flag: function(post){  // same as 8chan
-////////          var flags = post.pn.getElementsByClassName('flag');
-////////          return (flags.length!=0)? document.importNode(flags[0],false) : null;
-////////        },
-////////        op_img_url:function(th){
-////////          var img = th.pn.getElementsByTagName('img')[0];
-////////          var url = (img)? img.getAttribute('src') : undefined;
-////////          return url;
-////////        },
-////////        get_thread_links : function(th){return pn.getElementsByClassName('replylink')[0];},
-////////        get_omitted_info : function(post){return post.pn.getElementsByClassName('summary')[0];},
-////////      },
-////////      'page_json'  : {
-////////        proto: 'catalog_json'
-////////      },
-////////      'thread_html' : {
-////////        ths: function(doc) {return site2['DEFAULT'].parse_funcs['thread_html'].ths_array(doc, doc.pn.getElementById('t'+doc.thread));},
-//////////        ths: function(doc) { // working code.
-//////////          return [{pn:doc.pn.getElementById('t'+doc.thread),
-//////////                   type_html: 'thread_html',
-//////////                   page: '?',
-//////////                   __proto__: doc.__proto__}];
-//////////        },
-////////
-//////////        pop_post: function(th){ // debuging code.
-//////////          th.post = th.posts[--th.idx_pop];
-//////////          return th.post;
-//////////        },
-//////////        pop_post_prep: function(th){
-//////////          delete th.posts;
-//////////          th.idx_pop = th.posts.length;
-//////////        },
-////////////        pop_post: function(th){ // working code
-////////////          while (th.idx_pop>=0) {
-////////////            var pn = th.children[th.idx_pop--];
-////////////            if (pn.className && pn.className.indexOf('postContainer')!=-1) {
-////////////              th.post = {pn:pn, parse_funcs:this, __proto__:th.__proto__};
-////////////              return true;
-////////////            }
-////////////          }
-////////////          return false;
-////////////        },
-//////////        post_no: function(post){return parseInt(post.pn.id.substr(3),10);},
-////////        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
-////////        get_op_src: 'thread_json',
-////////        proto: 'page_html',
-////////      },
     },
     general_event_handler:{
       catalog:{
@@ -11257,6 +11176,7 @@ if (pref.test_mode['35']) return;
           get fsize(){return (this.image)? this.image.size : undefined;},
           get ext(){return (this.image)? '.'+fileType[this.image.fileType] : undefined;},
           get sub(){return (this.subject)? common_func.escape(this.subject) : '';},
+          get capcode(){return this.auth;},
           name: 'Anonymous',
           get txt(){return this.body;},
           get com(){
@@ -11375,6 +11295,109 @@ if (pref.test_mode['35']) return;
 //      this.popups_add_1(th, th.posts[1], pref[cataLog.embed_mode].popup, lth.q, th.no===th.posts[1].no, false); // cut quote link.
 //      if (this.popup_info && this.popup_info.key===REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]+'#'+th.posts[1].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
     },
+
+
+    
+/*    post_json2html : function(post, board, op, short_link, op_no) {
+      var pn = document.createElement('div');
+      var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
+      var date = new Date((post.time || 0) * time_unit);
+      var name = post.name || 'Anonymous';
+      if (post.ext) {
+        var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
+        fsize_str = fsize_str.substr(0,fsize_str.indexOf('.')+3) + ((post.fsize>1048576)? ' MB' : ' KB');
+//        var fname_server = site2[post.domain].post_json2html_fname_server(post);
+//        var fname = site2[post.domain].post_json2html_fname(post);
+        var furl = site2[post.domain].catalog_json2html3_src(post,board);
+        var turl = site2[post.domain].catalog_json2html3_thumbnail(post,board);
+        var tn_f = (op)? 1 : ((post.tn_w>post.tn_h)? post.tn_w : post.tn_h) / 150;
+        var file_html = 
+          '<article id="p' + post.no + '" class="glass media">'+
+          '<input type="checkbox" class="deleted-toggle">'+
+          '<header class="spaced"><input type="checkbox" class="mod-checkbox hidden">'+
+            '<b class="name">'+post.name+'</b><time>' + site2['common'].change_utc_to_local(date) + '</time>'+
+//            '<nav>'+
+//              '<a class="history" href="' + board + op_no + ((post.domain==='meguca')? '?last=100' : '')) + '#p'+post.no + '">No.</a>'+
+//              '<a class="history quote" href="/all/2025573?last=100#p2032325">2032325</a>'+
+//            '</nav>'+
+            '<a class="control">'+
+              '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">'+
+                '<path d="M1.5 0l-1.5 1.5 4 4 4-4-1.5-1.5-2.5 2.5-2.5-2.5z" transform="translate(0 1)"></path>'+
+              '</svg>'+
+            '</a>'+
+          '</header>'+
+          '<figcaption class="spaced">'+
+            '<a class="image-toggle act" hidden=""></a>'+
+            '<span class="spaced image-search-container">'+
+              '<a class="image-search google" target="_blank" rel="nofollow" href="https://www.google.com/searchbyimage?image_url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">G</a>'+
+              '<a class="image-search iqdb" target="_blank" rel="nofollow" href="http://iqdb.org/?url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Iq</a>'+
+              '<a class="image-search saucenao" target="_blank" rel="nofollow" href="http://saucenao.com/search.php?db=999&amp;url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Sn</a>'+
+              '<a class="image-search whatAnime" target="_blank" rel="nofollow" href="https://whatanime.ga/?url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Wa</a>'+
+              '<a class="image-search desustorage" target="_blank" rel="nofollow" href="https://desuarchive.org/_/search/image/GvccFQO14MzrUC0tApWiQw">Ds</a>'+
+              '<a class="image-search exhentai" target="_blank" rel="nofollow" href="http://exhentai.org/?fs_similar=1&amp;fs_exp=1&amp;f_shash=b8d6cffe88a53128d946a7386ed78e671009c87e">Ex</a>'+
+             '</span>'+
+             '<span class="fileinfo">'+
+               '<span class="filesize">' + fsize_str + '</span>'+
+               '<span class="dims">' + post.w + 'x' + post.h + '</span>'+
+             '</span>'+
+             '<a href="' + furl + '" download="' + post.filename + post.ext + '">' + post.filename + post.ext + '</a>'+
+           '</figcaption>'+
+           '<div class="post-container">'+
+             '<figure>'+
+               '<a target="_blank" href="' + furl + '">'+
+                 '<img src="' + turl + '" width="' + post.tn_w + '" height="' + post.tn_h + '">'+
+               '</a>'+
+             '</figure>'+
+             '<blockquote>'+
+               '<em>'+
+
+
+
+
+        '<a class="history post-link" data-id="2032314" href="/all/2025573#p2032314">&gt;&gt;2032314</a><a class="hash-link history" href="/all/2025573#p2032314"> #</a> </em><br>Well the grave has already been dug<br>Might as well hop in</blockquote></div></article>' + 
+
+          '<div class="file" id="f' + post.no + '">'+
+            '<div class="fileText" id="fT' + post.no + '">File: <a href="' + furl + '" target="_blank">' + post.filename + '</a>'+
+              ' (' + fsize_str + ', ' +  + ')</div>'+
+            '<a class="fileThumb" href="' + + '" target="_blank">'+
+              '<img src="' + turl + '" alt="' + fsize_str + '" data-md5="' + post.md5 + '" style="height: ' + ((op)? post.tn_h : post.tn_h / tn_f) + 'px; width:' + ((op)? post.th_w : post.tn_w/tn_f) +'px;">'+
+              '<div data-tip="" data-tip-cb="mShowFull" class="mFileInfo mobile">' + fsize_str + ' ' + post.ext.substr(1).toUpperCase() + '</div>'+
+            '</a>'+
+          '</div>';
+      }
+      pn.innerHTML =
+        '<div id="p' + post.no + '" class="post reply">'+
+          '<div class="postInfoM mobile" id="pim' + post.no + '">'+
+            '<span class="nameBlock">'+
+              '<span class="name">' + name + '</span>'+
+            '<br></span>'+
+            '<span class="dateTime postNum" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span>'+
+          '</div>'+
+          ((post.ext && op)? file_html : '') +
+          '<div class="postInfo desktop" id="pi' + post.no + '">'+
+            '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
+            ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
+            '<span class="nameBlock">'+
+              '<span class="name">' + name + '</span> </span> '+
+              ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
+            '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
+            '<span class="postNum desktop">'+
+              '<a href="thread/' + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
+              '<a href="thread/' + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
+            '</span>'+
+            ' &nbsp; '+
+//            ((op)? '<span>[<a href="thread/' + op_no + ((post.sub)? '/' + post.sub.replace(/\s/g,'-').toLowerCase() +' ': '') + '" class="replylink">Reply</a>]</span>' : '') +
+            ((op)? ('<span>[<a href="' + site2[post.domain].make_url4([post.domain, board, post.no, 'thread_html'])[0] +'" class="replylink">Reply</a>]</span>'+
+                   ((short_link)? short_link.replace(/>\[/g,'>').replace(/<a/g,'<span>[<a').replace(/\]<\/a/g,'</a>]</span') : '')) : '') +
+          '</div>' +
+          ((post.ext && !op)? file_html : '') +
+          '<blockquote class="postMessage" id="m' + post.no + '">'+ (post.com || '') + '</blockquote>'+ 
+        '</div>';
+      return pn.removeChild(pn.childNodes[0]);
+
+
+
+    },*/
     catalog_json2html3 : function(obj,board,thumb_url) {
       var th = document.createElement('article');
       th.id = 'p'+obj.no;
@@ -12463,7 +12486,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         }
         var req_1 = (req.get_tgt_func)? req.get_tgt_func(req) : {REQ:req, __proto__:req.tgts[req.IDX++]};
         if (req.IDX>=req.max) reload_reqs(req,p);
-        xhrs_count++;
+        xhrs_count++; // THIS CAN BE A SINK AND CAUSE DEADLOCK WHEN OVER X_FRAME_OPTIONS.
         if (req_1) {
           req.INDICATOR.report({tgt:req_1.tgt || url2tgt(req_1.url)});
           if (req_1.domain===site.nickname && !req_1.domain_xhr || pref.catalog_cross_domain_connection==='direct') download_local(xhr, req_1);
@@ -13566,6 +13589,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
   var cnst_obj = (function(){
     site.script_body = document.createElement('div');
     site.script_body.className = pref.script_prefix;
+    site.script_body.innerHTML = '<div style="display:none"></div>';
     site.root_body.appendChild(site.script_body);
     if (site.settings) {
       site.settings.innerHTML = '<span>[CC</span><span></span>]';
@@ -16768,6 +16792,17 @@ if (!pref.test_mode['79']) {
                                                 [pref_func.settings.html_funcs.get_domains()[pref.archive.domain],
                                                  '/'+pref.archive.board.replace(/\//g,'')+'/'];
       if (pref.test_mode['80']) dbt[1] = dbt[1].slice(0,-1) + ((IDB)? '_IDB/' : '_File/');
+      if (pref.archive.fix_inconsistency) {
+        if (th_obj.posts[0].no!=dbt[2]) { // lain/drg/4654
+          th_obj.posts = [common_func.deep_copy(th_obj.posts[0])].concat(th_obj.posts);
+          th_obj.posts[0].no = dbt[2];
+          console.log('Archiver: Fixed: added dummy OP: '+dbt.join(''));
+        }
+        for (var i=0;i<th_obj.posts.length;i++) if (th_obj.posts[i].filename===false) {
+          th_obj.posts[i].filename = 'LOST_AT_ARCHIVE';
+          console.log('Archiver: Fixed: filename was lost: '+dbt.join('')+'#'+th_obj.posts[i].no);
+        }
+      }
       if (!url_funcs_wrapped) {
         url_funcs_wrap();
         url_funcs_wrapped = true;
@@ -19685,7 +19720,7 @@ if (pref.test_mode['22']) {
         if (changed.ex) threads[name][9] = catalog_filter_query(name);
         if (changed.watch) {
           reorder_thread_idx(name);
-          if (pref[embed_mode].mark_new_posts) format_html.update(name);
+          if (pref[embed_mode].mark_new_posts) if (embed_mode!=='catalog') format_html.update(name);
         }
         if (changed.ex || changed.watch) show_catalog(name);
         if (triage.get_trg().format_tgt) triage.format_buttons(changed.name);
@@ -23444,6 +23479,40 @@ if (pref.debug_mode['14']) {
           }
         }
         triage_parent.addEventListener('change',change,false);
+
+        function click(e){
+          var et = e.target;
+          if (et.tagName==='A') {
+            if (et.href.indexOf('//www.youtube.com')!==-1) insert_iframe_youtube(et.href.replace(/watch\?v=/,'embed/'), e);
+            else if (et.href.indexOf('//youtu.be')!==-1)   insert_iframe_youtube(et.href.replace(/youtu.be/,'youtube.com/embed'), e);
+            else {
+              var cmd = et.getAttribute('data-cmd');
+              if (cmd && cmd.indexOf(pref.script_prefix)===0) {
+                cmd = cmd.substr(pref.script_prefix.length+1);
+                if (cmd==='remove_next') remove_next(e);
+              }
+            }
+          }
+        }
+        function insert_iframe_youtube(url, e, et){
+          var et = e.target;
+          var close_button = document.createElement('span');
+          close_button.innerHTML = ' [<a data-cmd="'+pref.script_prefix+'_remove_next">Remove</a>] ';
+          if (!et.nextSibling || et.nextSibling.innerHTML!==close_button.innerHTML) {
+            e.target.parentNode.insertBefore(close_button,et.nextSibling);
+            var div = document.createElement('div');
+            div.innerHTML = '<iframe src="' + url + '" width="640" height="360" frameborder="0" allowfullscreen=""></iframe>';
+            div.classList.add('media-embed');
+            et.parentNode.insertBefore(div,close_button.nextSibling);
+          }
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        function remove_next(e){
+          e.target.parentNode.parentNode.removeChild(e.target.parentNode.nextSibling);
+          e.target.parentNode.parentNode.removeChild(e.target.parentNode);
+        }
+        triage_parent.addEventListener('click',click,false);
         return {
           setup: setup,
           get_last_viewed: function(){
