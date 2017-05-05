@@ -45,7 +45,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2017.05.07.5-0: [lainchan.jp is kill](https://meguca.org/g/1841607#p2018782), but give support for USERS.<br>
+v2017.05.07.5-0: <a href="https://meguca.org/g/1841607#p2018782">[lainchan.jp is kill]</a>, but give support for USERS.<br>
 v2017.04.09.0: Fixed bugs.<br>
 v2017.04.02.0: Fixed bugs.<br>
 v2017.03.19.0: Bug fix and support new JSON/API of meguca.<br>
