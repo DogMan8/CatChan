@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.04.09.0
+// @version 2017.05.07.5
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -9,6 +9,7 @@
 // @include http*://8chan.co/*
 // @include http*://8ch.net/*
 // @include http*://lainchan.org/*
+// @include http*://lainchan.jp/*
 // @include http*://meguca.org/*
 // @require https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1-beta.4/Chart.min.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
@@ -56,7 +57,15 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                      },
   };
   brwsr.innerText  = (!brwsr.ff)? 'innerText' : 'textContent';
-  brwsr.Date_parse = (!brwsr.ff)? Date.parse : function(str){return Date.parse(str.replace(/ /,'T'));};
+  brwsr.Date_parse = (!brwsr.ff)? Date.parse : function(str){
+    var time = Date.parse(str);
+    if (isNaN(time)) {
+      var idx = str.lastIndexOf('.');
+      time = Date.parse(str.substr(0,idx)) + parseInt(str.substr(idx+1,3));
+    }
+    return time;
+  };
+//  brwsr.Date_parse = (!brwsr.ff)? Date.parse : function(str){return Date.parse(str.replace(/ /,'T'));};
   brwsr.document_body = (!brwsr.ff)? document.body : document.documentElement;
   brwsr.mousewheel = (!brwsr.ff)? 'mousewheel' : 'DOMMouseScroll';
 
@@ -209,6 +218,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 
       env: {
         disp_offset:0,
+        disp_filler:null,
         popup_native:true,
         expand_thumbnail_inline_native:true,
         image_hover_native:false,
@@ -496,14 +506,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         inherit_board_name: true, lock_board_name: true, inherit_board_tags: true, lock_board_tags: true,
         show_info_onmouseover: true, style: true,
         style_urtm_str:'color:lime;font-weight:bold', style_ur_str:'color:limegreen;font-weight:bold', style_in_str:'color:red',
-        style_urtm_obj4:{},                           style_ur_obj4:{},                                style_in_obj4:{},
+//        style_urtm_obj4:{},                           style_ur_obj4:{},                                style_in_obj4:{},
         pickup_interval: 10, rm_404_immediately: true, disp_delay:{fg:500, bg:5000}, click_func: 'in', click_func_bl: 'pkin',
         watch_all: true,
         ex_list: true, ex_list_str:'8chan:#selection\n', ex_list_obj5:[],
         rm_list: true, rm_list_str:'http*\n', rm_list_obj5:[]},
       virtualBoard: {
         show: true, max:20, scan: false, scanDelay: 5, p_board: 'replace', p_remove: false, v_remove:true,
-        scan_domains: {meguca:'none', lain:'none', '8chan':'none', '4chan':'none', KC:'none'},
+        scan_domains: {meguca:'none', lain:'none', '8chan':'none', '4chan':'none', KC:'none', lainjp:'none'},
         instant_scan: true,
         search: {show: true,  str:'', re:false, get ci(){return pref.liveTag.ci;}, sentence:false, rexps:[]},
       },
@@ -512,10 +522,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         fix:{titleBar_str:'background:#b5ccf9', window_str:'background:#e5ecf9;color:#000000;', popUp_str:'background:#e5f4f9;color:#000000;border:2px solid blue;'},
         copy:{titleBar_str:'body', window_str:'body', popUp_str:''},
         post_editing: 'background:#cec952 !important',
+        post_new: 'border:2px solid red',
       },
       recovery:{comment:true, interval:10, auto_clean:true},
       healthIndicator: {show:true, max:10, expand_running:false, dont_retire_running:true, cancel:true},
-      network: {fetch_actively:true, adaptive:true, th100:5, th100_delay:500, th20:10, th20_delay:100, timeout:15},
+      network: {fetch_actively:true, adaptive:true, th100:5, th100_delay:500, th20:10, th20_delay:100, timeout:15, overXFO:true, overCSPF:true},
       stats: {use:false, retain_404:true, draw_delay:10, estimate_posts:true,
               save:true, load:true, len_capture:1440, auto_acquisition:true, auto_acquisition_scan:true, auto_acquisition_scan_delay:120, auto_acquisition_all:false, 
               tolerant:true, tolerance:90,},
@@ -524,7 +535,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                     show: {np:true, p:false, ep:false, nt:false, t:true, et:false}, clip_np:false, clip_np_val:0,
                     options: {bezierCurve: false, animation:false, pointDot:true, pointDotRadius:4}}},
       archive:{load_img:true, restore_auto:true, clear_threads:true, clear_files:false, format:'auto', domain:0, board:'',
-               src:'shown', store_auto:false, dir_dled:null,
+               src:'shown', store_auto:false, dir_dled:null, open_local:false, fix_inconsistency: true,
                oneshot: {post:true, tn:true, img:true,  webm:true , post_idb:true, tn_idb:true, img_idb:true,  webm_idb:true},
                live:    {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
                deleted: {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
@@ -756,7 +767,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             if (set || make_obj)
               if (typeof(parent[tgt])==='string' )
                 if (fm[i].type==='text') {
-                  if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj4']) pref_func.str2obj4(parent,tgt.substr(0,tgt.length-3)+'obj4',fm[i].value);
+//                  if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj4']) pref_func.str2obj4(parent,tgt.substr(0,tgt.length-3)+'obj4',fm[i].value);
                   if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj']) pref_func.str2obj6(parent,tgt,fm[i].value,name);
                 }
           } else if (tagName==='TEXTAREA') {
@@ -897,7 +908,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
               if (func_obj2 && func_obj2[fm[i].name]) fm[i].oninput = tgt_wrapped;
               else {
                 fm[i].onchange = tgt_wrapped;
-                if (tagName==='INPUT' && fm[i].type==='text') fm[i].oninput = prep_beforeunload;
+                if ((tagName==='INPUT' && fm[i].type==='text') || tagName==='TEXTAREA') fm[i].oninput = prep_beforeunload;
               }
             } else if (tagName==='BUTTON') fm[i].onclick = tgt_wrapped; // OK.
             else if (tagName==='A') {
@@ -924,6 +935,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         tgt = pref[tgt];
         var bg_str = (site.whereami==='boards')? site2[site.nickname].boards_sel_from_tags() :
                      site.board + ((site.whereami==='thread')? site.no : '');
+        if (bg_str==='//') bg_str = '/ROOT_DUMMY/';
         bg_str += ',' + bg_str + '\n' + pref[key] + '\n';
         if (pref.catalog.board.recommendation) {
 //          var blotter = document.getElementsByClassName('blotter')[0];
@@ -1042,7 +1054,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //            var time = fields[i].match(/@[^\^!]*/);
 //            if (time) tgt[name].time = Date.parse(time[0].replace(/@/,''));
             var time = fields[i].match(/@([^\^!]*)/);
-            if (time) tgt[name].time = (time[1]==0)? 0 : Date.parse(time[1]); // Date.parse(0) returns 2000/1/1 0:00. '==0' is intended, 0 is string in this case.
+            if (time) tgt[name].time = (time[1]==0)? 0 : brwsr.Date_parse(time[1]); // Date.parse(0) returns 2000/1/1 0:00. '==0' is intended, 0 is string in this case.
             set_vals(tgt[name],'style',fields[i].match(/\^[^@!]*/));
             set_vals(tgt[name],'cmd'  ,fields[i].match(/![^@\^]*/),true);
           }
@@ -1087,19 +1099,19 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 ////        var tgt3 = parent[key3];
 ////        for (var i in tgt) tgt3[i.replace(/\/[0-9]+$/,'/')] = true;
 ////      },
-      str2obj4: function(parent,key,str) {
-        parent[key] = this.style2obj(str);
-      },
-      style2obj: function(str) {
-        var fields  = str.split(';');
-        for (var i=fields.length-1;i>=0;i--) {
-          if (fields[i]) {
-            var coms = fields[i].replace(/\s/g,'').split(':');
-            fields[i] = '"'+coms[0]+'":"'+coms[1]+'"';
-          } else fields.splice(i,1);
-        }
-        return JSON.parse('{' + fields.join(',') + '}');
-      },
+//      str2obj4: function(parent,key,str) {
+//        parent[key] = this.style2obj(str);
+//      },
+//      style2obj: function(str) {
+//        var fields  = str.split(';');
+//        for (var i=fields.length-1;i>=0;i--) {
+//          if (fields[i]) {
+//            var coms = fields[i].replace(/\s/g,'').split(':');
+//            fields[i] = '"'+coms[0]+'":"'+coms[1]+'"';
+//          } else fields.splice(i,1);
+//        }
+//        return JSON.parse('{' + fields.join(',') + '}');
+//      },
       str2obj5: function(parent,key,str){
         parent[key] = {};
         tgt = parent[key];
@@ -1166,9 +1178,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         pref_func.str2obj('catalog_board_list_str');
         pref_func.str2obj2(pref.catalog,'style_general_list_obj2',pref.catalog.style_general_list_str);
         pref_func.str2obj2(pref.catalog.board,'ex_list_obj2',pref.catalog.board.ex_list_str);
-        pref_func.str2obj4(pref.liveTag, 'style_urtm_obj4', pref.liveTag.style_urtm_str);
-        pref_func.str2obj4(pref.liveTag, 'style_ur_obj4',   pref.liveTag.style_ur_str);
-        pref_func.str2obj4(pref.liveTag, 'style_in_obj4',   pref.liveTag.style_in_str);
+//        pref_func.str2obj4(pref.liveTag, 'style_urtm_obj4', pref.liveTag.style_urtm_str);
+//        pref_func.str2obj4(pref.liveTag, 'style_ur_obj4',   pref.liveTag.style_ur_str);
+//        pref_func.str2obj4(pref.liveTag, 'style_in_obj4',   pref.liveTag.style_in_str);
         pref_func.str2obj5(pref.liveTag, 'ex_list_obj5',    pref.liveTag.ex_list_str);
         pref_func.str2obj5(pref.liveTag, 'rm_list_obj5',    pref.liveTag.rm_list_str);
         pref_func.settings.onchange_funcs.archive['kwd.*'](); // archiver.event_funcs['kwd.*'](); can't use this because it doesn't exist at this time.
@@ -1196,9 +1208,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         delete pref_test.catalog_board_list_obj;
         delete pref_test.catalog.style_general_list_obj2;
         delete pref_test.catalog.board.ex_list_obj2;
-        delete pref_test.liveTag.style_urtm_obj4;
-        delete pref_test.liveTag.style_ur_obj4;
-        delete pref_test.liveTag.style_in_obj4;
+//        delete pref_test.liveTag.style_urtm_obj4;
+//        delete pref_test.liveTag.style_ur_obj4;
+//        delete pref_test.liveTag.style_in_obj4;
         delete pref_test.liveTag.ex_list_obj5;
         delete pref_test.liveTag.rm_list_obj5;
         if (pref_test.settings) delete pref_test.settings;
@@ -2026,7 +2038,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         },
         files_store: function(){
           var files_archive = pref_func.mirror_targets.pn13_1.querySelectorAll('span[name="FILES_ARCHIVE0"]')[0]; // out of w3c, but works in chrome and FF.
-          if (files_archive) site.script_body.appendChild(files_archive); // called also at initial.
+          if (files_archive) site.script_body.firstChild.appendChild(files_archive); // called also at initial. // firstChild is 'display:none'.
+//          if (files_archive) site.script_body.appendChild(files_archive); // called also at initial.
           var files = pref_func.settings.pn13.querySelectorAll('input[type=file]');
           if (files.length>0) pref_func.apply_prep_2(files,true);
         },
@@ -2707,7 +2720,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //          '3',
           function(html_funcs){
             archiver.event_funcs['queryQuota']();
-            return 'JSON Archiver: Store (under implementation)<br>'+
+            return 'JSON Archiver: Store<br>'+
 //            '1,Store:<br>'+
             '<br>'+
             '1,1. Make sure DOWNLOAD DIRECTORY to be set correctly.'+html_funcs.rollup(
@@ -2755,7 +2768,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
             '1,4d. You can select target threads individually using triage<br>';},
           function(html_funcs){
             if (pref.archive.files_sel===2) archiver.event_funcs['queryList']();
-            return 'JSON Archiver: Restore (under implementation)<br>'+
+            return 'JSON Archiver: Restore<br>'+
 //            '1,Restore:<br>'+
             '<br>'+
             '1,1. Open a live catalog, index page or thread to be overriden.<br>'+
@@ -2783,7 +2796,9 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
                 html_funcs.rollup('&emsp;&emsp;Delete selected <BTN"archive.IDB.delete_board,Boards"><BTN"archive.IDB.delete_thread,Threads"><BTN"archive.IDB.delete_imgs,Images">')+'<br>'+
             '</span>'+
             '&emsp;&emsp;<BTN"archive.restore_button,Restore"> <ICBX"archive.restore_auto"> Auto restore after selection<br>'+
-            '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>';
+            '3,<ICBX"archive.clear_threads"> Clear all threads at opening an archive<br>'+
+            '3,<ICBX"archive.fix_inconsistency"> Fix inconsistencies at open<br>';
+            '3,<ICBX"archive.open_local"> Open remote archive in local environment<br>';
 //            '1,5. <BTN"archive.clear_files_button,Clear Files"> <ICBX"archive.clear_files"> Auto clear after open<br>';
           },
           'UIP tracker for 4chan:<br>'+
@@ -2802,6 +2817,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '<button name="JSON_ex_full">extract_full</button>'+
           '<button name="JSON_ex_filter">extract_current_filter</button>'+
           '&emsp;<button name="JSON_query">query</button>'+
+          '&emsp;<button name="JSON_query_boards">query_boards</button>'+
           '&emsp;&emsp;<button name="JSON">JSON</button>'+
           '<span name="JSON_result"></span><br>'+
           '&emsp;<textarea style="height:1em" cols="40" name="overwrite_site2_eval_str"></textarea><br>'+
@@ -2812,6 +2828,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;Cross domain connection:<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_cross_domain_connection" value="direct"> Direct connection<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog_cross_domain_connection" value="indirect"> Indirect connection<br>'+
+          '3,<ICBX"network.overXFO"> Over X-Frame-Options<br>'+
+          '3,<ICBX"network.overCSPF"> Over Content Security Policy frame<br>'+
 //          '&emsp;&emsp;<input type="checkbox" name="catalog_fake_access"> Fake access made by human to avoid poor administration<br>'+
 //          '&emsp;&emsp;&emsp;(This causes heavier network traffic and server load,<br>'+
 //          '&emsp;&emsp;&emsp;but administrators can\'t see what script you are using)<br>'+
@@ -2879,6 +2897,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '3,Window:<ITBL30"style.copy.window_str"><br>'+
           '3,Pop up:<ITBL30"style.copy.popUp_str"><br>'+
           '1,Others:<br>'+
+          '2,New post:<ITBL30"style.post_new"><br>'+
           '2,Editing post:<ITBL30"style.post_editing"><br>'+
           '',
           'Features:<br>'+
@@ -2899,7 +2918,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.04.09.0<br>'+
+          'Version 2017.05.07.5<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3184,6 +3203,10 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'JSON' : function() {
 //          pref_func.apply_prep(pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['overwrite_site2_json_str'],true);
             pref_func.site2_json();
+          },
+          'JSON_query_boards' : function() {
+            pref.overwrite_site2_json_str = '{"site2":{"'+site.nickname+'":{"boards_json":""}}}';
+            pref_func.site2_json(true);
           },
           'JSON_query' : function() {
             pref_func.site2_json(true);
@@ -4056,7 +4079,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           }
           delete pool_0[i];
         }
-        for (var i in pool_0) console.log(i+': only_in_orgnal: '+ pool_0[i]);
+        for (var i in pool_0) console.log(i+': only_in_original: '+ pool_0[i]);
       }
       this.debug_show_proto_func_pool = null;
       if (proto_org) start_point.__proto__ = proto_org;
@@ -4129,17 +4152,17 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 //      if (Object.prototype.hasOwnProperty.call(leaf,key)) leaf[key] = val;
 //      else this.set_value_to_root(Object.getPrototypeOf(leaf),key,val);
 //    },
-    init_set_style: function(dom,src){
-      dom.style = {};
-      if (src) for (var i in src) dom.style[i] = src[i];
-      if (src===null) {
-        src = dom.getAttribute('style');
-        if (src) {
-          src = pref_func.style2obj(src);
-          for (var i in src) dom.style[i] = null;
-        }
-      }
-    },
+//    init_set_style: function(dom,src){
+//      dom.style = {};
+//      if (src) for (var i in src) dom.style[i] = src[i];
+//      if (src===null) {
+//        src = dom.getAttribute('style');
+//        if (src) {
+//          src = pref_func.style2obj(src);
+//          for (var i in src) dom.style[i] = null;
+//        }
+//      }
+//    },
     shallow_copy_1: function(src){
       var dst = Object.create(null);  
       for (var i in src) if (src.hasOwnProperty(i)) dst[i] = src[i];
@@ -4310,6 +4333,26 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       spoiler: /span.spoiler$/,
       open: /span.spoiler:hover/,
     },
+    postform:(function(){
+      function onoff(ref){
+//        if (this.tack && ref) ref.parentNode.insertBefore(this.tack, ref);
+        if (this.tack) this.tack.style.display = (this.tack.style.display==='none')? '' : 'none';
+      }
+      return {
+        tack: null,
+        init:function(){
+          if (site.postform) {
+            this.tack = document.createElement('i');
+            this.tack.setAttribute('class','fa fa-thumb-tack');
+            this.tack.setAttribute('style','float:right;font-size:2em');
+            site.postform.parentNode.insertBefore(this.tack,site.postform);
+          }
+          return this.tack;
+        },
+        on: onoff,
+        off:onoff,
+      };
+    })(),
     postform_prep: function(){ // the same as vichan.
       site.components.postform_submit2 = null;
       site.components.postform_submit2_observer = new MutationObserver(this.postform_submit2_find);
@@ -4369,8 +4412,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       if (top) while (imgs[idx+1] && imgs[idx+1].offsetTop<top) idx++;
       return (idx>=0)? imgs[idx+1] : null;
     },
-    get_time_of_posts : function(thread){return [0,0];}, // returns parsed UTC time of last and op posts from element of the thread.
-    get_time_of_post_in_utc : function(post){return 0;}, // returns parsed UTC time of posts.
+//    get_time_of_posts : function(thread){return [0,0];}, // returns parsed UTC time of last and op posts from element of the thread.
+//    get_time_of_post_in_utc : function(post){return 0;}, // returns parsed UTC time of posts.
 ////////    get_thread_link : function(thread){return null;}, // returns href from element of the thread. THIS SHOULD BE MERGED WITH modify_thread_link.
     catalog_threads_in_page : function(doc){return [];}, // returns array of thread elements in the page from the document.
     remove_posts : function(thread,end){}, // removes posts from the thread with a certain remains.
@@ -4961,28 +5004,29 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     format_remove_tn_area_size: function(thread){}, // remove thumbnail area size
 //    mark_newer_posts       : function(thread,time){return null;},  // mark newer posts, and returns marked first post.
 //    unmark_post_from_event : function(post){},  // unmark post.
-    mark_newer_posts : function(nickname,posts,date,style_mark,style_unmark,class_or_tag,key,unmark){
+    mark_newer_posts : function(nickname,posts,date, func, unmark, short_cut){
 //      var offset_top = 0;
       var marked_first_post = null;
       for (var i=posts.length-1;i>=0;i--) {
-        var mark = date<site2[nickname].get_time_of_post_in_utc(posts[i]);
-        var reply = posts[i];
-//        posts[i] = posts[i].parentNode;
-//        if (class_or_tag=='class') while (posts[i].className.search(key)==-1) posts[i] = posts[i].parentNode;
-//        if (class_or_tag=='tag') while (posts[i].tagName.search(key)==-1) posts[i] = posts[i].parentNode;
-        if (class_or_tag=='class') reply = posts[i].getElementsByClassName(key)[0];
-        if (class_or_tag=='tag')  reply = posts[i].getElementsByTagName(key)[0];
+//        var reply = posts[i];
+////        posts[i] = posts[i].parentNode;
+////        if (class_or_tag=='class') while (posts[i].className.search(key)==-1) posts[i] = posts[i].parentNode;
+////        if (class_or_tag=='tag') while (posts[i].tagName.search(key)==-1) posts[i] = posts[i].parentNode;
+//        if (class_or_tag=='class') reply = posts[i].getElementsByClassName(key)[0];
+//        if (class_or_tag=='tag')  reply = posts[i].getElementsByTagName(key)[0];
+        var reply = (func)? func(posts[i]) : posts[i];
         if (reply)
-          if (mark) {
-//            reply.setAttribute('style',style_mark);
-            if (!reply.style) reply.style = {};
-            reply.style.border = '2px solid red';
+          if (date<site2[nickname].parse_funcs.post_html.time_pn(posts[i])) {
+            reply.setAttribute('style', pref.style.post_new);
+//            if (!reply.style) reply.style = {};
+//            reply.style.border = '2px solid red'; // ca'nt use !important
             if (unmark) reply.addEventListener('mouseover', site2[nickname].unmark_post_from_event, false);
 //            offset_top = reply.offsetTop;
             marked_first_post = reply;
           } else {
-//            reply.setAttribute('style',style_unmark);
-            if (reply.style) reply.style.border = 'none';
+            if (reply.getAttribute('style')!=null) reply.removeAttribute('style');
+            if (short_cut) break;
+//            if (reply.style) reply.style.border = 'none';
           }
       }
 //      return offset_top;
@@ -5002,9 +5046,13 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     colorID: function(){},
     backlink: function(){},
     localtime: function(){},
-    unmark_post_from_event: function() {
-      this.setAttribute('style','border: none');
-      this.removeEventListener('mouseover', site2['common'].unmark_post_from_event, false);
+    unmark_post_from_event: function(e) {
+      e.target.removeEventListener('mouseover', site2['common'].unmark_post_from_event, false);
+      site2['DEFAULT'].unmark_post(e.target);
+    },
+    unmark_post: function(pn) {
+      pn.removeAttribute('style');
+//      pn.setAttribute('style','border: none');
     },
     modify_thread_link     : function(thread){return [];}, // modify thread link and returns information to add event listener.
     preprocess_html        : function(doc_txt){return doc_txt;},  // pre-process document from txt. // cause memory leak.
@@ -6023,7 +6071,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       if (search_result) pn.classList.remove('CatChan_search_miss');
       else               pn.classList.add('CatChan_search_miss');
     },
-    update_posts_replace: function(th,th_old,pnode,merge,show) {
+    update_posts_replace: function(th,th_old,pnode,merge,show, posts_used) {
       if (th_old.posts) {
         var info_old = th_old.parse_funcs_html.get_omitted_info(th_old.posts[0]);
         var info_new = (th.posts[0].pn)? th.parse_funcs_html.get_omitted_info(th.posts[0]) : site2[th.domain_html].page_json2html3_add_omitted_info(th,null,th.posts);
@@ -6062,13 +6110,14 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             th_old.posts[i].pn.parentNode.insertBefore(th.posts[j].pn,th_old.posts[i].pn);
             th_old.posts[i].pn.parentNode.removeChild(th_old.posts[i].pn);
             th_old.posts[i] = th.posts[j];
+            posts_used[posts_used.length] = th.posts[j];
           }
         }
 //        if (scroll_back) window.scrollTo(0,now_height + scroll_back);
       }
-      this.update_posts_add(th,th_old,pnode,merge,show);
+      this.update_posts_add(th,th_old,pnode,merge,show, posts_used);
     },
-    update_posts_add: function(th,th_old,pnode,merge,show) {
+    update_posts_add: function(th,th_old,pnode,merge,show, posts_used) {
       if (th_old.posts && th.posts) {
         var thq = liveTag.mems[th.domain][th.board][th.no].q;
         var time_unit = (merge)? th.parse_funcs.time_unit : 1; // (merge)? for safety.
@@ -6098,6 +6147,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             this.update_posts_1(th,th_old,pnode,merge, i, j, time_unit, thq); // th_old.posts.length is live count.
             if (j<th_old.posts.length) th_old.posts.splice(j,0,th.posts[i]); // live array
             else th_old.posts[th_old.posts.length] = th.posts[i];
+            posts_used[posts_used.length] = th.posts[i];
           }
           if (j<th_old.posts.length) j++;
         }
@@ -6510,7 +6560,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
     features : {uip_tracker: true},
     pref_default: {
       catalog_expand_with_hr: true,
-      page:{ env:{ disp_offset:1}},
+      page:{ env:{ disp_offset:1, disp_filler:'<hr>'}},
     },
     utilize_boards_json: true,
     check_func : function(){
@@ -6896,11 +6946,11 @@ if (pref.test_mode['0']) {
 //      var imgs = cataLog.parent.querySelectorAll('img[id^="thumbnail"]');
       return site2['DEFAULT'].get_next_image(img,top,imgs);
     },
-    get_time_of_posts : function(doc){
-      var posts = doc.getElementsByClassName('post');
-      return [Date.parse(posts[posts.length-1].getElementsByTagName('time')[0].getAttribute('datetime')),
-              Date.parse(posts[0             ].getElementsByTagName('time')[0].getAttribute('datetime'))];
-    },
+//    get_time_of_posts : function(doc){ // working code.
+//      var posts = doc.getElementsByClassName('post');
+//      return [Date.parse(posts[posts.length-1].getElementsByTagName('time')[0].getAttribute('datetime')),
+//              Date.parse(posts[0             ].getElementsByTagName('time')[0].getAttribute('datetime'))];
+//    },
 ////////    get_thread_link : function(pn,bn,del,name){
 ////////      var as = pn.getElementsByClassName('post op')[0].getElementsByTagName('a');
 ////////      var hrefs = [];
@@ -7319,12 +7369,12 @@ if (pref.test_mode['0']) {
         }
       }
     },
-    get_time_of_post_in_utc : function(post){
-      return Date.parse(post.getElementsByTagName('time')[0].getAttribute('datetime'));
-    },
-    mark_newer_posts: function(th,date,unmark) {
+//    get_time_of_post_in_utc : function(post){ // working code
+//      return Date.parse(post.getElementsByTagName('time')[0].getAttribute('datetime'));
+//    },
+    mark_newer_posts: function(th,date,unmark, short_cut) {
 //      return site2.common.mark_newer_posts('8chan',th.getElementsByClassName('post'),date,'border:2px solid red','border: none','class','post');
-      return site2['DEFAULT'].mark_newer_posts('8chan',th.getElementsByClassName('post'),date,'border:2px solid red','border: none',null,null,unmark);
+      return site2['DEFAULT'].mark_newer_posts('8chan',th.getElementsByClassName('post'),date,null,unmark, short_cut);
     },
 //    unmark_post_from_event: function() {
 //      this.setAttribute('style','border: none');
@@ -7883,10 +7933,12 @@ if (pref.test_mode['0']) {
               if (i===1) th.extra_files = [];
               if (i>=1) th.extra_files[i-1] = {domain:th.domain, board:th.board};
               var tgt = (i===0)? th : th.extra_files[i-1];
-              tgt.filename = files[i].getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
+              tgt.filename = (th.domain==='lain')? files[i].getElementsByTagName('a')[1].getAttribute('download') // lainchan 2017.04.25- 
+                                                 : files[i].getElementsByClassName('postfilename')[0].textContent.replace(/\..*/,'');
               tgt.ext = fname.substr(  fname.indexOf('.'));
               tgt.tim = fname.substr(0,fname.indexOf('.'));
-              var info = files[i].getElementsByClassName('details')[0].textContent.split(',');
+              var info = (th.domain!=='lainjp')? files[i].getElementsByClassName('details')[0].textContent.split(',')
+                                               : files[i].getElementsByClassName('unimportant')[0].textContent.split(',');
               tgt.w = parseInt(info[1].substr(0,info[1].indexOf('x')  ),10);
               tgt.h = parseInt(info[1].substr(  info[1].indexOf('x')+1),10);
               var fsize = info[0].split(/\s/);
@@ -7924,6 +7976,7 @@ if (pref.test_mode['0']) {
       },
       'post_html': {
         pn_name: function(post){return post.pn.getElementsByClassName('name')[0];},
+        time_pn: function(post_pn){return Date.parse(post_pn.getElementsByTagName('time')[0].getAttribute('datetime'));},
 //        txt2com: function(txt){
 //          txt = txt.replace(/(^>[^>].*$)/mg,'<span class="quote">$1</span>');
 //          txt = txt.replace(/\*\*([^(\*\*)]*)((\*\*)|$)/g,'<span class="spoiler">$1</span>');
@@ -8098,7 +8151,7 @@ if (pref.test_mode['0']) {
         '<div class="post ' +((op)? 'op':'reply')+ '" id="reply_'+post.no+'" style="border: none">'+
 //        '<div class="post reply" id="reply_'+post.no+'" style="border: none">'+
           '<p class="intro">'+
-//////////                     '<input type="checkbox" class="delete" name="delete_12486" id="delete_12486">'+
+            '<input type="checkbox" class="delete" name="delete_'+post.no+'" id="delete_'+post.no+'">'+
             '<label for="delete_'+post.no+'">'+
               ((post.sub)? '<span class="subject">'+post.sub+ ' </span>' : '')+
               ((post.email)? '<a class="email" href="mailto:' + post.email + '">' : '') +
@@ -8358,6 +8411,16 @@ if (pref.test_mode['0']) {
       postform_comment: '#postform_comment',
       postform_submit: '#postform_submit',
     },
+    postform: {
+      init:function(){
+        this.tack = document.createElement('img');
+        this.tack.setAttribute('src','/images/sticky.gif');
+        this.tack.setAttribute('style','float:right;font-size:2em;');
+        site.postform.parentNode.insertBefore(this.tack,site.postform);
+        return this.tack;
+      },
+      __proto__:site2['DEFAULT'].postform
+    },
     pref_default: {
       thread_reader:{own_posts_tracker:true, check_num_of_children: false},
       proto:{
@@ -8546,26 +8609,34 @@ if (pref.test_mode['0']) {
 //      }
 //    },
     time_offset : 1, // 1 for usual, 2 for summer time.
-    get_time_of_posts : function(doc){
-      var postdates = doc.getElementsByClassName('postdate');
-      return [parseInt(brwsr.Date_parse(postdates[postdates.length-1][brwsr.innerText]),10) - site2['KC'].time_offset*3600000,
-              parseInt(brwsr.Date_parse(postdates[0                 ][brwsr.innerText]),10) - site2['KC'].time_offset*3600000];
-    },
+//    get_time_of_posts : function(doc){ // working code.
+//      var postdates = doc.getElementsByClassName('postdate');
+//      return [parseInt(brwsr.Date_parse(postdates[postdates.length-1][brwsr.innerText]),10) - site2['KC'].time_offset*3600000,
+//              parseInt(brwsr.Date_parse(postdates[0                 ][brwsr.innerText]),10) - site2['KC'].time_offset*3600000];
+//    },
 //    get_time_of_posts : function(th){ // cause error
 //      var posts = th.getElementsByTagName('table');
 //      return [site2['KC'].get_time_of_post_in_utc(posts[posts.length-1]),site2['KC'].get_time_of_post_in_utc(posts[0])];
 //    },
-    get_time_of_post_in_utc : function(post){
-      var postdates = post.getElementsByClassName('postdate');
-      if (postdates[0]) return parseInt(brwsr.Date_parse(postdates[0][brwsr.innerText]),10) - site2['KC'].time_offset*3600000;
-    },
-    mark_newer_posts: function(th,date,unmark) {
-      var pn = site2['DEFAULT'].mark_newer_posts('KC',th.getElementsByTagName('table'),date,'border:2px solid red','border: none','class','postreply',unmark);
+//    get_time_of_post_in_utc : function(post){ // working code
+//      var postdates = post.getElementsByClassName('postdate');
+//      if (postdates[0]) return parseInt(brwsr.Date_parse(postdates[0][brwsr.innerText]),10) - site2['KC'].time_offset*3600000;
+//    },
+    mark_newer_posts: function(th,date,unmark, short_cut) {
+      var pn = site2['DEFAULT'].mark_newer_posts('KC',th.getElementsByTagName('table'),date, function(post){return post.getElementsByClassName('postreply')[0];}, unmark, short_cut);
       return (pn!=null)? pn.offsetParent : null;
     },
     localtime: function(pn){
-      var times = pn.getElementsByClassName('postdate');
-      for (var i=0;i<times.length;i++) times[i].textContent = site2.common.change_utc_to_local(Date.parse(times[i][brwsr.innerText])-site2['KC'].time_offset*3600000);
+      var postdate = pn.getElementsByClassName('postdate')[0];
+      if (postdate) {
+        var lt = postdate.cloneNode(false);
+        lt.setAttribute('class','CatChan_localtime');
+        lt.textContent = site2.common.change_utc_to_local(site2['KC'].parse_funcs.post_html.time_pn_1(postdate)); // use direct path to hope to be inline optimized.
+        postdate.parentNode.insertBefore(lt,postdate.nextSibling);
+        postdate.setAttribute('style','display:none');
+      }
+//      var times = pn.getElementsByClassName('postdate');
+//      for (var i=0;i<times.length;i++) times[i].textContent = site2.common.change_utc_to_local(Date.parse(times[i][brwsr.innerText])-site2['KC'].time_offset*3600000);
 //      for (var i=0;i<times.length;i++) times[i].textContent = site2.common.change_utc_to_local(brwsr.Date_parse(times[i][brwsr.innerText])-site2['KC'].time_offset*3600000);
     },
     remove_files_info : function(th){
@@ -8849,9 +8920,7 @@ if (pref.test_mode['28']) {
 //          for (var i=0;i<replies.length;i++) posts[posts.length] = {pn:replies[i], __proto__:th.__proto__};
 //          return posts;
 //        },
-        time: function(post){
-return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][brwsr.innerText]),10) + (pref.localtime_offset - site2['KC'].time_offset)*3600000;
-},
+        time: 'post_html.time',
         nof_posts: function(th){
           var nof_posts = th.pn.getElementsByTagName('table').length +1; // +1 for OP.
           var nof_files = th.pn.getElementsByClassName('filename').length;
@@ -8966,6 +9035,21 @@ return parseInt(brwsr.Date_parse(post.pn.getElementsByClassName('postdate')[0][b
         },
       },
       'thread_html' : {
+//        ths: function(doc) { // pn of thread isn't used.
+//          var ths = site2['KC'].parse_funcs.page_html.ths(doc);
+//          for (var i=0;i<ths.length;i++) {
+//            var ph = ths[i].pn.getElementsByClassName('postheader')[0];
+//            if (ph) {
+//              ph.appendChild(document.createTextNode(' ['));
+//              var link = document.createElement('a');
+//              link.setAttribute('href',ths[i].board + 'thread-' + ths[i].no + '.html');
+//              link.innerHTML = 'Reply';
+//              ph.appendChild(link);
+//              ph.appendChild(document.createTextNode('] '));
+//            }
+//          }
+//          return ths;
+//        },
 //        ths: function(doc) {return this.ths_array(doc, doc.pn.getElementsByClassName('thread_body'));}, // patch, but for what???, de-patched for trial.
 //        com:  function(post){return post.pn.getElementsByTagName('blockquote')[0][brwsr.innerText];},
         com:  function(post){return post.pn.getElementsByTagName('blockquote')[0].innerHTML.replace(/^\s*/,'').replace(/\s*$/,'');},
@@ -8990,6 +9074,16 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
       },
       'post_html' : {
         flag: 'page_html',
+        time: function(post){
+          return site2['KC'].parse_funcs.post_html.time_pn(post.pn); // use direct path to hope to be inline optimized.
+        },
+        time_pn: function(post_pn){
+          var postdate = post_pn.getElementsByClassName('postdate')[0];
+          return (postdate)? site2['KC'].parse_funcs.post_html.time_pn_1(postdate) : undefined; // use direct path to hope to be inline optimized.
+        },
+        time_pn_1: function(postdate){
+          return Date.parse(postdate.textContent) + (pref.localtime_offset-site2['KC'].time_offset)*3600000; // FF accepts KC's format
+        },
       },
       'post_json' : {
         time_unit: 1, // for archive.list_all
@@ -9043,7 +9137,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     post_json2html : function(post, board, op, short_link, th_no) {
       var pn = document.createElement('div');
       var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
-      var date = new Date((post.time || 0) * time_unit);
+      var date = new Date((post.time || 0) * time_unit -(pref.localtime_offset-site2['KC'].time_offset)*3600000);
       var html_file = '';
       if (post.filename) {
         html_file += this.post_json2html_file(post,board, post.extra_files);
@@ -9062,6 +9156,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
               '<a href="/int/thread-' +th_no+ '.html#q'+post.no+ '" class="quotelink">' +post.no+ '</a>'+
             '</span> '+
             '<div class="report_parent"><a href="/report/int/' +th_no +'" class="report_link"><img src="/images/icon-report.png"></a></div>'+
+            ((op)? ' [<a href="' + board + 'thread-' + post.no + '.html">Reply</a>] ' : '')+
           '</div>'+
           html_file+
           '<div' + ((op)? ' class="postbody"' : '') + '>'+
@@ -9113,8 +9208,10 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
       if (obj.posts) {
         for (var i=1;i<obj.posts.length;i++) {
 //          th.appendChild(this.post_json2html(obj.posts[i], board));
-          var pn = this.post_container(this.post_json2html(obj.posts[i], board),obj.posts[i].no);
-          this.update_posts_insert_1(pn, obj.posts[i].no, null, th);
+          var pn = this.post_json2html(obj.posts[i], board);
+          this.update_posts_insert_1(this.post_container(pn,obj.posts[i].no), obj.posts[i].no, null, th);
+//          var pn = this.post_container(this.post_json2html(obj.posts[i], board),obj.posts[i].no); // WHY DID I DO THIS? PROBABLY THERE IS A PROBLEM IN A SOLUTION ABOVE.
+//          this.update_posts_insert_1(pn, obj.posts[i].no, null, th);
 //          th.appendChild(document.createElement('br'));
           if (assign_pn || !obj.posts[i].pn) obj.posts[i].pn = pn;
         }
@@ -9323,11 +9420,21 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //    home : site.protocol + '//boards.4chan.org/int/',
     home : site.protocol + '//boards.4chan.org/favicon.ico',
     protocol: 'http:',
-    postform: document.getElementsByClassName('postForm')[0],
     postform_rules: null,
-    postform_activation : function(){
-      document.getElementById('togglePostFormLink').getElementsByTagName('a')[0].click();
-      site.postform = document.getElementsByClassName('postForm')[0];
+    postform: {
+      init:function(){
+        this.tack = document.createElement('img');
+        this.tack.setAttribute('src','//s.4cdn.org/image/sticky.gif');
+        this.tack.setAttribute('class','stickyIcon retina');
+        this.tack.setAttribute('style','float:right;font-size:2em;');
+        site.postform.parentNode.insertBefore(this.tack,site.postform);
+        return this.tack;
+      },
+      activation: function(){
+        document.getElementById('togglePostFormLink').getElementsByTagName('a')[0].click();
+        this.activation = null;
+      },
+      __proto__:site2['DEFAULT'].postform
     },
     features : {uip_tracker: true},
     components: {
@@ -9339,6 +9446,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     },
     pref_default: {
       catalog_expand_with_hr: true,
+      page:{env:{disp_filler:'<hr>'}},
       patch: {delayed_invoke: {use: brwsr.ff}},
       catalog: {t2h_sel:'N', image_hover_zIndex:100001},
       proto:{
@@ -9436,6 +9544,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           site.embed_to['top']    = document.getElementById('content').previousSibling;
           site.embed_to['bottom'] = document.getElementsByClassName('navLinksBottom')[0].nextSibling;
         }
+        site.postform = document.getElementsByClassName('postForm')[0];
         return true;
       } else return false;
     },
@@ -9537,15 +9646,15 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 //      return [(parseInt(posts[posts.length-1].getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)- pref.localtime_offset*3600)*1000,
 //              (parseInt(posts[0             ].getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)- pref.localtime_offset*3600)*1000];
 //    },
-    get_time_of_posts : function(th){
-      var posts = th.getElementsByClassName('postContainer');
-      return [site2['4chan'].get_time_of_post_in_utc(posts[posts.length-1]),site2['4chan'].get_time_of_post_in_utc(posts[0])];
-    },
-    get_time_of_post_in_utc : function(post){
-      return parseInt(post.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)*1000;
-    },
-    mark_newer_posts: function(th,date,unmark) {
-      return site2['DEFAULT'].mark_newer_posts('4chan',th.getElementsByClassName('postContainer'),date,'border:2px solid red','border: none','class','post reply',unmark);
+//    get_time_of_posts : function(th){ // working code.
+//      var posts = th.getElementsByClassName('postContainer');
+//      return [site2['4chan'].get_time_of_post_in_utc(posts[posts.length-1]),site2['4chan'].get_time_of_post_in_utc(posts[0])];
+//    },
+//    get_time_of_post_in_utc : function(post){ // working code
+//      return parseInt(post.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)*1000;
+//    },
+    mark_newer_posts: function(th,date,unmark, short_cut) {
+      return site2['DEFAULT'].mark_newer_posts('4chan',th.getElementsByClassName('postContainer'),date,function(post){return post.getElementsByClassName('post reply')[0];}, unmark, short_cut);
     },
     localtime: function(pn){
       var times = pn.getElementsByClassName('dateTime');
@@ -10081,6 +10190,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         time: function(post){
           return parseInt(post.pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10);
         },
+        time_pn: function(post_pn){return parseInt(post_pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)*1000;}, // returns utc.
         flag: function(post){  // same as 8chan
           var flags = post.pn.getElementsByClassName('flag');
           return (flags.length!=0)? document.importNode(flags[0],false) : null;
@@ -10280,8 +10390,11 @@ if (pref.test_mode['35']) return;
             '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
             ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
             '<span class="nameBlock">'+
-              '<span class="name">' + name + '</span> </span> '+
-              ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
+              '<span class="name">' + name + '</span> '+
+              ((post.capcode)? '<strong class="capcode hand id_mod" title="Highlight posts by Moderators">##' + post.capcode + '</strong>' : '')+
+//              '<img src="//s.4cdn.org/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"></span>
+            '</span> '+
+            ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
             '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
             '<span class="postNum desktop">'+
               '<a href="thread/' + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
@@ -10553,10 +10666,10 @@ if (pref.test_mode['35']) return;
                      ((obj.com)? obj.com : '');
       return th;
     },
-    mark_newer_posts: function(th,date,unmark) {
-      return site2['DEFAULT'].mark_newer_posts('meguca',th.getElementsByTagName('article'),date,'border:2px solid red','border: none',null,null,unmark);
+    mark_newer_posts: function(th,date,unmark, short_cut) {
+      return site2['DEFAULT'].mark_newer_posts('meguca',th.getElementsByTagName('article'),date,null,unmark, short_cut);
     },
-    get_time_of_post_in_utc: function(post){return this.parse_funcs.post_html.time(post);}, // TEMPORAL
+//    get_time_of_post_in_utc: function(post_pn){return this.parse_funcs.post_html.time_pn(post_pn);}, // TEMPORAL
 ////////    mark_newer_posts : function(nickname,posts,date,style_mark,style_unmark,class_or_tag,key,unmark){
 //////////      var offset_top = 0;
 ////////      var marked_first_post = null;
@@ -10730,7 +10843,8 @@ if (pref.test_mode['35']) return;
         proto: 'DEFAULT.thread_json'
       },
       'catalog_html' : {
-        footer: function(th){return th.pn.getElementsByTagName('small')[0].getElementsByTagName('span')[0];},
+        footer: function(th){return th.pn.getElementsByClassName('counters')[0];}, // v3.
+//        footer: function(th){return th.pn.getElementsByTagName('small')[0].getElementsByTagName('span')[0];}, // working code for v1, v2.
         footer_clear: function(th){th.footer.textContent = '';},
         ths: function(doc) {
           var hist = doc.pn.getElementsByClassName('history');
@@ -10779,96 +10893,10 @@ if (pref.test_mode['35']) return;
         },
       },
       'post_html' : {
-        time: function(post){
-          var time_node = post.getElementsByTagName('time')[0];
+        time_pn: function(post_pn){
+          var time_node = post_pn.getElementsByTagName('time')[0];
           return Date.parse(time_node.title || time_node.textContent) + (pref.localtime_offset - site2['meguca'].time_offset) * 3600000;}, // timezone -5
       },
-////////      'page_html' : {
-////////        ths: function(doc) {return this.ths_array(doc, doc.pn.getElementsByClassName('thread'));},
-////////        th_init: function(th) {th.pn.removeAttribute('class');},
-//////////        th_destroy: function(pn, parse_funcs){},
-////////        no : function(th){return parseInt(th.pn.id.substr(1),10) || parseInt(th.pn.id.substr(2),10)},
-//////////        ths: function(doc) { // working code.
-//////////          var ths = this.ths_array(doc, doc.pn.getElementsByClassName('thread'));
-//////////          for (var i=0;i<ths.length;i++) {
-//////////            Object.defineProperty(ths[i], 'no', {value:ths[i].pn.id.substr(1), enumerable:true, writable:true, configurable:true});
-//////////            ths[i].pn.removeAttribute('class'); // collection ISN'T writable? and if wrote, its enumerator doesn't work.
-//////////          }
-//////////          return ths;
-//////////        },
-//////////        no : function(th){return parseInt(th.pn.getElementsByClassName('postContainer')[0].id.substring(2),10);},
-////////        last_replies: 'catalog_json',
-////////        time: function(post){
-////////          return parseInt(post.pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10) * 1000;
-////////        },
-////////        nof_posts: function(th){
-////////          var nof_posts = th.pn.getElementsByClassName('postContainer').length;
-////////          var nof_files = th.pn.getElementsByClassName('fileText').length;
-////////          var om_info   = th.pn.getElementsByClassName('summary desktop')[0];
-////////          if (om_info) {
-////////            var str = om_info[brwsr.innerText].replace(/\n/g,'');
-////////            nof_posts += parseInt(str.replace(/\ post.*/,''),10);
-////////            nof_files += parseInt('0'+str.replace(/\ image.*/,'').replace(/[^\ ]*\ /g,''),10);
-////////          }
-////////          Object.defineProperty(th,'nof_files',{value:nof_files, enumerable:true, configurable:true, writable:true});
-////////          return nof_posts;
-////////        },
-////////        nof_files: function(th){
-////////          if (!th.hasOwnProperty('nof_posts')) this['nof_posts'](th);
-////////          return th.nof_files;
-////////        },
-////////        sub:  function(post){return post.pn.getElementsByClassName('subject')[0][brwsr.innerText];}, // same as 8chan
-////////        name: function(post){return post.pn.getElementsByClassName('name')[0][brwsr.innerText];}, // same as 8chan
-////////        com:  function(post){return post.pn.getElementsByClassName('postMessage')[0][brwsr.innerText];},
-////////        footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('postInfo desktop')[0]);},
-////////        sticky: function(th){return (th.pn.getElementsByClassName('stickyIcon').length!=0);},
-////////        flag: function(post){  // same as 8chan
-////////          var flags = post.pn.getElementsByClassName('flag');
-////////          return (flags.length!=0)? document.importNode(flags[0],false) : null;
-////////        },
-////////        op_img_url:function(th){
-////////          var img = th.pn.getElementsByTagName('img')[0];
-////////          var url = (img)? img.getAttribute('src') : undefined;
-////////          return url;
-////////        },
-////////        get_thread_links : function(th){return pn.getElementsByClassName('replylink')[0];},
-////////        get_omitted_info : function(post){return post.pn.getElementsByClassName('summary')[0];},
-////////      },
-////////      'page_json'  : {
-////////        proto: 'catalog_json'
-////////      },
-////////      'thread_html' : {
-////////        ths: function(doc) {return site2['DEFAULT'].parse_funcs['thread_html'].ths_array(doc, doc.pn.getElementById('t'+doc.thread));},
-//////////        ths: function(doc) { // working code.
-//////////          return [{pn:doc.pn.getElementById('t'+doc.thread),
-//////////                   type_html: 'thread_html',
-//////////                   page: '?',
-//////////                   __proto__: doc.__proto__}];
-//////////        },
-////////
-//////////        pop_post: function(th){ // debuging code.
-//////////          th.post = th.posts[--th.idx_pop];
-//////////          return th.post;
-//////////        },
-//////////        pop_post_prep: function(th){
-//////////          delete th.posts;
-//////////          th.idx_pop = th.posts.length;
-//////////        },
-////////////        pop_post: function(th){ // working code
-////////////          while (th.idx_pop>=0) {
-////////////            var pn = th.children[th.idx_pop--];
-////////////            if (pn.className && pn.className.indexOf('postContainer')!=-1) {
-////////////              th.post = {pn:pn, parse_funcs:this, __proto__:th.__proto__};
-////////////              return true;
-////////////            }
-////////////          }
-////////////          return false;
-////////////        },
-//////////        post_no: function(post){return parseInt(post.pn.id.substr(3),10);},
-////////        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
-////////        get_op_src: 'thread_json',
-////////        proto: 'page_html',
-////////      },
     },
     general_event_handler:{
       catalog:{
@@ -10897,8 +10925,8 @@ if (pref.test_mode['35']) return;
     check_func : function(){ // required to be a own property.
       var href = window.location.href;
       if (href.indexOf('/meguca.org/')!=-1) {
-        site.whereami = (href.search(/[0-9]+$/)!=-1)? 'thread' : 'catalog';
-//                      : 'other';
+        site.whereami = (href.search(/[0-9]+$/)!=-1)? 'thread' :
+                        (href.search(/catalog\/*$/)!=-1)? 'catalog' : 'other';
         site.config('meguca.org',this.nickname);
         site.max_page = 3;
         site.header_height = function(){
@@ -11148,6 +11176,7 @@ if (pref.test_mode['35']) return;
           get fsize(){return (this.image)? this.image.size : undefined;},
           get ext(){return (this.image)? '.'+fileType[this.image.fileType] : undefined;},
           get sub(){return (this.subject)? common_func.escape(this.subject) : '';},
+          get capcode(){return this.auth;},
           name: 'Anonymous',
           get txt(){return this.body;},
           get com(){
@@ -11266,6 +11295,158 @@ if (pref.test_mode['35']) return;
 //      this.popups_add_1(th, th.posts[1], pref[cataLog.embed_mode].popup, lth.q, th.no===th.posts[1].no, false); // cut quote link.
 //      if (this.popup_info && this.popup_info.key===REQ.dbt[0]+REQ.dbt[1]+REQ.dbt[2]+'#'+th.posts[1].no) this.popups_post_entry({target:this.popup_info.node, __proto__:this.popup_info});
     },
+
+
+    
+/*    post_json2html : function(post, board, op, short_link, op_no) {
+      var pn = document.createElement('div');
+      var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
+      var date = new Date((post.time || 0) * time_unit);
+      var name = post.name || 'Anonymous';
+      if (post.ext) {
+        var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
+        fsize_str = fsize_str.substr(0,fsize_str.indexOf('.')+3) + ((post.fsize>1048576)? ' MB' : ' KB');
+//        var fname_server = site2[post.domain].post_json2html_fname_server(post);
+//        var fname = site2[post.domain].post_json2html_fname(post);
+        var furl = site2[post.domain].catalog_json2html3_src(post,board);
+        var turl = site2[post.domain].catalog_json2html3_thumbnail(post,board);
+        var tn_f = (op)? 1 : ((post.tn_w>post.tn_h)? post.tn_w : post.tn_h) / 150;
+        var file_html = 
+          '<article id="p' + post.no + '" class="glass media">'+
+          '<input type="checkbox" class="deleted-toggle">'+
+          '<header class="spaced"><input type="checkbox" class="mod-checkbox hidden">'+
+            '<b class="name">'+post.name+'</b><time>' + site2['common'].change_utc_to_local(date) + '</time>'+
+//            '<nav>'+
+//              '<a class="history" href="' + board + op_no + ((post.domain==='meguca')? '?last=100' : '')) + '#p'+post.no + '">No.</a>'+
+//              '<a class="history quote" href="/all/2025573?last=100#p2032325">2032325</a>'+
+//            '</nav>'+
+            '<a class="control">'+
+              '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">'+
+                '<path d="M1.5 0l-1.5 1.5 4 4 4-4-1.5-1.5-2.5 2.5-2.5-2.5z" transform="translate(0 1)"></path>'+
+              '</svg>'+
+            '</a>'+
+          '</header>'+
+          '<figcaption class="spaced">'+
+            '<a class="image-toggle act" hidden=""></a>'+
+            '<span class="spaced image-search-container">'+
+              '<a class="image-search google" target="_blank" rel="nofollow" href="https://www.google.com/searchbyimage?image_url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">G</a>'+
+              '<a class="image-search iqdb" target="_blank" rel="nofollow" href="http://iqdb.org/?url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Iq</a>'+
+              '<a class="image-search saucenao" target="_blank" rel="nofollow" href="http://saucenao.com/search.php?db=999&amp;url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Sn</a>'+
+              '<a class="image-search whatAnime" target="_blank" rel="nofollow" href="https://whatanime.ga/?url=https://meguca.org/images/src/b8d6cffe88a53128d946a7386ed78e671009c87e.jpg">Wa</a>'+
+              '<a class="image-search desustorage" target="_blank" rel="nofollow" href="https://desuarchive.org/_/search/image/GvccFQO14MzrUC0tApWiQw">Ds</a>'+
+              '<a class="image-search exhentai" target="_blank" rel="nofollow" href="http://exhentai.org/?fs_similar=1&amp;fs_exp=1&amp;f_shash=b8d6cffe88a53128d946a7386ed78e671009c87e">Ex</a>'+
+             '</span>'+
+             '<span class="fileinfo">'+
+               '<span class="filesize">' + fsize_str + '</span>'+
+               '<span class="dims">' + post.w + 'x' + post.h + '</span>'+
+             '</span>'+
+             '<a href="' + furl + '" download="' + post.filename + post.ext + '">' + post.filename + post.ext + '</a>'+
+           '</figcaption>'+
+           '<div class="post-container">'+
+             '<figure>'+
+               '<a target="_blank" href="' + furl + '">'+
+                 '<img src="' + turl + '" width="' + post.tn_w + '" height="' + post.tn_h + '">'+
+               '</a>'+
+             '</figure>'+
+             '<blockquote>'+
+               '<em>'+
+
+
+
+
+        '<a class="history post-link" data-id="2032314" href="/all/2025573#p2032314">&gt;&gt;2032314</a><a class="hash-link history" href="/all/2025573#p2032314"> #</a> </em><br>Well the grave has already been dug<br>Might as well hop in</blockquote></div></article>' + 
+
+          '<div class="file" id="f' + post.no + '">'+
+            '<div class="fileText" id="fT' + post.no + '">File: <a href="' + furl + '" target="_blank">' + post.filename + '</a>'+
+              ' (' + fsize_str + ', ' +  + ')</div>'+
+            '<a class="fileThumb" href="' + + '" target="_blank">'+
+              '<img src="' + turl + '" alt="' + fsize_str + '" data-md5="' + post.md5 + '" style="height: ' + ((op)? post.tn_h : post.tn_h / tn_f) + 'px; width:' + ((op)? post.th_w : post.tn_w/tn_f) +'px;">'+
+              '<div data-tip="" data-tip-cb="mShowFull" class="mFileInfo mobile">' + fsize_str + ' ' + post.ext.substr(1).toUpperCase() + '</div>'+
+            '</a>'+
+          '</div>';
+      }
+      pn.innerHTML =
+        '<div id="p' + post.no + '" class="post reply">'+
+          '<div class="postInfoM mobile" id="pim' + post.no + '">'+
+            '<span class="nameBlock">'+
+              '<span class="name">' + name + '</span>'+
+            '<br></span>'+
+            '<span class="dateTime postNum" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span>'+
+          '</div>'+
+          ((post.ext && op)? file_html : '') +
+          '<div class="postInfo desktop" id="pi' + post.no + '">'+
+            '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
+            ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
+            '<span class="nameBlock">'+
+              '<span class="name">' + name + '</span> </span> '+
+              ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
+            '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
+            '<span class="postNum desktop">'+
+              '<a href="thread/' + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
+              '<a href="thread/' + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
+            '</span>'+
+            ' &nbsp; '+
+//            ((op)? '<span>[<a href="thread/' + op_no + ((post.sub)? '/' + post.sub.replace(/\s/g,'-').toLowerCase() +' ': '') + '" class="replylink">Reply</a>]</span>' : '') +
+            ((op)? ('<span>[<a href="' + site2[post.domain].make_url4([post.domain, board, post.no, 'thread_html'])[0] +'" class="replylink">Reply</a>]</span>'+
+                   ((short_link)? short_link.replace(/>\[/g,'>').replace(/<a/g,'<span>[<a').replace(/\]<\/a/g,'</a>]</span') : '')) : '') +
+          '</div>' +
+          ((post.ext && !op)? file_html : '') +
+          '<blockquote class="postMessage" id="m' + post.no + '">'+ (post.com || '') + '</blockquote>'+ 
+        '</div>';
+      return pn.removeChild(pn.childNodes[0]);
+
+
+
+    },*/
+    catalog_json2html3 : function(obj,board,thumb_url) {
+      var th = document.createElement('article');
+      th.id = 'p'+obj.no;
+      th.class = 'glass media';
+      th.dataId = obj.no;
+      var th_url = site2[obj.domain].make_url4([obj.domain,obj.board,obj.no,'thread_html'])[0];
+      var tn_w = obj.tn_w || obj.posts[0].tn_w;
+      var tn_h = obj.tn_h || obj.posts[0].tn_h;
+      var tn_f = 150 / ((tn_w>tn_h)? tn_w : tn_h);
+      var th_class_tn = (pref.pref2.meguca.remove_history_class)? '' : 'history';
+      var th_class    = th_class_tn + ' ' + pref.script_prefix +'_link';
+      var short_link = site2[obj.domain].short_link(obj.key, obj.nof_posts, 1, 'Last ', '');
+      th.innerHTML = 
+        '<input type="checkbox" class="deleted-toggle">'+
+        '<figure>'+
+          '<a class="history" href="' + board + obj.no + '">'+
+          '<img width="' + (tn_w * tn_f) + '" height="' + (tn_h * tn_f) + '" class="catalog" src="'+ thumb_url + '"></a>'+
+        '</figure>'+
+        '<span class="spaced thread-links hide-empty">'+
+          '<b class="board">' + board + '</b>'+
+          '<span class="counters" title="Posts/Images">'+ (obj.nof_posts-1) + '/' + (obj.nof_files-1) +'</span>'+
+          '<span class="act">'+
+            ((obj.domain==='meguca')? '<a class="' + th_class_tn + ' lastN-link" href="' + board + obj.no + '?last=100">Last 100</a></span>' :
+                                      '<a href="' + th_url + '" class="'+ th_class + ' lastN-link">Expand</a>'+
+                                      ((short_link)? '] [' + short_link : ''))+
+          '</span>'+
+        '</span><br>'+
+        ((obj.sub)? '<h3>' + obj.sub + ' </h3>' : '')+
+        '<blockquote>' + ((obj.com)? obj.com : '') + '</blockquote>';
+      return th;
+    },
+    mark_newer_posts: function(th_pn,date,unmark, short_cut) {
+      date = date/this.parse_funcs.post_json.time_unit;
+      var marked_first_post = null;
+      var th = JSON.parse(th_pn.getElementById('post-data').innerHTML);
+      var th_posts = [th].concat(th.posts);
+      var th_posts_pn = th_pn.getElementsByTagName('article');
+      for (var i=th_posts.length-1;i>=0;i--) {
+        if (date<th_posts[i].time) {
+          th_posts_pn[i].setAttribute('style', pref.style.post_new);
+          if (unmark) th_posts_pn[i].addEventListener('mouseover', this.unmark_post_from_event, false);
+          marked_first_post = th_posts_pn[i];
+        } else {
+          if (th_posts_pn[i].getAttribute('style')!=null) th_posts_pn[i].removeAttribute('style');
+          if (short_cut) break;
+        }
+      }
+      return marked_first_post;
+    },
     proto: 'meguca2'
   };
   
@@ -11273,13 +11454,15 @@ if (pref.test_mode['35']) return;
     nickname : 'lain',
     home : site.protocol + '//lainchan.org/q/index.html',
 //    home : site.protocol + '//lainchan.org',
+    X_FRAME_OPTIONS: true,
+    CONTENT_SECURITY_POLICY_FRAME: true,
     protocol: 'https:',
     domain_url: 'lainchan.org',
     postform_rules: null,
     features : {page: false, graph: true, setting2: false},
     pref_default: {
       page:{ env:{ disp_offset:1}},
-      catalog:{image_hover:true, board:{all_boards:true}},
+      catalog:{image_hover:true, board:{all_boards:true}, env:{disp_offset:1, disp_filler:'                                        '}},
       proto:{ env:{ localtime_native:false,
                     colorID_native: false}},
       stats:{ time_unit:3, estimate_posts:false}, // estimation doesn't work because lainchan has disorder of No.
@@ -11289,7 +11472,8 @@ if (pref.test_mode['35']) return;
     boards_json:{boards:[{board:'cyb', pages:7}, {board:'sci', pages:2}, {board:'tech', pages:7}, {board:'\u03bb', pages:7}, {board:'layer', pages:5}, {board:'zzz', pages:17}, {board:'w', pages:4}, {board:'feels', pages:7}, {board:'drg', pages:4}, {board:'lit', pages:7}, {board:'civ', pages:1}, {board:'diy', pages:7}, {board:'art', pages:7}, {board:'r', pages:9}, {board:'q', pages:3}, {board:'f', pages:2}, {board:'sec', pages:3}, {board:'cult', pages:4}]},
     check_func : function(){
       var href = window.location.href;
-      if (href.indexOf('/lainchan.org/')!=-1) {
+      if (href.indexOf(this.domain_url)===-1 || href.search(new RegExp(this.domain_url+'\/*$'))!=-1) return false;
+//      if (href.indexOf(new RegExp(this.domain_url))!=-1) {
         site.whereami = (href.indexOf('/catalog.html')!=-1)? 'catalog'
                       : (href.indexOf('/res/')!=-1)? 'thread'
                       : (document.getElementsByTagName('title')[0] && document.getElementsByTagName('title')[0].textContent==='404')? '404' 
@@ -11298,7 +11482,7 @@ if (pref.test_mode['35']) return;
                       : 'page';
 //                      : (href.search(/\/$|(index|[0-9]+)\.html|\/all$|\/popular$/)!=-1)? 'page'
 //                      : 'other';
-        site.config('lainchan.org','lain');
+        site.config(this.domain_url, this.nickname);
         site.max_page = 7;
         site.header_height = function(){
           var header = document.getElementsByClassName('boardlist')[0];
@@ -11332,19 +11516,22 @@ if (pref.test_mode['35']) return;
 //        var ss = document.querySelector('link[href^="/stylesheets/"]');
         // http://stackoverflow.com/questions/2635814/javascript-capturing-load-event-on-link
         // But https://pie.gd/test/script-link-events/
-        styleSheet.add_to_watch(document.getElementById('stylesheet'));
-        styleSheet.add_to_watch(document.getElementById('code_stylesheet'));
+        if (this.nickname==='lain') {
+          styleSheet.add_to_watch(document.getElementById('stylesheet'));
+          styleSheet.add_to_watch(document.getElementById('code_stylesheet'));
+        }
 //        var ss = document.getElementById('stylesheet'); // doesn't work because chrome and FF don't support onload event from link tag.
 //        ss.addEventListener('load',styleSheet.styles_changed,false);
         return true;
-      } else return false;
+//      } else return false;
     },
 //    catalog_threads_in_page : function(doc){return doc.getElementsByClassName('mix');},
     catalog_posts_in_thread : function(doc){return doc.getElementsByClassName('replyContainer');},
     max_page : function(){return 10;},
     all_boards: ['/popular/','/all/','/mega/','/random/'],
     make_url4: function(dbt){
-      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt);
+      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : site2['vichan'].make_url4.call(this,dbt);
+//      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt); // cause error from lainjp
     },
 
     catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
@@ -11368,21 +11555,31 @@ if (pref.test_mode['35']) return;
         var pn3 = pn_tb.removeChild(pn_tb.childNodes[3]);
         while (pn3.firstChild) pn_tb.appendChild(pn3.firstChild); // rip from div to span
 //        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
-        document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        if (this.nickname==='lain') {
+          document.getElementsByClassName('controls')[0].appendChild(pn_tb);
+        } else {
+          var threads0 = document.getElementsByClassName('threads')[0];
+          threads0.parentNode.insertBefore(pn_tb,threads0);
+        }
         node_ref.parentNode.insertBefore(pn_filter,node_ref);
       } else { // if (site.whereami==='page') {
         var pctrls = document.getElementsByName('postcontrols')[0];
 //        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
 //        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
-        var blotter = document.getElementsByClassName('blotter')[0];
-        var pn = document.createElement('div');
-        pn.setAttribute('style','float:left');
-        pn.appendChild(blotter.nextSibling.nextSibling);
-        pn.appendChild(blotter.nextSibling.nextSibling);
-        if (site.whereami==='page') pn.appendChild(document.createTextNode(' | '));
-        blotter.parentNode.insertBefore(pn,blotter.nextSibling.nextSibling);
-        pn.parentNode.insertBefore(pn_filter, pn.nextSibling);
-        pn.parentNode.insertBefore(pn_tb, pn.nextSibling);
+        if (this.nickname==='lain') {
+          var blotter = document.getElementsByClassName('blotter')[0];
+          var pn = document.createElement('div');
+          pn.setAttribute('style','float:left');
+          pn.appendChild(blotter.nextSibling.nextSibling);
+          pn.appendChild(blotter.nextSibling.nextSibling);
+          if (site.whereami==='page') pn.appendChild(document.createTextNode(' | '));
+          blotter.parentNode.insertBefore(pn,blotter.nextSibling.nextSibling);
+          pn.parentNode.insertBefore(pn_filter, pn.nextSibling);
+          pn.parentNode.insertBefore(pn_tb, pn.nextSibling);
+        } else {
+          pctrls.parentNode.insertBefore(pn_filter,pctrls);
+          pctrls.parentNode.insertBefore(pn_tb,pctrls);
+        }
       }
 //      node_ref.parentNode.insertBefore(pn_hi,node_ref);
 //      if (site.whereami==='catalog') node_ref.previousElementSibling.appendChild(pn_tb);
@@ -11520,6 +11717,64 @@ if (pref.test_mode['35']) return;
       reply_to_me: 'png;base64,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'
     },
     proto : 'vichan'
+  };
+  site2['lainjp'] = { //lainchan.jp // ?.?.?
+    nickname : 'lainjp',
+    home : site.protocol + '//lainchan.jp/lainicon.ico',
+    X_FRAME_OPTIONS: true,
+    CONTENT_SECURITY_POLICY_DATAURI: true,
+    CONTENT_SECURITY_POLICY_FRAME: true,
+    protocol: 'https:',
+    domain_url: 'lainchan.jp',
+    postform_rules: null,
+    features : {page: false, graph: true, setting2: false},
+    pref_default: {
+      page:{ env:{ disp_offset:1}},
+      proto:{ env:{ localtime_native:false,
+                    colorID_native: false}},
+      stats:{ time_unit:3, estimate_posts:false}, // estimation doesn't work because lainchan has disorder of No.
+      chart: {inst:{show: {np:false, p:true}, time_sel:3}},
+    // overwritten by easy2 default.
+      catalog:{image_hover:true, board:{all_boards:true}, env:{disp_offset:1, disp_filler:' '},    auto_load_filter:true, auto_save_filter:true, auto_save_filter_at_refresh:true},
+      thread: {auto_update:true},
+      thread_reader:{own_posts_tracker:true},
+      scan:{max:100},
+      liveTag:{style_urtm_str:'color:lime !important;font-weight:bold !important',
+               style_ur_str:'color:limegreen !important;font-weight:bold !important',
+               style_in_str:'color:red !important',    use:false,from:'op'},
+      virtualBoard:{scanDelay:1,    max:100,scan:true,scan_domains:{lainjp:'board'}},
+      network:{fetch_actively:false},
+      easy2:{limits:1,    presets:1,VB:{local:1},catalog:{auto_update:false},page:{auto_update:false}},
+      style:{post_new:'border:2px solid red !important'},
+    },
+    boards_json:{boards:[{board:'cyb', pages:2}, {board:'tech', pages:2}, {board:'cult', pages:2}, {board:'\u03bb', pages:1}, {board:'\u03bc', pages:1}, {board:'psy', pages:1}, {board:'feels', pages:1}, {board:'q', pages:2}, {board:'r', pages:1}]},
+    check_func: site2['lain'].check_func,
+    components: {
+      boardlist: '#overheader',
+      __proto__:site2['vichan'].components
+    },
+    parse_funcs: {
+      catalog_html: {
+        sticky: function(th){return th.pn.getElementsByTagName('strong')[0].textContent.search(/\(sticky\)/)!=-1},
+        proto: 'lain.catalog_html'
+      },
+    },
+    post_container: function(post_pn,no){return post_pn;},
+    update_posts_remove: function(th_old,i,pnode,merge){
+      var tgt = th_old.posts[i].pn;
+      if (i==0 && tgt.classList.contains('op')) this.update_posts_insert_pack(tgt);
+      else pnode.removeChild(tgt.nextSibling);
+      pnode.removeChild(tgt);
+    },
+    catalog_json2html3_thumbnail: function(obj, board) {
+      return (obj.ext==='.jpg' || obj.ext==='.jpeg' || obj.ext==='.gif' || obj.ext==='.png')? 'https://' + this.domain_url + board + 'thumb/' + obj.tim + '.png' :
+             (obj.ext==='.pdf')? 'https://' + this.domain_url + '/static/pdf.png' : '';
+    },
+    favicon : {
+      __proto__: site2['lain'].favicon,
+      none: '/lainicon.ico',
+    },
+    proto: 'lain'
   };
 
   if (!site2['futaba']) site2['futaba'] = {
@@ -12093,7 +12348,7 @@ if (pref.test_mode['35']) return;
     else if (val[0]=='CLOSE') close_connection(name);
     else if (val[0]=='MARK' && val[1]>0) {
       var marked_first_post = (common_obj.thread_reader && pref.test_mode['16'])? common_obj.thread_reader.mark_newer_posts(val[1])
-                                                        : site2[site.nickname].mark_newer_posts(document,val[1],pref.catalog.unmark_on_hover);
+                                                        : site2[site.nickname].mark_newer_posts(document,val[1],pref.catalog.unmark_on_hover, true);
       if (marked_first_post) scrollTo(0,marked_first_post.offsetTop - site.header_height());
       else scrollTo(0,document.body.clientHeight - window.innerHeight);
       if (common_obj.thread_reader) common_obj.thread_reader.mark_posts_from_parent(val[1]);
@@ -12231,7 +12486,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         }
         var req_1 = (req.get_tgt_func)? req.get_tgt_func(req) : {REQ:req, __proto__:req.tgts[req.IDX++]};
         if (req.IDX>=req.max) reload_reqs(req,p);
-        xhrs_count++;
+        xhrs_count++; // THIS CAN BE A SINK AND CAUSE DEADLOCK WHEN OVER X_FRAME_OPTIONS.
         if (req_1) {
           req.INDICATOR.report({tgt:req_1.tgt || url2tgt(req_1.url)});
           if (req_1.domain===site.nickname && !req_1.domain_xhr || pref.catalog_cross_domain_connection==='direct') download_local(xhr, req_1);
@@ -13042,6 +13297,10 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         pref_func.add_onchange(parent[tgt].childNodes[1],onchange_func);
       },
       make_iframe: function(name){
+        if (site2[name].X_FRAME_OPTIONS && pref.network.overXFO || site2[site.nickname].CONTENT_SECURITY_POLICY_FRAME && pref.network.overCSPF) {
+//           setTimeout(function(){window.focus();},2000); // this doesn't effect.
+          return;
+        }
         var ifrm = document.createElement('iframe');
         ifrm.name = name;
         ifrm.setAttribute('style','display:none');
@@ -13330,6 +13589,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
   var cnst_obj = (function(){
     site.script_body = document.createElement('div');
     site.script_body.className = pref.script_prefix;
+    site.script_body.innerHTML = '<div style="display:none"></div>';
     site.root_body.appendChild(site.script_body);
     if (site.settings) {
       site.settings.innerHTML = '<span>[CC</span><span></span>]';
@@ -13359,7 +13619,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       var pn8 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:settings2:Show2:tile:set:left',pn_st:pn_st});
       setting_obj = make_setting_obj(pn8);
     }
-    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform_activation)) {
+    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform.activation)) {
       wafd = make_wafd();
       var pn9 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:post_form:Show2:tile:set:left',pn_st:pn_st});
       post_form_obj = make_post_form_obj(pn9);
@@ -13808,6 +14068,7 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
 ////////    }
 
     function mark_posts_from_parent(time){
+      time /= site2[site.nickname].parse_funcs.thread_html.time_unit;
       ignore_scroll = true;
       if (favicon_obj[0] && favicon_obj[0].time<time) { // not debugged this path, usually doesn't occur.
         var i = 1;
@@ -13855,7 +14116,8 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
         var tgt = favicon_obj.shift();
         tgt.pn.removeEventListener('mouseover', favicon_obj_trim, false);
         time = tgt.time * site2[site.nickname].parse_funcs['post_json'].time_unit;
-        if (pref['thread'].mark_new_posts) tgt.pn.setAttribute('style','border:none');
+//        if (pref['thread'].mark_new_posts) site2['DEFAULT'].unmark_post(tgt.pn);
+//        if (pref['thread'].mark_new_posts) tgt.pn.setAttribute('style','border:none');
         if (e.currentTarget===tgt.pn) break;
       }
       if (time) {
@@ -15320,13 +15582,20 @@ if (!pref.test_mode['24']) {
       }
     },
     color_tag_node : function(node, tag){
-      if (this.tags[tag]['in']) common_func.init_set_style(node,pref.liveTag.style_in_obj4);
-      else if (pref.liveTag.style) {
-        if (this.tags[tag].ur>2) common_func.init_set_style(node,pref.liveTag.style_urtm_obj4);
-        else if (this.tags[tag].ur>0) common_func.init_set_style(node,pref.liveTag.style_ur_obj4);
-        else common_func.init_set_style(node,null);
-      } else common_func.init_set_style(node,null);
+      var style_str = (this.tags[tag]['in'])? pref.liveTag.style_in_str :
+                      (!pref.liveTag.style || this.tags[tag].ur<=0)? null :
+                      (this.tags[tag].ur>=2)? pref.liveTag.style_urtm_str : pref.liveTag.style_ur_str;
+      if (style_str) node.setAttribute('style',style_str); // this can accept '!important'
+      else node.removeAttribute('style');
     },
+//    color_tag_node : function(node, tag){
+//      if (this.tags[tag]['in']) common_func.init_set_style(node,pref.liveTag.style_in_obj4);
+//      else if (pref.liveTag.style) {
+//        if (this.tags[tag].ur>2) common_func.init_set_style(node,pref.liveTag.style_urtm_obj4);
+//        else if (this.tags[tag].ur>0) common_func.init_set_style(node,pref.liveTag.style_ur_obj4);
+//        else common_func.init_set_style(node,null);
+//      } else common_func.init_set_style(node,null);
+//    },
     update_tag_string: function(tags, sep, func_click, tagname){
       var pn = document.createElement('span');
 //      pn.setAttribute('class',pref.script_prefix+'_tag');
@@ -16523,6 +16792,17 @@ if (!pref.test_mode['79']) {
                                                 [pref_func.settings.html_funcs.get_domains()[pref.archive.domain],
                                                  '/'+pref.archive.board.replace(/\//g,'')+'/'];
       if (pref.test_mode['80']) dbt[1] = dbt[1].slice(0,-1) + ((IDB)? '_IDB/' : '_File/');
+      if (pref.archive.fix_inconsistency) {
+        if (th_obj.posts[0].no!=dbt[2]) { // lain/drg/4654
+          th_obj.posts = [common_func.deep_copy(th_obj.posts[0])].concat(th_obj.posts);
+          th_obj.posts[0].no = dbt[2];
+          console.log('Archiver: Fixed: added dummy OP: '+dbt.join(''));
+        }
+        for (var i=0;i<th_obj.posts.length;i++) if (th_obj.posts[i].filename===false) {
+          th_obj.posts[i].filename = 'LOST_AT_ARCHIVE';
+          console.log('Archiver: Fixed: filename was lost: '+dbt.join('')+'#'+th_obj.posts[i].no);
+        }
+      }
       if (!url_funcs_wrapped) {
         url_funcs_wrap();
         url_funcs_wrapped = true;
@@ -17257,13 +17537,13 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         else this.exit();
 }
       },
-      func_scan: function(tgts,options){
+      func_scan: function(tgts,options, multi_entry){
         if (!this.wdg) this.wdg = new Watchdog(this.abort.bind(this),30000);
         cataLog.scan_init(this.key, tgts, {callback: this.func_cont.bind(this),
                                            watchdog: this.wdg.restart.bind(this.wdg),
                                            priority: this.priority,
                                            __proto__: options
-                                          });
+                                          }, multi_entry);
       },
       func_cont: function() {
         if (this.req) {
@@ -17301,7 +17581,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       scanners: Object.create(null),
       priority: 8,
       func_entry: function(){
-        this.func_scan(this.arg.tgts, this.arg.options);
+        this.func_scan(this.arg.tgts, this.arg.options, true);
       },
       func_cont: function() {
         if (this.queue && this.queue.length>0) {
@@ -17388,11 +17668,12 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         }
       },
       scan_ui: function(key, arg){
-        var scanner = ScannerUI.prototype.scanners[key];
-        if (scanner) {
-          if (!this.queue) this.queue = [];
-          this.queue[this.queue.length] = arg; // multi entry.
-        } else new ScannerUI(key, arg).func_entry();
+        new ScannerUI(key, arg).func_entry();
+//        var scanner = ScannerUI.prototype.scanners[key];
+//        if (scanner) {
+//          if (!this.queue) this.queue = [];
+//          this.queue[this.queue.length] = arg; // multi entry.
+//        } else new ScannerUI(key, arg).func_entry();
       },
       scan_threads_delayed_do: DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){scan.scan('t');}, 200)),
       keyword_load: function(force, health_indicator){
@@ -17674,11 +17955,11 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var pn12_0_2 = cnst.add_to_tb(pn12,
 //        '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
 //        '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
-        '<button name="filter"><img src="' + cnst.icons.filter + '" style="width:14px;height:14px"></button>' +
-        '<button name="settings"><img src="' + cnst.icons.settings + '" style="width:14px;height:14px"></button>'+
+        '<button name="filter">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'F' : '<img src="' + cnst.icons.filter + '" style="width:14px;height:14px">') +'</button>' +
+        '<button name="settings">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'S' : '<img src="' + cnst.icons.settings + '" style="width:14px;height:14px">') +'</button>'+
 //        '<button name="refresh">Refresh</button>'+
 //        '<button name="refresh">\u27f3</button>'+
-        '<button name="refresh"><img src="' + cnst.icons.refresh + '" style="width:14px;height:14px"></button>'+
+        '<button name="refresh">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'R' : '<img src="' + cnst.icons.refresh + '" style="width:14px;height:14px">') +'</button>'+
         '<span name="num_of_pages">'+
           '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></span>'+
         '<span name="boards_selector"><select name="catalog_board_list_sel"></select></span>');
@@ -18278,9 +18559,9 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //          }
 //          scan_boards_init(key, obj, {lifetime:pref.scan.lifetime*60, cache_write:true});
 //        }
-        function scan_init(key,mem,args){
+        function scan_init(key,mem,args, multi_entry){
 if (pref.debug_mode['5']) console.log('scan_init: '+key);
-          if (!scan_boards_check_pre(key,false)) return;
+          if (!multi_entry && !scan_boards_check_pre(key,false)) return;
           if (!Array.isArray(mem)) mem = Object.keys(mem);
           if (mem.length==0) {
             if (args.callback) args.callback(args.callback_args);
@@ -18650,7 +18931,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////        }
 
         var threads_meguca = {};
-        function scan_boards_keyword_callback2(key,value,args){ // requires snoop and on demand rendering for merge.
+        function scan_boards_keyword_callback2(key,value,args, insert_thread_from_native){ // requires snoop and on demand rendering for merge.
 ////////  if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
           var sb = args[1];
           var dbt = key.split(',');
@@ -18838,7 +19119,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
                 }
                 if (post_updated || picked_up_by_filter || tgt_th_status===undefined || force_update) {
                   if (pref[embed_mode].scroll_lock) show_catalog_scroll_lock.set();
-                  insert_thread(th, value.date, picked_up_by_kwd_filter);
+                  insert_thread(th, value.date, picked_up_by_kwd_filter, insert_thread_from_native);
                   tgts[th.key] = true;
                   tgt_th = threads[th.key];
                 } // else if (pref[embed_mode].load_on_demand) reorder_thread_idx(th.key); // place thread before ODL. // changed. // implementation is changed.
@@ -19439,7 +19720,7 @@ if (pref.test_mode['22']) {
         if (changed.ex) threads[name][9] = catalog_filter_query(name);
         if (changed.watch) {
           reorder_thread_idx(name);
-          if (pref[embed_mode].mark_new_posts) format_html.update(name);
+          if (pref[embed_mode].mark_new_posts) if (embed_mode!=='catalog') format_html.update(name);
         }
         if (changed.ex || changed.watch) show_catalog(name);
         if (triage.get_trg().format_tgt) triage.format_buttons(changed.name);
@@ -19857,9 +20138,8 @@ if (!pref.test_mode['13']) {
 ////////
 //////// Memory leak was found with None (document leaks when I read KC's one), but I'll go with None.
 ////////
-      var insert_thread_from_native = false;
 //      function insert_thread(src, nickname, page_no, date_load, name, html_org, src2, url, from_native, th, type){
-      function insert_thread(th, date_load, picked_up_by_kwd_filter){
+      function insert_thread(th, date_load, picked_up_by_kwd_filter, insert_thread_from_native){
         var date_load = date_load;
         var name = th.key;
 if (!pref.test_mode['28']) {
@@ -19995,17 +20275,20 @@ if (pref.test_mode['19']) { // stability test.
         if (init_new && tgt_th[0]) threads[name][16].posts = th.posts;
         if (th.type_source==='page' || th.domain==='4chan' && th.type_parse==='catalog_json') threads[name][16].t2h_page = th.posts.length-1;
 
+//        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) {
+////        if (embed_mode==='page' || embed_mode==='thread' || !pref.test_mode['49']) {
+////          if (!th.posts) th.posts = th.parse_funcs.posts(th); // patch for 4chan catalog.
+        var t2h_num_of_posts = format_html.get_t2h_num_of_posts(tgt_th, th.type_source);
+        if (t2h_num_of_posts!==false) {
+          if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts && embed_mode==='page') { // load to add
+//          if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts) { // doesn't work for short links(last 50 posts)
+            threads[name][16].expand_posts = true;
+            scan.list_nup.add_scan(th.key);
+//            catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
+          }
+        }
         if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) {
-//        if (embed_mode==='page' || embed_mode==='thread' || !pref.test_mode['49']) {
-          if (!th.posts) th.posts = th.parse_funcs.posts(th); // patch for 4chan catalog.
-          var t2h_num_of_posts = format_html.get_t2h_num_of_posts(tgt_th, th.type_source);
           if (t2h_num_of_posts!==false) {
-            if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts && embed_mode==='page') { // load to add
-//            if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts) { // doesn't work for short links(last 50 posts)
-              threads[name][16].expand_posts = true;
-              scan.list_nup.add_scan(th.key);
-//              catalog_liveTag_scan_ui('scan_ui', {tgts:[name], options:{refresh:true}});
-            }
             if (tgt_th[16].th) th.posts = site2[th.domain].update_posts_replace_prep(th.posts, tgt_th[16].th.posts, t2h_num_of_posts); // merge
             if (tgt_th[16].posts) th.posts = site2[th.domain].update_posts_replace_prep(th.posts, tgt_th[16].posts, t2h_num_of_posts); // merge // MUST CHANGE ADDRESS OF th.posts, 'th.posts===th_old.posts' is used 'insert_thread_format_html'
             // CAUSE BUG??? may cayse mixing posts which should use different prototype, posts_html and posts_json.
@@ -20082,8 +20365,8 @@ if (pref.test_mode['19']) { // stability test.
           if (pref[embed_mode].format.thumb.resize) // BUG, should be moved into show_catalog() because threads aren't shown all the time and cause memory leak.
             for (var i=0;i<th.tn_imgs.length;i++) th.tn_imgs[i].addEventListener('load',(i==0)?image_resize1_onload : image_resize2_onload, false);
 
-          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
-                                                                                       site2[th.domain].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
+          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain_html].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
+                                                                                       site2[th.domain_html].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
           catalog_attr_set(th.key,tgt_th[0]);
   
           if (embed_mode==='float' && pref.catalog.text_mode.mode==='text') { // place after th.op_img_url. // NEED TO MODIFY REMOVE_THREAD TO PREVENT MEMORY LEAK.
@@ -20113,13 +20396,17 @@ if (pref.test_mode['19']) { // stability test.
       function insert_thread_format_html(th,name,init_new,insert_thread_from_native, force_prep_html){
 //        if (force_prep_html) format_html.prepare_html(th); // for json
         site2['DEFAULT'].check_reply.set_own_posts(th);
+        var posts_used;
 //        if (th.type_source==='page') threads[name][16].t2h_page = th.posts.length-1;
         if (init_new) {
 
 // working code, but BUG. this makes 'threads[name][16].posts === th.posts' BEFORE merging th.posts which contains deleted posts in 'embed_mode==='thread', so no merge will occur.
 // But I remember I had troubled here..., safe1309-1308.
-          if ((embed_mode==='page' || embed_mode=='thread') && threads[name][16].posts && threads[name][16].posts!==th.posts) format_html.update_posts_in_page(th,name,null, true);
-          else threads[name][16].posts = th.posts;
+          if ((embed_mode==='page' || embed_mode=='thread') && threads[name][16].posts && threads[name][16].posts!==th.posts) posts_used = format_html.update_posts_in_page(th,name,null, true);
+          else {
+            threads[name][16].posts = th.posts;
+            posts_used = th.posts;
+          }
  ////          if (embed_mode==='page' || embed_mode==='thread') {
 //          if (embed_mode==='page' && threads[name][16].posts && threads[name][16].posts!==th.posts) format_html.update_posts_in_page(th,name,null, true);
 //          else threads[name][16].posts = th.posts;
@@ -20156,7 +20443,7 @@ if (pref.test_mode['19']) { // stability test.
         } else {
           if (th.domain==='KC' && embed_mode==='page' && pref[embed_mode].use_expander_always) site2[th.domain_html].page_json2html3_replace_expander(th.posts, format_html.get_t2h_index(threads[name])); // test patch for KC, I don't know why but other than KC generates ERROR.
           if ((embed_mode==='page' || embed_mode==='thread') && (pref.catalog_expand_at_initial_embed || pref.catalog_expand_at_initial))
-            if (th.parse_funcs.has_posts) format_html.update_posts_in_page(th,name);
+            if (th.parse_funcs.has_posts) posts_used = format_html.update_posts_in_page(th,name);
 ////////          if (threads[name][19][0]===0) { // patch // working code.
 ////////            threads[name][19][0] = - get_mark_time(name,pref.catalog.filter.time_watch,false,true);
 ////////            if (threads[name][19][0]!==0) threads[name][19][2] = 0;
@@ -20182,15 +20469,16 @@ if (pref.test_mode['19']) { // stability test.
           th.parse_funcs_html = site2[th.domain_html].parse_funcs.page_html;
           for (var i=idx_new_post;i<th.posts.length;i++) if (!th.posts[i].pn) th.posts[i].pn = site2[th.domain_html].post_json2html(th.posts[i],th.board);
           for (var i=idx_new_post;i<th.posts.length;i++) th.posts[i].tn_imgs = th.parse_funcs_html.tn_imgs(th.posts[i]);
+          posts_used = th.posts.slice(idx_new_post);
         }
 //        if (embed_page && th.parse_funcs.has_posts) {
-        if (embed_mode==='page' || embed_mode==='thread') {
+        if (posts_used && (embed_mode==='page' || embed_mode==='thread')) {
           var add_event = !pref[embed_mode].env.expand_thumbnail_inline_native || !insert_thread_from_native || (pref[embed_mode].expand_thumbnail_inline_all_after && pref[embed_mode].env.event_dynamic);
           var expand_now = pref[embed_mode].expand_thumbnail_initial;
           var expand_on_demand = pref[embed_mode].thumbnail.inline.ondemand;
           if (add_event || expand_now)
-            for (var j=idx_new_post;j<th.posts.length;j++) {
-              var tn_imgs = th.parse_funcs_html.tn_imgs(th.posts[j]);
+            for (var j=0;j<posts_used.length;j++) {
+              var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
               if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) {
                 tn_imgs[i].onclick = expand_thumbnail_inline;
 //                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set; // REDUNDANT???
@@ -20203,11 +20491,11 @@ if (pref.test_mode['19']) { // stability test.
               }
             }
         }
-        if ((embed_mode==='catalog' && init_new) || (embed_mode==='page' || embed_mode==='thread')) 
+        if (posts_used && ((embed_mode==='catalog' && init_new) || (embed_mode==='page' || embed_mode==='thread'))) 
           if (pref[embed_mode].image_prefetch || (pref[embed_mode].image_hover && (!pref[embed_mode].env.image_hover_native || !insert_thread_from_native)))
             if (th.parse_funcs.has_posts && (embed_mode==='page' || embed_mode==='thread')) {
-              for (var j=idx_new_post;j<th.posts.length;j++) {
-                var tn_imgs = th.parse_funcs_html.tn_imgs(th.posts[j]);
+              for (var j=0;j<posts_used.length;j++) {
+                var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
                 if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) tn_imgs[i].onmouseover = image_hover_add;
               }
             } else if (init_new && !th.parse_funcs_html.dynamic_image_hover) {
@@ -20328,6 +20616,7 @@ if (pref.test_mode['19']) { // stability test.
 //          if (!th.parse_funcs.has_posts && !remove) return;
 //          if (force_prep_html) this.prepare_html(th); // for json
           var tgt_th = threads[name];
+          var posts_used = [];
 ////          var t2h_num_of_posts = this.get_t2h_num_of_posts(tgt_th, th.type_source);
 ////          if (t2h_num_of_posts!==false) {
 //////            if (t2h_num_of_posts>=0 && th.posts.length > t2h_num_of_posts+1) th.posts.splice(1,th.posts.length - t2h_num_of_posts -1);
@@ -20343,8 +20632,9 @@ if (pref.test_mode['19']) { // stability test.
 ////            tgt_th[16].posts = site2[th.domain].update_posts_merge_prep(tgt_th[16].posts, th.lth.pd, true);
 //            site2[th.domain_html].update_posts_replace(th,tgt_th[16],(pref[embed_mode].merge)? site2['DEFAULT'].update_posts_merge_base : tgt_th[0], pref[embed_mode].merge, tgt_th[1]);
 //          } else 
-          site2[th.domain_html].update_posts_replace(th,tgt_th[16],(pref[embed_mode].merge)? site2['DEFAULT'].update_posts_merge_base : tgt_th[0], pref[embed_mode].merge, tgt_th[1]);
+          site2[th.domain_html].update_posts_replace(th,tgt_th[16],(pref[embed_mode].merge)? site2['DEFAULT'].update_posts_merge_base : tgt_th[0], pref[embed_mode].merge, tgt_th[1], posts_used);
           if (tgt_th[16].expand_posts) tgt_th[16].expand_posts = null;
+          return posts_used;
         },
         replace_posts_by_search: function(tgt_th){ // tgt_th[16].th may be set by updater.
           var th = tgt_th[7];
@@ -20403,7 +20693,7 @@ if (pref.test_mode['19']) { // stability test.
           if (embed_mode!=='catalog' && pref[embed_mode].mark_new_posts && (threads[name][19][0]&0x000c0000)) {// draw only
             var mark_time = get_mark_time(name,pref.catalog.filter.time_watch || pref.catalog.filter.time_watch_creation,true,true);
             if (mark_time===0 && embed_mode==='thread') mark_time = site2['DEFAULT'].check_reply.get_checked_time(threads[name][19]);
-            site2[threads[name][16].domain_html].mark_newer_posts(threads[name][0], mark_time);
+            if (mark_time>0) site2[threads[name][16].domain_html].mark_newer_posts(threads[name][0], mark_time);
           }
         },
         update: function(name){ // draw and ERASE.
@@ -21086,7 +21376,7 @@ if (!pref.test_mode['63']) {
 //      }
       function open_new_thread(url, name){
         var dbt = common_func.fullname2dbt(name);
-        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4([site.nickname, site.board, '0','page_html'])[0];
+        if (threads[name][16].archiveFile) url = site2[(pref.archive.open_local)? site.nickname : dbt[0]].make_url4([site.nickname, site.board, '0','page_html'])[0];
 //        if (threads[name][16].archiveFile) url = site2[dbt[0]].make_url4(common_func.name2dbt(name).slice(0,2).concat(['0','page_html']))[0];
         else {
           if (url===null) {
@@ -21283,7 +21573,7 @@ if (pref.test_mode['23']) drawn_idx = 0;
 ////////        catalog_triage_out();
         var triage_thread = triage.get_triaged_thread_name();
 //        pref_func.tooltips.hide();
-        var catalog_expand_with_hr = pref.catalog_expand_with_hr && (embed_mode==='page' || embed_mode==='float');
+        var catalog_expand_with_hr = (embed_mode==='float' && pref.catalog_expand_with_hr) || pref[embed_mode].env.disp_filler;
         var ref_count;
         if (tgts!==undefined) for (var i=0;i<drawn_idx;i++) if (threads_idx[i] in tgts) {drawn_idx = i;break;}
         var ref_count_init = pref[embed_mode].env.disp_offset;
@@ -21562,23 +21852,9 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
             catalog_obj2.func_show_hide(name, true);
           }
         } : null;
-      } else if (embed_mode==='page' && pref.catalog_expand_with_hr) {
-        catalog_obj2 = {
-          func_show: function(name,ref,catalog_expand_with_hr){
-            var hr = (threads[name][1])? threads[name][0].nextSibling : document.createElement('hr');
-            triage_parent.insertBefore(threads[name][0],ref);
-            triage_parent.insertBefore(hr,ref);
-            return true;
-          },
-          func_hide: function(name,catalog_expand_with_hr){
-            triage_parent.removeChild(threads[name][0].nextSibling);
-            triage_parent.removeChild(threads[name][0]);
-            return true;
-          },
-          ref_step: 2,
-          __proto__: catalog_obj2_proto
-        }
-      } else if (pref.catalog_expand_with_hr) {
+      } else if (pref[embed_mode].env.disp_filler) {
+        catalog_obj2 = catalog_obj2_factory_filler((pref[embed_mode].env.disp_filler[0]==='<')? document.createElement('hr') : document.createTextNode(pref[embed_mode].env.disp_filler));
+      } else if (embed_mode==='float' && pref.catalog_expand_with_hr) {
         catalog_obj2 = {
           func_show: function(name,ref,catalog_expand_with_hr){
             if (catalog_expand_with_hr && threads[name][1]) show_catalog_hr(name,'remove');
@@ -21596,6 +21872,24 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
 //        var pctrls = triage_parent;
 //        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
 //        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
+      }
+      function catalog_obj2_factory_filler(filler){
+        return {
+          func_show: function(name,ref){
+            var hr = (threads[name][1])? threads[name][0].nextSibling : this.filler.cloneNode(false);
+            triage_parent.insertBefore(threads[name][0],ref);
+            triage_parent.insertBefore(hr,ref);
+            return true;
+          },
+          func_hide: function(name){
+            triage_parent.removeChild(threads[name][0].nextSibling);
+            triage_parent.removeChild(threads[name][0]);
+            return true;
+          },
+          ref_step: 2,
+          filler: filler,
+          __proto__: catalog_obj2_proto
+        };
       }
       var show_catalog = (catalog_obj2)? catalog_obj2.show_catalog.bind(catalog_obj2) :
                                          catalog_obj2_proto.show_catalog.bind(catalog_obj2_proto);
@@ -22295,11 +22589,11 @@ if (!pref.test_mode['49']) {
           }
         }
         if (mode==='page' && embed_init) { // patch
-          if (pref.liveTag.from!=='none') { // ALWAYS TRUE, WHY...
+          if (pref.liveTag.use) {
             var bds = {};
             for (var i=0;i<tgts.length;i++) {
               var dbt = cnst.name2domainboardthread(tgts[i],true);
-              bds[dbt[0]+dbt[1]+((pref.catalog.catalog_json)? 'j0':'c0')] = null;
+              bds[dbt[0]+dbt[1]+((pref.catalog.catalog_json)? 'j0':'c0')] = null; // add a catalog for scan all thread.
             }
             for (var i in bds) tgts[tgts.length] = i;
 //            cataLog.scan_init('init_tag',bds, {tag_only:true});
@@ -22726,22 +23020,26 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
           }
           if (show_catalog_init_funcs) show_catalog_init_funcs();
           if (pref.catalog.filter.kwd.active && (embed_mode==='page' || embed_mode==='catalog')) show_catalog();
-          if (pref.catalog_board_list_sel!==0 && pref.catalog.refresh.at_switch) catalog_clear_threads(0); 
+          if (pref.catalog_board_list_sel!==0 && !(pref.catalog.board.all_boards && pref.catalog_board_list_sel===pref.catalog_board_list_obj.length-1)) {
+            var tgts = cataLog.catalog_refresh_1(embed_mode, false, false, false, false, pref.catalog_board_list_sel, false, false);
+            var key_me = site.nickname+site.board+((embed_mode==='catalog')? 'c0' : (embed_mode==='page')? 'p0' : site.no);
+            var key_me2= site.nickname+site.board+((embed_mode==='catalog')? 'j0' : (embed_mode==='page')? 'q0' : 't'+site.no);
+            if (Array.isArray(tgts) && pref.catalog.refresh.at_switch && tgts.indexOf(key_me)===-1 && tgts.indexOf(key_me2)===-1) catalog_clear_threads(0);
+          }
+//          if (pref.catalog_board_list_sel!==0 && pref.catalog.refresh.at_switch) catalog_clear_threads(0);
           pn12.parentNode.removeChild(pn12);
         },0);
 //        },10); // wait native script for 4chan, but doesn't work.
       }
       var insert_myself_init_flag = true; // PATCH
       function insert_myself(){
-          insert_thread_from_native = true;
 //          var ths = scan_boards.scan_boards_keyword_callback2(site.nickname+','+site.board+','+site.no+','+((embed_catalog)?'catalog':'page')+'_html',
           var new_posts = [];
           var ths = scan_boards.scan_boards_keyword_callback2(site.nickname+','+site.board+','+((embed_mode==='thread')?site.no:'0')+','+embed_mode+'_html',
                                                               {date:Date.now(), status:200, response:document},
-                                                              ['native_prep',{native_prep:true, found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, ext_posts:new_posts}]);
+                                                              ['native_prep',{native_prep:true, found_threads: 0, max_threads:500, found_board:0, scanned:0, refresh:true, ext_posts:new_posts}], true);
           if (embed_mode==='thread' && common_obj.thread_reader && new_posts.length!==0) common_obj.thread_reader.updated(new_posts,insert_myself_init_flag);
           insert_myself_init_flag = false;
-          insert_thread_from_native = false;
           return ths;
       }
 ////////      if (embed_catalog || embed_page) {  // for native catalog // working code.
@@ -23181,6 +23479,40 @@ if (pref.debug_mode['14']) {
           }
         }
         triage_parent.addEventListener('change',change,false);
+
+        function click(e){
+          var et = e.target;
+          if (et.tagName==='A') {
+            if (et.href.indexOf('//www.youtube.com')!==-1) insert_iframe_youtube(et.href.replace(/watch\?v=/,'embed/'), e);
+            else if (et.href.indexOf('//youtu.be')!==-1)   insert_iframe_youtube(et.href.replace(/youtu.be/,'youtube.com/embed'), e);
+            else {
+              var cmd = et.getAttribute('data-cmd');
+              if (cmd && cmd.indexOf(pref.script_prefix)===0) {
+                cmd = cmd.substr(pref.script_prefix.length+1);
+                if (cmd==='remove_next') remove_next(e);
+              }
+            }
+          }
+        }
+        function insert_iframe_youtube(url, e, et){
+          var et = e.target;
+          var close_button = document.createElement('span');
+          close_button.innerHTML = ' [<a data-cmd="'+pref.script_prefix+'_remove_next">Remove</a>] ';
+          if (!et.nextSibling || et.nextSibling.innerHTML!==close_button.innerHTML) {
+            e.target.parentNode.insertBefore(close_button,et.nextSibling);
+            var div = document.createElement('div');
+            div.innerHTML = '<iframe src="' + url + '" width="640" height="360" frameborder="0" allowfullscreen=""></iframe>';
+            div.classList.add('media-embed');
+            et.parentNode.insertBefore(div,close_button.nextSibling);
+          }
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        function remove_next(e){
+          e.target.parentNode.parentNode.removeChild(e.target.parentNode.nextSibling);
+          e.target.parentNode.parentNode.removeChild(e.target.parentNode);
+        }
+        if (pref.test_mode['87']) triage_parent.addEventListener('click',click,false);
         return {
           setup: setup,
           get_last_viewed: function(){
@@ -25060,6 +25392,10 @@ if (pref.test_mode['17']) {
 //    var pn9 = div_init(9,'120px','30px','button','post_form');
 //    var pn9 = cnst.init('left:120px:bottom:30px:button:post_form:Show');
     pn9.addEventListener('click', show_hide, false);
+    if (site2[site.nickname].postform) {
+      var tack = site2[site.nickname].postform.init();
+      if (tack) tack.addEventListener('click', show_hide, false);
+    }
     var pn10 = null;
     var pn10_2 = null;
 //    var pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox">workaround for dollchan<input type="checkbox">prevent redirection');
@@ -25077,14 +25413,14 @@ if (pref.test_mode['17']) {
     var on = false;
     var hidden_elements = [];
     function show_hide(){
-      if (site2[site.nickname].postform_activation) {
-        site2[site.nickname].postform_activation();
-        site2[site.nickname].postform_activation=null;
-      }
+      if (site2[site.nickname].postform.activation) site2[site.nickname].postform.activation();
       var tgt    = site.postform;
       if (!on) {
         if (pn10==null) {
-          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+          var left = tgt.offsetLeft - tgt.scrollLeft;
+          var top = tgt.offsetTop - tgt.scrollTop;
+          pn10 = cnst.init('left:'+left+'px:top:'+top+'px:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+//          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
           pn10.id = 'pn10_debug';
 //          pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="workaround_for_dollchan">workaround for dollchan<input type="checkbox" name="prevent_redirection">prevent redirection');
           pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="prevent_redirection">prevent redirection');
@@ -25122,9 +25458,11 @@ if (pref.test_mode['17']) {
           site.postform_rules.style.display = 'none';
           hidden_elements.push(site.postform_rules);
         }
+        if (site2[site.nickname].postform) site2[site.nickname].postform.on(site.postform);
         site.components.postform_comment.focus();
-        cnst.bottom_top(pn10);
+//        cnst.bottom_top(pn10);
       } else {
+        if (site2[site.nickname].postform) site2[site.nickname].postform.off(pn10);
         while (hidden_elements.length!=0) hidden_elements.pop().style.display = '';
 //        site.root_body.removeChild(pn10); // working code.
 //        parent.insertBefore(tgt,parent.childNodes[no]);
