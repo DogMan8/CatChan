@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.11.0
+// @version 2017.06.11.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -2998,7 +2998,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.11.0<br>'+
+          'Version 2017.06.11.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11438,23 +11438,13 @@ if (pref.test_mode['35']) return;
             cataLog.show_catalog();
           }
           var reentry_tap = function(e){
+            console.log('reentry');
             observer3.disconnect();
-            if (pref[site.whereami].embed) cataLog.catalog_obj2.masked = false;
-            this.catalog_native_prep(null, pn_filter, pn_tb);
+//            this.catalog_native_prep(null, pn_filter, pn_tb);
 //            if (this.catalog_get_native_area()!=cataLog.components.initialized) { // doesn't work
 //              console.log('found background refresh');
 //              cataLog.components.initialized = this.catalog_get_native_area();
-            console.log(e);
-            if (updated_by_native || cataLog.catalog_obj2.updated_but_masked) {
-              cataLog.general_event_handler.destroy();
-              cataLog.triage.off();
-              cataLog.triage_parent_set();
-              cataLog.general_event_handler = new cataLog.GEH(cataLog.parent);
-              cataLog.general_event_handler.init();
-              redraw();
-            }
-            updated_by_native = false;
-          }.bind(this);
+          }; // .bind(this);
           window.addEventListener('focus', reentry_tap, false);
 
           var updated_by_native = false;
@@ -11464,13 +11454,14 @@ if (pref.test_mode['35']) return;
 
             if (pref[site.whereami].embed) { // test
               observer3.disconnect();
-              cataLog.catalog_obj2.masked = false;
+//              cataLog.catalog_obj2.masked = false;
               cataLog.general_event_handler.destroy();
-              cataLog.triage.off();
+//              cataLog.triage.off();
               cataLog.triage_parent_set();
               cataLog.general_event_handler = new cataLog.GEH(cataLog.parent);
               cataLog.general_event_handler.init();
               redraw();
+              site2['meguca'].catalog_native_prep(null, pn_filter, pn_tb);
               blur_tap();
             }
 
@@ -11496,13 +11487,13 @@ if (pref.test_mode['35']) return;
                 console.log('mascot off');
                 cataLog.image_hover_remove();
                 cataLog.general_event_handler.destroy();
-                cataLog.triage.off();
+//                cataLog.triage.off();
                 for (var name in cataLog.threads) cataLog.remove_thread(name, true);
 //                for (var name in cataLog.threads) if (cataLog.threads[name][1]) if (cataLog.catalog_obj2.func_hide(name)) cataLog.threads[name][1] = false;
 
                 site2['meguca'].check_func(true);
                 if (pref[site.whereami].embed) { // using site.whereami instead of cataLog.embed_mode
-                  cataLog.catalog_obj2.masked = false;
+//                  cataLog.catalog_obj2.masked = false;
                   cataLog.set_embed_xxxx(); // this changes embed_mode
                   cataLog.triage_parent_set();
                   cataLog.general_event_handler = new cataLog.GEH(cataLog.parent);
@@ -11511,7 +11502,7 @@ if (pref.test_mode['35']) return;
                   if ((site.whereami==='catalog' || site.whereami==='page') && !pref.test_mode['90']) redraw();
                   site2['meguca'].catalog_native_prep(null, pn_filter, pn_tb);
 //                  reentry_tap(); // WILL call show_catalog here, from pref3.catalog.filter.kwd.clear()
-                } else cataLog.catalog_obj2.masked = true;
+                } // else cataLog.catalog_obj2.masked = true;
                 recovery.reentry();
                 receive_message_emu();
               }
@@ -12967,8 +12958,8 @@ if (pref.test_mode['35']) return;
           favicon_current = favicon_next;
         }
       }
-      var func_debug = function(e){for (var i=0;i<e.length;i++) console.log(e[i].target.href);};
-      new MutationObserver(func_debug).observe(favicon, {attributes:true});
+//      var func_debug = function(e){for (var i=0;i<e.length;i++) console.log(e[i].target.href);};
+//      new MutationObserver(func_debug).observe(favicon, {attributes:true});
 //      function favicon_set(str){ // working code.
 //        if (!favicon) favicon = site2[site.nickname].favicon.get_favicon();
 //        if (str[0]!=='/') str = 'data:image/'+str;
@@ -21696,6 +21687,7 @@ if (pref.test_mode['19']) { // stability test.
 //          var merge_base = (pref[embed_mode].merge && tgt_th[1])? site2['DEFAULT'].update_posts_merge_bases.query((tgt_th[16].posts && tgt_th[16].posts!==th.posts)? {pn:tgt_th[0], __proto__:tgt_th[16]} : th, 'ALL', true) : site2['DEFAULT'].update_posts_merge_bases.bases[th.key]; // redundant but for saster execution, shall works correctly if this doesn't exist. (not debugged.)
 //          if (init_new && merge_base && merge_base.pn!==th.pn) site2[th.domain_html].update_posts_merge_init(th, merge_base);
           if (!init_new || tgt_th[16].posts && tgt_th[16].posts!==th.posts) {
+            if (init_new) posts_used = th.posts.slice(); // patch for merging deleted posts at initial.
             site2[th.domain_html].update_posts_replace(th,tgt_th[16], tgt_th[0], merge_base, tgt_th[1], posts_used);
 //          site2[th.domain_html].update_posts_replace(th,tgt_th[16],(pref[embed_mode].merge)? site2['DEFAULT'].update_posts_merge_base : tgt_th[0], pref[embed_mode].merge, tgt_th[1], posts_used);
             if (tgt_th[16].expand_posts) tgt_th[16].expand_posts = null;
@@ -22643,7 +22635,7 @@ var debug_str2;
 //      function show_catalog(tgts_in,sound){
     var catalog_obj2_proto = {
       show_catalog: function(tgts_in,sound){
-        if (this.masked) {this.updated_but_masked = true; return;} // test patch for meguca.
+//        if (this.masked) {this.updated_but_masked = true; return;} // test patch for meguca.
 if (pref.debug_mode['11']) {
   var debug_str = threads_idx_debug(drawn_idx, this.drawn_y, this.ref_count, threads_idx);
 }
