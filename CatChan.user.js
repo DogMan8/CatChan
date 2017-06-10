@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.11.1
+// @version 2017.06.18.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -498,7 +498,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       },
 
 //      graph : {key: null, pipe: null},
-      uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, auto_open:false, auto_open_th:300, auto_open_kwd:''},
+      uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, auto_open:false, auto_open_th:300, auto_open_kwd:'',
+                    sage: {detect:true, name:true, name_str:'color:Blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1}},
       thread_reader: {use: true, sync: true, triage: true, triage_close: true, check_num_of_children: true,
         own_posts_tracker: false, show_own_post_by: 'anchor', show_reply_to_me_by: 'anchor', clean_up_own_posts: true},
       settings: {indexing: 0},
@@ -597,7 +598,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       },
       proto: proto, // for overwrite from pref_default.
     };
-    for (var i=0;i<30;i++) pref_new.debug_mode[i] = false;
+    for (var i=0;i<40;i++) pref_new.debug_mode[i] = false;
     for (var i=0;i<100;i++) pref_new.test_mode[i] = false;
     if (site) {
       if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref_new,site2[site.nickname].pref_default);
@@ -2882,10 +2883,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;&emsp;<input type="checkbox" name="uip_tracker.deletion"> Show deleted posts\' No.<br>'+
           '&emsp;&emsp;Interval: <input type="text" name="uip_tracker.interval" size="3" style="text-align: right;">sec'+
           '&emsp;<input type="checkbox" name="uip_tracker.adaptive"> Adaptive<br>'+
-          '&emsp;<input type="checkbox" name="uip_tracker.auto_open"> Open next thread automatically<br>'+
-          '&emsp;&emsp;Conditions:<br>'+
-          '&emsp;&emsp;&emsp;After <input type="text" name="uip_tracker.auto_open_th" size="3" style="text-align: right;">th post<br>'+
-          '&emsp;&emsp;&emsp;OP contains <textarea style="height:1em" cols="20" name="uip_tracker.auto_open_kwd"></textarea><br>',
+          '2,<ICBX"uip_tracker.auto_open"> Open next thread automatically<br>'+
+          '3,Conditions:<br>'+
+          '4,After <input type="text" name="uip_tracker.auto_open_th" size="3" style="text-align: right;">th post<br>'+
+          '4,OP contains <textarea style="height:1em" cols="20" name="uip_tracker.auto_open_kwd"></textarea><br>'+
+          '2,<ICBX"uip_tracker.sage.detect"> Sage detection, tolerance: <ITB3"uip_tracker.sage.tolerance"> s<br>'+
+          '3,<ICBX"uip_tracker.sage.name"> Add style to name: <ITBL30"uip_tracker.sage.name_str"><br>'+
+          '3,<ICBX"uip_tracker.sage.addName"> Add <ITBL30"uip_tracker.sage.addName_str"> to name<br>'+
+          '3,<ICBX"uip_tracker.sage.post"> Add style to post: <ITBL30"uip_tracker.sage.post_str"><br>',
           'Command interface for overwriting preference<br>'+
           '&emsp;<textarea style="height:1em" cols="40" name="overwrite_site2_json_str"></textarea><br>'+
           '&emsp;<button name="JSON_ex">extract</button>'+
@@ -2998,7 +3003,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.11.1<br>'+
+          'Version 2017.06.18.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3028,14 +3033,15 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '<input type="checkbox" name="debug_mode.9"><br>'+
           (function(){
             var str = '';
-            for (var i=10;i<30;i++) str += '<input type="checkbox" name="debug_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%10===9)? '<br>' : '');
+            var i=9;
+            while (pref.debug_mode[++i]!==undefined) str += '<ICBX"debug_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%10===9)? '<br>' : '');
             return str;
           })() +
           'Test mode<br>'+
           (function(){
             var str = '';
             var i=-1;
-            while (pref.test_mode[++i]!==undefined) str += '<input type="checkbox" name="test_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%50===49)? '<br><br>' : (i%10===9)? '<br>' : '');
+            while (pref.test_mode[++i]!==undefined) str += '<ICBX"test_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%50===49)? '<br><br>' : (i%10===9)? '<br>' : '');
             return str;
           })() +
           '<input type="checkbox" name="test_mode.tips">'+
@@ -10139,10 +10145,21 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     get_json_url_catalog: function(board){
       return site.protocol + '//a.4cdn.org' + board +'catalog.json';
     },
-    uip_check: function(callback){
-      var url = [site.protocol + '//a.4cdn.org' + site.board +'thread/' + site.no + '.json', 'json'];
-      var key = site.nickname + site.board + site.no;
-      http_req.get('uip',key,url,callback,false,false);
+    uip_check: function(callback, callback_sage){
+//      var dbt = [site.nickname,site.board,site.no,(pref.uip_tracker.sage.detect)? 'catalog_json' : 'thread_json']; // catalog doesn't contain 'unique_ips'
+      var dbt = [site.nickname,site.board,site.no,'thread_json']; // [site.protocol + '//a.4cdn.org' + site.board +'thread/' + site.no + '.json', 'json'];
+      http_req.get('uip',dbt.join(),'',callback,false,false);
+      if (pref.uip_tracker.sage.detect) {
+        dbt[3] = 'catalog_json';
+        http_req.get('sage_detection',dbt.join(),'',this.sage_detect,false,false, callback_sage);
+      }
+    },
+    sage_detect_last_bumps: {}, // TEMPORAL
+    sage_detect: function(key,value, callback){
+      var dbt = key.split(',');
+      var ths = site2['4chan'].wrap_to_parse.get(value.response, dbt[0], dbt[1], dbt[3], {page:0});
+      var obj = site2['4chan'].parse_funcs['catalog_json'].add_sage(ths, site2['4chan'].sage_detect_last_bumps, site.no);
+      callback(obj);
     },
     parse_json_thread: function(obj,from_http){
       if (from_http) {
@@ -10174,7 +10191,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
       }
     },
     uip_tgt_post : function(no){
-      return document.getElementById('pc'+no);
+      return document.getElementById('p'+no);
+//      return document.getElementById('pc'+no);
     },
     uip_post_num : function(tgt_post){
       return tgt_post.getElementsByClassName('postNum');
@@ -10205,7 +10223,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
       var node_ref = (site.whereami==='catalog')? document.getElementById('ctrl') :
                                                   document.getElementById('ctrl-top');
-      if (site.whereami==='thread') {
+      if (site.whereami==='thread' || !node_ref) { // !node_ref for 4chan-X v1.13.8.7
         var node_ref = document.getElementsByClassName('navLinks');
         for (var i=0;i<node_ref.length;i++)
           if (window.getComputedStyle(node_ref[i]).display!=='none') {node_ref = node_ref[i]; break;}
@@ -10455,6 +10473,31 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         footer: 'catalog_html',
         class_thread: 'catalog_html',
         class_thumbnail: 'catalog_html',
+        add_sage: function(ths, bumps, end_no){
+          var i=0;
+          while (i<ths.length && ths[i].sticky) if (ths[i].no===end_no) return ths[i]; else i++;
+          if (i==ths.length) return;
+          if (ths[i].no==end_no) return ths[i];
+          var latest_bump = ths[i].posts[ths[i].posts.length-1].time;
+          var tolerance = pref.uip_tracker.sage.tolerance;
+          while (++i<ths.length) {
+            var th = ths[i];
+            if (!th.bumplimit) {
+              for (var j=th.posts.length-1;j>=1;j--) { // annotate all
+                var time = th.posts[j].time;
+                if (bumps[th.no]>time) break; // for deletion
+                if (latest_bump+tolerance>=time) break; // bug of 4chan at roundup, 1 tolerance is required.
+//                if (latest_bump>=time) break;
+                th.posts[j].email = 'sage'; // vichan has 'email' field.
+                if (pref.debug_mode['30']) console.log('detect: sage: p:'+Math.floor(i/15)+'.'+(i%15)+', '+th.key+'#'+th.posts[j].no+', '+time+', '+latest_bump);
+              }
+              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
+              if (!bumps[th.no] || bumps[th.no]<time) bumps[th.no] = time;
+              if (bumps[th.no]) latest_bump = bumps[th.no];
+            }
+            if (th.no==end_no) return th;
+          }
+        },
         proto: 'DEFAULT.catalog_json',
       },
       'page_html' : {
@@ -10519,6 +10562,11 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
             dst.childNodes[0].setAttribute('style','display:none');
             dst.childNodes[1].setAttribute('style','display:none');
           } else {
+//            if (!dst.childNodes[1]) { // for 4chan-X v1.13.8.7
+//              var span = document.createElement('span');
+//              dst.insertBefore(span, dst.firstChild);
+//              dst.childNodes[1].setAttribute('style','');
+//            }
             if (dst.childNodes[1].style.display==='none') {
               if (th.domain===site.nickname) dst.childNodes[0].removeAttribute('style');
               dst.childNodes[1].removeAttribute('style');
@@ -10608,6 +10656,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         txt2com_anchor_class: 'quotelink',
         txt2com_spoiler_replace_txt: '<s>$1</s>',
         time_unit: 1000,
+        pn_name: function (post){return post.pn.getElementsByClassName('desktop')[0].getElementsByClassName('name')[0];},
         proto: 'DEFAULT.post_html',
       },
       'post_json': {
@@ -10623,7 +10672,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 ////    },
     popups_href2dbtp: function(href, src, th){
       if (href[0]==='#' && th) {
-        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1)]);
+        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1), 'href']);
         src.setAttribute('href',href);
       }
       var hrefs = href.split(/[\/#]/);
@@ -14608,15 +14657,13 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     var last_updated = [0,1,1]; //no,posts,uips
     var posts_no = {};
     var waste_count = 0;
-    var interval_pref = pref.uip_tracker.interval;
-    if (interval_pref<10) interval_pref = 10;
-    var interval = interval_pref;
+    var interval = 0;
     var uip_tracker_id;
     uip_check();
 //    function uip_check(){http_req.get('uip',key,url,uip_show,false,false);}
     function uip_check(){
       uip_tracker_id = null;    
-      site2[site.nickname].uip_check(uip_show);
+      site2[site.nickname].uip_check(uip_show, sage_detect);
     }
 
     var threads = {};
@@ -14770,19 +14817,37 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
       if (pref.uip_tracker.on) {
         if (from_http) {
           if (pref.uip_tracker.adaptive){
-            if (waste_count==0) interval = interval_pref;
+            if (waste_count==0) interval = 0;
             else if (waste_count>=8) {
               waste_count=0;
-              interval *= 2;
-             if (interval>=3600) interval=3600;
+              interval = (interval>=1800)? 3600 : interval*2;
             }
-          }
+          } else interval = 0;
+          if (interval==0) interval = (pref.uip_tracker.interval>10)? pref.uip_tracker.interval : 10;
 //          if (value.status!=404) setTimeout(uip_check,interval*1000);
           var p0 = (value.status==200)? obj.posts[0] : null;
           if (value.status!=404 && (!p0 || (!p0['archived'] && !p0['closed']))) uip_tracker_id = setTimeout(uip_check,interval*1000);
           else uip_tracker_destroy();
         }
       } else uip_tracker_destroy();
+    }
+    var sage_done = {};
+    var sage_scheduled = {};
+    function sage_detect(th){
+      for (var i in sage_scheduled) if (sage_annotate(sage_scheduled[i])) delete sage_scheduled[i];
+      for (var i=1;i<th.posts.length;i++)
+        if (th.posts[i].email==='sage' && sage_done[th.posts[i].no]===undefined) sage_annotate(th.posts[i]);
+    }
+    function sage_annotate(post){
+      var pn = site2[site.nickname].uip_tgt_post(post.no);
+      if (pn) {
+        var pn_name = site2[site.nickname].parse_funcs['post_html'].pn_name({pn:pn, __proto__:post});
+        if (pref.uip_tracker.sage.name) pn_name.setAttribute('style',pref.uip_tracker.sage.name_str);
+        if (pref.uip_tracker.sage.addName) pn_name.textContent = pref.uip_tracker.sage.addName_str + pn_name.textContent;
+        if (pref.uip_tracker.sage.post) pn.setAttribute('style',pref.uip_tracker.sage.post_str);
+        sage_done[post.no] = null;
+        return true;
+      } else sage_scheduled[post.no] = post;
     }
     function uip_tracker_destroy(){
       remove_dom_event_listener();
