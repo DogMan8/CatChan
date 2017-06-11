@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.18.0
+// @version 2017.06.18.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3003,7 +3003,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.18.0<br>'+
+          'Version 2017.06.18.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10557,16 +10557,18 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         set_omitted_info : function(post, info){post.pn.parentNode.parentNode.insertBefore(info, post.pn.parentNode.nextSibling);},
         replace_omitted_info : function(dst, src){dst.childNodes[1].textContent = src.childNodes[1].textContent;},
         replace_omitted_info2 : function(dst, src, th){
+          if (dst.tagName==='A') { // for 4chan-X v1.13.8.7
+            var span = document.createElement('span');
+            span.setAttribute('class','summary');
+            span.appendChild(document.createElement('span'));
+            span.appendChild(dst);
+            dst = span;
+          }
 //          if (!src) dst.parentNode.removeChild(dst); // BUG, when I choose ALL in expander, the expander will disappear.
           if (!src) {
             dst.childNodes[0].setAttribute('style','display:none');
             dst.childNodes[1].setAttribute('style','display:none');
           } else {
-//            if (!dst.childNodes[1]) { // for 4chan-X v1.13.8.7
-//              var span = document.createElement('span');
-//              dst.insertBefore(span, dst.firstChild);
-//              dst.childNodes[1].setAttribute('style','');
-//            }
             if (dst.childNodes[1].style.display==='none') {
               if (th.domain===site.nickname) dst.childNodes[0].removeAttribute('style');
               dst.childNodes[1].removeAttribute('style');
@@ -10614,6 +10616,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 ////        post_no: function(post){return parseInt(post.pn.id.substr(2),10);}, // 2015.05.12, maybe depends on baord???
         get_op_src: 'thread_json',
         time_unit: 1000,
+        pn_name: 'post_html', // temporal patch, this should be removed using inherit. Errors can be reproduced when there are mine posts in thread and add_you function is working.
         proto: 'page_html',
       },
       'thread_json'  : {
@@ -10755,8 +10758,9 @@ if (pref.test_mode['35']) return;
       if (!bks) {
         bks = document.createElement('div'); // why div???
         bks.setAttribute('class',this.backlink_parent_class);
-        var ref = this.backlink_parent_prevSib(pn);
-        ref.parentNode.insertBefore(bks,ref.nextSibling);
+        pn.getElementsByClassName('desktop')[0].appendChild(bks); // for 4chan-X v1.13.8.7
+//        var ref = this.backlink_parent_prevSib(pn);
+//        ref.parentNode.insertBefore(bks,ref.nextSibling);
       }
       if (!target) bks.innerHTML = '';
       for (var i=(target || 0);i<backlinks.length;i++) {
