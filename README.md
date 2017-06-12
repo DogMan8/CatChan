@@ -45,7 +45,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2017.06.18.1-0: Added sage detector in 4chan.<br>
+v2017.06.18.2-0: Added sage detector in 4chan.<br>
 v2017.06.11.1: Fixed a bug.(degrade)<br>
 v2017.06.11.0: Fixed bugs, added thread merging and support for historyAPI in meguca. License was changed to AGPLv3.<br>
 v2017.05.07.5-0: <a href="https://meguca.org/g/1841607#p2018782">lainchan.jp is kill</a>, but give support for USERS.<br>
