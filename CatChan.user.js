@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.18.1
+// @version 2017.06.18.2
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -499,7 +499,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 
 //      graph : {key: null, pipe: null},
       uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, auto_open:false, auto_open_th:300, auto_open_kwd:'',
-                    sage: {detect:true, name:true, name_str:'color:Blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1}},
+                    sage: {detect:true, name:true, name_str:'color:blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1, patch_bug:true}},
       thread_reader: {use: true, sync: true, triage: true, triage_close: true, check_num_of_children: true,
         own_posts_tracker: false, show_own_post_by: 'anchor', show_reply_to_me_by: 'anchor', clean_up_own_posts: true},
       settings: {indexing: 0},
@@ -2890,7 +2890,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '2,<ICBX"uip_tracker.sage.detect"> Sage detection, tolerance: <ITB3"uip_tracker.sage.tolerance"> s<br>'+
           '3,<ICBX"uip_tracker.sage.name"> Add style to name: <ITBL30"uip_tracker.sage.name_str"><br>'+
           '3,<ICBX"uip_tracker.sage.addName"> Add <ITBL30"uip_tracker.sage.addName_str"> to name<br>'+
-          '3,<ICBX"uip_tracker.sage.post"> Add style to post: <ITBL30"uip_tracker.sage.post_str"><br>',
+          '3,<ICBX"uip_tracker.sage.post"> Add style to post: <ITBL30"uip_tracker.sage.post_str"><br>'+
+          '3,<ICBX"uip_tracker.sage.patch_bug"> Bug patch for corrupted data<br>',
           'Command interface for overwriting preference<br>'+
           '&emsp;<textarea style="height:1em" cols="40" name="overwrite_site2_json_str"></textarea><br>'+
           '&emsp;<button name="JSON_ex">extract</button>'+
@@ -3003,7 +3004,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.18.1<br>'+
+          'Version 2017.06.18.2<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10478,22 +10479,24 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           while (i<ths.length && ths[i].sticky) if (ths[i].no===end_no) return ths[i]; else i++;
           if (i==ths.length) return;
           if (ths[i].no==end_no) return ths[i];
-          var latest_bump = ths[i].posts[ths[i].posts.length-1].time;
+          var latest_bump = ths[i].last_modified; // for deletion of the last post, instead of ths[i].posts[ths[i].posts.length-1].time;
           var tolerance = pref.uip_tracker.sage.tolerance;
-          while (++i<ths.length) {
+          while (++i<ths.length) { // can't use stateful fast approach because of 4chan's bug.
             var th = ths[i];
             if (!th.bumplimit) {
               for (var j=th.posts.length-1;j>=1;j--) { // annotate all
                 var time = th.posts[j].time;
-                if (bumps[th.no]>time) break; // for deletion
+                if (bumps[th.no]>=time) break; // for deletion
                 if (latest_bump+tolerance>=time) break; // bug of 4chan at roundup, 1 tolerance is required.
 //                if (latest_bump>=time) break;
                 th.posts[j].email = 'sage'; // vichan has 'email' field.
                 if (pref.debug_mode['30']) console.log('detect: sage: p:'+Math.floor(i/15)+'.'+(i%15)+', '+th.key+'#'+th.posts[j].no+', '+time+', '+latest_bump);
               }
-              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
+              if (j===0) time = th.posts[0].time; // j===0 when all posts are sage.
+              if (th.posts.length===1 || th.posts[th.posts.length-1].time!=th.last_modified) time = th.last_modified; // for deletion of the last post, assumes last post was age. th.posts.length===1 for new threads which has no posts.
+//              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
               if (!bumps[th.no] || bumps[th.no]<time) bumps[th.no] = time;
-              if (bumps[th.no]) latest_bump = bumps[th.no];
+              latest_bump = bumps[th.no];
             }
             if (th.no==end_no) return th;
           }
@@ -10578,6 +10581,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         },
         get_op_src: 'thread_json',
         time_unit: 1000,
+        pn_name: 'post_html', // temporal patch, this should be removed using inherit. Errors can be reproduced when there are mine posts in thread and add_you function is working.
       },
       'page_json'  : {
         ths: 'DEFAULT.page_json',
@@ -14839,16 +14843,33 @@ if (pref.debug_mode['0'] && posts_deleted!=='') console.log('uip_deleted '+posts
     var sage_scheduled = {};
     function sage_detect(th){
       for (var i in sage_scheduled) if (sage_annotate(sage_scheduled[i])) delete sage_scheduled[i];
-      for (var i=1;i<th.posts.length;i++)
+      for (var i=th.posts.length-1;i>=1;i--)
         if (th.posts[i].email==='sage' && sage_done[th.posts[i].no]===undefined) sage_annotate(th.posts[i]);
+        else break;
+      // patch for 4chan's bug.
+      // 4chan send corrupted data sometimes. Bump oerder and posts are NOT synchronized, posts may be dropped around before 1s from generation.
+      // You can see this by comparing Last-Modified in http header with timestamp of posts. I saw 3 sec delay so far.
+      // In this situation, threads in top orders are seen as overevaluated. Just bumped, but there are no new posts.
+      // This bug requires re-evaluation of sage, so I can't use stateful fast approach.
+      if (pref.uip_tracker.sage.patch_bug) { // patch for 4chan's bug.
+        for (var i=th.posts.length-1;i>=1;i--)
+          if (th.posts[i].email!=='sage')
+            if (sage_done[th.posts[i].no]===null || sage_scheduled[th.posts[i].no]) {
+              if (pref.debug_mode['30']) console.log('OVERDETECTION: '+th.posts[i].no);
+              if (sage_done[th.posts[i].no]===null) sage_annotate(th.posts[i], {name_str:'', addName_str:'OVERDETECTED_', post_str:'', __proto__:pref.uip_tracker.sage});
+              delete sage_scheduled[th.posts[i].no];
+              delete sage_done[th.posts[i].no];
+            } else break;
+      }
     }
-    function sage_annotate(post){
+    function sage_annotate(post, pref_obj){
       var pn = site2[site.nickname].uip_tgt_post(post.no);
       if (pn) {
         var pn_name = site2[site.nickname].parse_funcs['post_html'].pn_name({pn:pn, __proto__:post});
-        if (pref.uip_tracker.sage.name) pn_name.setAttribute('style',pref.uip_tracker.sage.name_str);
-        if (pref.uip_tracker.sage.addName) pn_name.textContent = pref.uip_tracker.sage.addName_str + pn_name.textContent;
-        if (pref.uip_tracker.sage.post) pn.setAttribute('style',pref.uip_tracker.sage.post_str);
+        if (!pref_obj) pref_obj = pref.uip_tracker.sage;
+        if (pref_obj.name) pn_name.setAttribute('style',pref_obj.name_str);
+        if (pref_obj.addName) pn_name.textContent = pref_obj.addName_str + pn_name.textContent;
+        if (pref_obj.post) pn.setAttribute('style',pref_obj.post_str);
         sage_done[post.no] = null;
         return true;
       } else sage_scheduled[post.no] = post;
