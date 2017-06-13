@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.18.2
+// @version 2017.06.18.3
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -499,7 +499,8 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
 
 //      graph : {key: null, pipe: null},
       uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, auto_open:false, auto_open_th:300, auto_open_kwd:'',
-                    sage: {detect:true, name:true, name_str:'color:blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1, patch_bug:true}},
+                    sage: {detect:true, name:true, name_str:'color:blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1,
+                           patch_bug:false, patch_bug2:false, patch_bug2nth:8, patch_bug3:true}},
       thread_reader: {use: true, sync: true, triage: true, triage_close: true, check_num_of_children: true,
         own_posts_tracker: false, show_own_post_by: 'anchor', show_reply_to_me_by: 'anchor', clean_up_own_posts: true},
       settings: {indexing: 0},
@@ -2887,11 +2888,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '3,Conditions:<br>'+
           '4,After <input type="text" name="uip_tracker.auto_open_th" size="3" style="text-align: right;">th post<br>'+
           '4,OP contains <textarea style="height:1em" cols="20" name="uip_tracker.auto_open_kwd"></textarea><br>'+
-          '2,<ICBX"uip_tracker.sage.detect"> Sage detection, tolerance: <ITB3"uip_tracker.sage.tolerance"> s<br>'+
+          '2,<ICBX"uip_tracker.sage.detect"> Sage detection, tolerance: <ITB2"uip_tracker.sage.tolerance"> sec<br>'+
           '3,<ICBX"uip_tracker.sage.name"> Add style to name: <ITBL30"uip_tracker.sage.name_str"><br>'+
           '3,<ICBX"uip_tracker.sage.addName"> Add <ITBL30"uip_tracker.sage.addName_str"> to name<br>'+
           '3,<ICBX"uip_tracker.sage.post"> Add style to post: <ITBL30"uip_tracker.sage.post_str"><br>'+
-          '3,<ICBX"uip_tracker.sage.patch_bug"> Bug patch for corrupted data<br>',
+          '3,Bug patch for corrupted data<br>'+
+          '4,<ICBX"uip_tracker.sage.patch_bug3"> Ignore corrupted data at head by history<br>'+
+          '4,<ICBX"uip_tracker.sage.patch_bug2"> Loose detection, to <ITB2"uip_tracker.sage.patch_bug2nth">th thread<br>'+
+          '4,<ICBX"uip_tracker.sage.patch_bug"> Re-evaluate and recover<br>',
           'Command interface for overwriting preference<br>'+
           '&emsp;<textarea style="height:1em" cols="40" name="overwrite_site2_json_str"></textarea><br>'+
           '&emsp;<button name="JSON_ex">extract</button>'+
@@ -3004,7 +3008,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.18.2<br>'+
+          'Version 2017.06.18.3<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10477,9 +10481,14 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         add_sage: function(ths, bumps, end_no){
           var i=0;
           while (i<ths.length && ths[i].sticky) if (ths[i].no===end_no) return ths[i]; else i++;
+          if (pref.uip_tracker.sage.patch_bug3) { // ignore not updated data
+            var latest_bump = bumps['ALL'] || 0;
+            while (i<ths.length && ths[i].last_modified<latest_bump) if (ths[i].no===end_no) return ths[i]; else i++;
+            if (i<ths.length) bumps['ALL'] = ths[i].last_modified;
+          }
           if (i==ths.length) return;
           if (ths[i].no==end_no) return ths[i];
-          var latest_bump = ths[i].last_modified; // for deletion of the last post, instead of ths[i].posts[ths[i].posts.length-1].time;
+          latest_bump = ths[i].last_modified; // for deletion of the last post, instead of ths[i].posts[ths[i].posts.length-1].time;
           var tolerance = pref.uip_tracker.sage.tolerance;
           while (++i<ths.length) { // can't use stateful fast approach because of 4chan's bug.
             var th = ths[i];
@@ -10496,7 +10505,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
               if (th.posts.length===1 || th.posts[th.posts.length-1].time!=th.last_modified) time = th.last_modified; // for deletion of the last post, assumes last post was age. th.posts.length===1 for new threads which has no posts.
 //              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
               if (!bumps[th.no] || bumps[th.no]<time) bumps[th.no] = time;
-              latest_bump = bumps[th.no];
+              latest_bump = (pref.uip_tracker.sage.patch_bug2 && i<pref.uip_tracker.sage.patch_bug2nth)? th.last_modified : bumps[th.no]; // for fast board like /v/.
+//              latest_bump = bumps[th.no];
             }
             if (th.no==end_no) return th;
           }
