@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.25.0
+// @version 2017.06.25.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -533,7 +533,11 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
       },
       style:{
         sel: 'fix',
-        fix:{titleBar_str:'background:#b5ccf9', window_str:'background:#e5ecf9;color:#000000;', popUp_str:'background:#e5f4f9;color:#000000;border:2px solid blue;'},
+        fix:{
+          titleBar_str:'background:#b5ccf9;border:1px solid blue;font-weight:normal',
+          window_str:'background:#e5ecf9;color:#000000;font-weight:normal',
+          popUp_str:'background:#e5f4f9;color:#000000;border:2px solid blue;'
+        },
         copy:{titleBar_str:'body', window_str:'body', popUp_str:''},
         post_editing: 'background:#cec952 !important',
         post_new: 'border:2px solid red',
@@ -3014,7 +3018,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.25.0<br>'+
+          'Version 2017.06.25.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5684,14 +5688,15 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           var pfunc = pfunc_root[key];
           if (!pfunc) {
             var proto = site2[domain].parse_funcs[type+'_template'] || get_getters();
+            var domain_html = (pref.catalog.mimic_base_site || site2[domain].mimic_always)? site.nickname : domain;
             pfunc_root[key] = {domain: domain,
                        parse_funcs: site2[domain].parse_funcs[type],
-                       parse_funcs_html: site2[domain].parse_funcs[type_source+'_html'],
+                       parse_funcs_html: site2[domain_html].parse_funcs[type_source+'_html'],
                        type_parse: type,
                        type_source: type_source,
                        type_data: type_data,
                        type_html: type_source,
-                       domain_html: (site2[domain].mimic_always || pref.catalog.mimic_base_site)? site.nickname : domain,
+                       domain_html: domain_html,
 //                       thread: null, // for faster execution.
 //                       page_no: null,
 //                       __proto__:site4.parse_funcs_on_demand
@@ -13264,7 +13269,8 @@ if (pref.test_mode['35']) return;
     if (!brwsr.ff) {
       var channel = new MessageChannel();
       init_receive_port('parent',channel.port1);
-      parent.postMessage(window.name, [channel.port2], '*');
+      parent.postMessage(window.name, '*', [channel.port2]); // Specification(order of arguments) was changed.
+//      parent.postMessage(window.name, [channel.port2], '*'); // chrome 59 doesn't work this
     } else { // FF doesn't support channel messaging.
       init_receive_port('parent',parent);
       parent.postMessage(window.name, '*');
@@ -14145,8 +14151,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         if (funcs[0]!='pop') {
 //          pn.style.background = '#e5ecf9';
 //          pn.style.color = '#000000';
-          pn.style.fontWeight = 'normal';
-          pn.style.border = '1px solid blue';
+//          pn.style.fontWeight = 'normal';
+//          pn.style.border = '1px solid blue';
 //          pn.style.border = 'none';
         } else {
           if (!brwsr.ff) pn.addEventListener('mousewheel', div_scroll, false);
