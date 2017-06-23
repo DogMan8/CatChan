@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.06.25.1
+// @version 2017.07.02.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -10,7 +10,7 @@
 // @include http*://8ch.net/*
 // @include http*://lainchan.org/*
 // @include http*://lainchan.jp/*
-// @include http*://meguca.org/*
+// @include http*://*meguca.org/*
 // @require https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1-beta.4/Chart.min.js
 // @updateURL https://raw.github.com/Dogman8/CatChan/master/CatChan.meta.js
 // @grant unsafeWindow
@@ -3018,7 +3018,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.06.25.1<br>'+
+          'Version 2017.07.02.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4440,7 +4440,14 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
   site2['DEFAULT'] = { // skeleton for default
     nickname : 'DEFAULT',
     home : '', // home is used url for iframe, so it MUST BE THE SAME ORIGIN, OR LEAVE IT BLANK.
-    check_func : function(){return false;}, // return true if the script is running in this site.
+    check_func: function(){ // for background iframe
+      if (window.location.href.indexOf(this.nickname)!=-1) {
+        site.whereami = 'other';
+        site.config(this.domain_url,this.nickname);
+        return true;
+      } else return false;
+    },
+//    check_func: function(){return false;}, // return true if the script is running in this site.
     boards_sel_from_tags : function(){return '';}, // return boards selection strings.
     protocol: site.protocol,
     components: {},
@@ -9831,13 +9838,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     home:undefined,
     nickname:'4chan_i',
     domain_url: 'i.4chan.org',
-    check_func : function(){
-      if (window.location.href.search(/4cdn.org/)!=-1) {
-        site.whereami = 'other';
-        site.config(this.domain_url,this.nickname);
-        return true;
-      } else return false;
-    },
+    check_func: site2['DEFAULT'].check_func,
     proto:'4chan'
   };
   site2['4chan'] = {
@@ -10215,8 +10216,8 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     },
     prep_own_posts_reg: /^4chan\-track\-[0-9A-z]+\-[0-9]+$/,
     prep_own_posts_event : function(e){
-      if (e) site2['4chan'].prep_own_posts_1(e.key);
-      if (window.name==='4chan') send_message('parent',[['OWN_POSTS', window.name, site3[window.name].own_posts]]);
+      if (e) if (site2['4chan'].prep_own_posts_1(e.key)) e = null;
+      if (window.name==='4chan' && !e) send_message('parent',[['OWN_POSTS', window.name, site3[window.name].own_posts]]);
     },
     prep_own_posts : function(bt){
       site3[this.nickname].own_posts = {};
@@ -10233,7 +10234,9 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         if (!site3[this.nickname].own_posts[board]) site3[this.nickname].own_posts[board] = {};
         var nos = JSON.parse(localStorage[key] || '{}');
         for (var j in nos) site3[this.nickname].own_posts[board][j.substr(2)] = null;
+        return true;
       }
+      return false;
     },
 
     catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
@@ -11027,6 +11030,7 @@ if (pref.test_mode['35']) return;
     protocol: 'https:',
     home : 'https://meguca.org/favicon.ico',
     domain_url: 'meguca.org',
+    domain_url_image: 'meguca.org',
     features : {page: false, graph: false, setting2: false, thread_reader:false},
 //    features : {page: false, graph: false, setting2: false, thread_reader:false, catalog:false, setting: false}, // temporal
     components: {
@@ -11716,8 +11720,8 @@ if (pref.test_mode['35']) return;
     post_container: site2['4chan'].post_container,
     wrap_to_parse: site2['DEFAULT'].wrap_to_parse, // bypass meguca1
     catalog_json2html3_thumbnail: function(post){
-      return (post.image)? this.protocol + '//' + this.domain_url + // fullpath is required for desktopNotification.
-        ((post.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? '/assets/spoil/default.jpg' :
+      return (post.image)? this.protocol + '//' + this.domain_url_image + // fullpath is required for desktopNotification.
+        ((post.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? '/spoil/default.jpg' :
         '/images/thumb/' + post.image.SHA1 + ((post.image.thumbType===0 || post.image.thumbType===undefined && post.image.fileType===0)? '.jpg' : '.png')) : undefined;
 //        '/images/thumb/' + post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png')) : undefined;
     },
@@ -11726,7 +11730,7 @@ if (pref.test_mode['35']) return;
 //      return function(post){return (post.image)? '/images/src/' + post.image.SHA1 + '.' + fileType[post.image.fileType] : undefined;};
 //    })(),
     catalog_json2html3_src: function(post){
-      return (post.image)? this.protocol + '//' + this.domain_url + '/images/src/' + post.image.SHA1 +
+      return (post.image)? this.protocol + '//' + this.domain_url_image + '/images/src/' + post.image.SHA1 +
                              (post.ext || Object.getOwnPropertyDescriptor(this.parse_funcs.post_json_template, 'ext').get.call(post)) // for archive. It's before wrap. <- REALLY?
                          : undefined;},
 //    catalog_json2html3_src: function(post){return (post.image)? '/images/src/' + post.image.SHA1 + (post.ext || Object.getOwnPropertyDescriptor(this.parse_funcs.post_json_template, 'ext').get.call(post)) :
@@ -11951,9 +11955,11 @@ if (pref.test_mode['35']) return;
   common_func.Object_modifyDescriptor(site2['meguca2'],'check_func',{writable:false}); // for reentry.
 
   site2['meguca'] = { // meguca.org v3
+    domain_url_image: 'images.meguca.org/assets',
     check_func: site2['meguca2'].check_func, // needed as a own property.
 //    url_boards_json: function(){return ['https://meguca.org/json/' + ((pref.pref2['meguca'].utilize_boards_json)? 'boardTimestamps' : 'boardList'), 'json'];},
-    url_boards_json : function(){return ['https://meguca.org/json/boardList', 'json'];},
+    url_boards_json : function(){return ['https://meguca.org/json/board-list', 'json'];},
+//    url_boards_json : function(){return ['https://meguca.org/json/boardList', 'json'];}, // working code before 2017.06.19
     postprocess_board: function(val){
       for (var i=0;i<val.length;i++) {
         var bd = liveTag.mems.init({domain:this.nickname, board:'/'+val[i].id+'/'});
@@ -11980,12 +11986,13 @@ if (pref.test_mode['35']) return;
 //    },
     make_url4 : function(dbt){
       var url_prefix  = this.protocol + '//' + this.domain_url; // force to use https:
-      return (dbt[3]==='catalog_json')? [url_prefix + '/json'+ dbt[1]+ 'catalog', 'json']
-           : (dbt[3]==='page_json')?    [url_prefix + '/json'+ dbt[1]+ '?page='+dbt[2], 'json']
+      var json_prefix = '/json/boards'; // '/json'; // working code before  2017.06.19
+      return (dbt[3]==='catalog_json')? [url_prefix + json_prefix + dbt[1]+ 'catalog', 'json']
+           : (dbt[3]==='page_json')?    [url_prefix + json_prefix + dbt[1]+ '?page='+dbt[2], 'json']
            : (dbt[3]==='thread_html')?  [url_prefix + dbt[1] + dbt[2], 'html']
-           : (dbt[3]==='thread_json')?  [url_prefix + '/json'+ dbt[1]+dbt[2], 'json'] : undefined;
+           : (dbt[3]==='thread_json')?  [url_prefix + json_prefix + dbt[1]+dbt[2], 'json'] : undefined;
     },
-    historyAPI: true,
+    historyAPI: false, // true, // changed on 2017.06.12 
     historyAPI_blocking: false,
     short_link:function(name, nof_posts, num, kwd_head, kwd_tail){
       var url = this.make_url4(common_func.name2dbt(name))[0];
@@ -12146,7 +12153,8 @@ if (pref.test_mode['35']) return;
               '<span class="filesize">' + fsize_str + '</span>'+
               '<span class="dims">' + post.w + 'x' + post.h + '</span>'+
             '</span>'+
-            '<a href="' + furl + '" download="' + post.filename + post.ext + '">' + post.filename + post.ext + '</a>'+
+            '<a href="' + ((post.domain==='meguca')? furl.replace(/images\.meguca\.org/,'meguca.org') : furl) + '" download="' + post.filename + post.ext + '">' + post.filename + post.ext + '</a>'+
+//            '<a href="' + furl + '" download="' + post.filename + post.ext + '">' + post.filename + post.ext + '</a>'+
           '</figcaption>';
         file_html = '<figure>'+
             '<a target="_blank" href="' + furl + '">'+
@@ -12415,7 +12423,14 @@ if (pref.test_mode['35']) return;
     proto: 'meguca2'
   };
   common_func.Object_modifyDescriptor(site2['meguca'],'check_func',{writable:false}); // for reentry.
-  
+
+  site2['imeguca'] = {
+    nickname: 'imeguca',
+    domain_url: 'images.meguca.org',
+    home: 'https://images.meguca.org/assets/favicons/default.ico',
+    check_func: site2['DEFAULT'].check_func,
+  };
+
   site2['lain'] = { //lainchan.org // 5.1.3
     nickname : 'lain',
     home : site.protocol + '//lainchan.org/q/index.html',
@@ -12799,7 +12814,6 @@ if (pref.test_mode['35']) return;
     stats:{auto_acquisition_scan:false},
   });
   
-
 //if (pref.test_mode['18']) { // leak test about 8chan catalog in 4chan.
 //  delete site2['8chan'].parse_funcs['catalog_html'].th_init;
 //  delete site2['8chan'].parse_funcs['catalog_html'].th_destroy;
@@ -12896,7 +12910,7 @@ if (pref.test_mode['35']) return;
 //  if (  localStorage &&   localStorage[pref.script_prefix+'.pref']) pref_func.pref_overwrite(pref,JSON.parse(  localStorage[pref.script_prefix+'.pref']),true);
 //  if (sessionStorage && sessionStorage.pref) pref_func.pref_overwrite(pref,JSON.parse(sessionStorage.pref),true);
 //  pref_func.site2_json();
-
+  site2['ALL'] = {};
 
   var site3 = {};
   for (var i in site2) if (i!=='DEFAULT' && i!=='common' && i!=='meguca1' && i!=='meguca2') {
@@ -12906,6 +12920,7 @@ if (pref.test_mode['35']) return;
       delete site2[i].check_func; // reduce memory consumption.
     }
     site.nicknames.push(i);
+    site2['ALL'][site2[i].domain_url] = i;
   }
   if (!site.embed_to['top']) site.embed_to['top'] = site.root_body && site.root_body.firstChild;
   if (!site.embed_to['bottom']) site.embed_to['bottom'] = site.root_body && site.root_body.lastChild;
@@ -13679,6 +13694,10 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //        req.REQ.callback(req.key, value, req.callback_arg);
     }
     function onload_archive(req, value){
+      if (typeof(req.archive)==='string') {
+        archiver.download_url4(value.response, req.archive);
+        return;
+      }
       if (req.from && local) delete archiver.list_all_obj_downloading[req.from];
       var ignore_domain = pref.network.cross_domain!=='indirect';
       if ((req.domain_xhr||req.domain)===site.nickname || ignore_domain) {
@@ -14324,7 +14343,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         pref_func.add_onchange(parent[tgt].childNodes[1],onchange_func);
       },
       make_iframe: function(name){
-        if (site2[name].X_FRAME_OPTIONS && pref.network.overXFO || site2[site.nickname].CONTENT_SECURITY_POLICY_FRAME && pref.network.overCSPF) {
+        if (site2[name] && site2[name].X_FRAME_OPTIONS && pref.network.overXFO || site2[site.nickname].CONTENT_SECURITY_POLICY_FRAME && pref.network.overCSPF) {
 //           setTimeout(function(){window.focus();},2000); // this doesn't effect.
           return;
         }
@@ -18332,6 +18351,7 @@ if (!pref.test_mode['79']) {
       },
       list_all_obj_downloading: list_all_obj_downloading,
       download_url3: download_url3,
+      download_url4: download_url4,
       tar: tar,
       sub_funcs: function(args){
         if (args[0]==='SUB_INIT') {
@@ -21699,6 +21719,7 @@ if (pref.test_mode['19']) { // stability test.
 //          if (th.parse_funcs.posts_full) th.parse_funcs.posts_full(th);
           var mimic = ((th.domain!==site.nickname || site.whereami+'_html'!==th.type_mimic) && pref.catalog.mimic_base_site);
           var mimic_tgt = ((embed_mode==='page' || embed_mode==='thread') && site2[site.nickname].page_json2html3)? 'page' : 'catalog'; // temporal, remove '&& site2[site.nickname].page_json2html3' later.
+          if (pref.test_mode['92']) mimic_tgt = 'catalog'; // for 4chan-X catalog.
 //          if (init_new || !mimic)
 //            if (mimic_tgt==='page' && th.type_data==='html') this.prepare_html_extract_params(th); // for popup2, always wrapping is required.
           if (mimic) {
@@ -24747,13 +24768,29 @@ if (pref.test_mode['0']) {
         click: function(e){
           var et = e.target;
           if (et.tagName==='A') {
-            if (et.href.indexOf('//www.youtube.com')!==-1) insert_iframe_youtube(et.href.replace(/watch\?v=/,'embed/'), e);
-            else if (et.href.indexOf('//youtu.be')!==-1)   insert_iframe_youtube(et.href.replace(/youtu.be/,'youtube.com/embed'), e);
-            else {
-              var cmd = et.getAttribute('data-cmd');
-              if (cmd && cmd.indexOf(pref.script_prefix)===0) {
-                cmd = cmd.substr(pref.script_prefix.length+1);
-                if (cmd==='remove_next') remove_next(e);
+            if (pref.test_mode['93']) {
+              var filename = et.getAttribute('download');
+              if (filename) {
+                var href = et.getAttribute('href');
+                var tgt_domain = href.search(/^(https*:)*\/\//)!=-1 && href.replace(/^(https*:)*\/\//,'').match(/^([^/]*)\//)[1];
+                if (site2['ALL'][tgt_domain]) tgt_domain = site2[site2['ALL'][tgt_domain]].nickname;
+                if (tgt_domain!=site2[site.nickname].domain_url) {
+                  httpd.req({tgts:[{url:href, domain:tgt_domain, archive:filename, responseType:'blob'}], max:1, initiator:'download', callback_1:function(){}},6);
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+              }
+            }
+            if (pref.test_mode['87']) {
+              if (et.href.indexOf('//www.youtube.com')!==-1) insert_iframe_youtube(et.href.replace(/watch\?v=/,'embed/'), e);
+              else if (et.href.indexOf('//youtu.be')!==-1)   insert_iframe_youtube(et.href.replace(/youtu.be/,'youtube.com/embed'), e);
+              else {
+                var cmd = et.getAttribute('data-cmd');
+                if (cmd && cmd.indexOf(pref.script_prefix)===0) {
+                  cmd = cmd.substr(pref.script_prefix.length+1);
+                  if (cmd==='remove_next') remove_next(e);
+                }
               }
             }
           }
@@ -24785,7 +24822,7 @@ if (pref.test_mode['0']) {
           var geh = site2[site.nickname].general_event_handler[site.whereami];
           if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
           common_func.dom_addEventListener(this.subscribers, this.parent, 'change', this.change);
-          if (pref.test_mode['87']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
+          if (pref.test_mode['87'] || pref.test_mode['93']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
           this.setup();
         },
         destroy: function(){
