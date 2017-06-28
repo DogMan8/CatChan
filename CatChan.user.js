@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.07.02.0
+// @version 2017.07.02.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3018,7 +3018,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.07.02.0<br>'+
+          'Version 2017.07.02.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11515,13 +11515,13 @@ if (pref.test_mode['35']) return;
           cataLog.components.pn12_0 = pn_tb;
           cataLog.components.pn_hi = pn_tb.removeChild(pn_tb.childNodes[3]).firstChild;
           var redraw = function(){
-            console.log('redraw');
+////            console.log('redraw');
             cataLog.catalog_obj2.func_track_reset();
             cataLog.insert_myself(true);
             cataLog.show_catalog();
           }
           var reentry_tap = function(e){
-            console.log('reentry');
+////            console.log('reentry');
             observer3.disconnect();
 //            this.catalog_native_prep(null, pn_filter, pn_tb);
 //            if (this.catalog_get_native_area()!=cataLog.components.initialized) { // doesn't work
@@ -11533,7 +11533,7 @@ if (pref.test_mode['35']) return;
           var updated_by_native = false;
           var observe_native_bg = function(e){
 //            updated_by_native = true;
-            console.log('found an update in background');
+////            console.log('found an update in background');
 
             if (pref[site.whereami].embed) { // test
               observer3.disconnect();
@@ -11551,7 +11551,7 @@ if (pref.test_mode['35']) return;
           };
           var observer3 = new MutationObserver(observe_native_bg);
           var blur_tap = function(){
-            console.log('start observe...');
+////            console.log('start observe...');
 //            observer3.observe(cataLog.parent, {childList: true}); // doesn't work
             observer3.observe(document.getElementById('threads'), {childList: true});
 //            cataLog.catalog_obj2.masked = true;
@@ -11567,7 +11567,7 @@ if (pref.test_mode['35']) return;
             } else {
               site2['meguca'].historyAPI_blocking = false;
               if (!skip_initial_call) {
-                console.log('mascot off');
+////                console.log('mascot off');
                 cataLog.image_hover_remove();
                 cataLog.general_event_handler.destroy();
 //                cataLog.triage.off();
@@ -11595,40 +11595,40 @@ if (pref.test_mode['35']) return;
           var observer = new MutationObserver(observer_tap);
 //          observer.observe(document.getElementById('page-container'), {childList: true});
           observer.observe(loading_image, {attributes: true});
-          window.addEventListener('popstate', function(event) {console.log("onpopstate: location: " + document.location + ", state: " + JSON.stringify(event.state));}, false); // doesn't work
-//          setTimeout(function(){require('state').page.onChange('thread', function(e){
-//            console.log('state_changed: ',e);
-//          });},30000);
-          setTimeout(function(){
-            var test_func = function(e){console.log('state changed');};
-            var div = document.createElement('div');
-            div.id = 'CatChan_csi';
-            div.setAttribute('data-csi',0);
-//            div.textContent = 0;
-//            div.onclick = test_func; // can't call
-            site.script_body.appendChild(div);
-            var scr = document.createElement('script');
-            scr.setAttribute('type', 'application/javascript');
-//            scr.textContent = 'console.log("Hello");';
-//            scr.textContent = 'console.log(require("state"));';
-//            scr.textContent = 'var tgt_func = document.getElementById("CatChan_csi").onclick;'+
-//                              'require("state").page.onChange("thread", tgt_func);';
-            scr.textContent = 'var tgt = document.getElementById("CatChan_csi");'+
-//                              'function mutate(){tgt.textContent+=1;}'+
-                              'function mutate(){tgt.setAttribute("data-csi",parseInt(tgt.getAttribute("data-csi"),10)+1);}'+
-                              'require("state").page.onChange("thread", mutate);'+
-                              'require("state").page.onChange("page", mutate);'+
-                              'require("state").page.onChange("catalog", mutate);';
-            site.script_body.appendChild(scr);
-            site.script_body.removeChild(scr);
-            var observer2 = new MutationObserver(test_func);
-            observer2.observe(div, {attributes: true});
-//            observer2.observe(div.childNodes[0], {attributes: true, characterData: true});
-//            console.log('unsafeWindow: ');
-//            unsafeWindow.require('state').page.onChange('thread', function(e){
-//              console.log('state_changed: ',e);
-//            });
-          },10000);
+////          window.addEventListener('popstate', function(event) {console.log("onpopstate: location: " + document.location + ", state: " + JSON.stringify(event.state));}, false); // doesn't work
+//////          setTimeout(function(){require('state').page.onChange('thread', function(e){
+//////            console.log('state_changed: ',e);
+//////          });},30000);
+////          setTimeout(function(){ // working code, but spec was changed on 2017.06.12
+////            var test_func = function(e){console.log('state changed');};
+////            var div = document.createElement('div');
+////            div.id = 'CatChan_csi';
+////            div.setAttribute('data-csi',0);
+//////            div.textContent = 0;
+//////            div.onclick = test_func; // can't call
+////            site.script_body.appendChild(div);
+////            var scr = document.createElement('script');
+////            scr.setAttribute('type', 'application/javascript');
+//////            scr.textContent = 'console.log("Hello");';
+//////            scr.textContent = 'console.log(require("state"));';
+//////            scr.textContent = 'var tgt_func = document.getElementById("CatChan_csi").onclick;'+
+//////                              'require("state").page.onChange("thread", tgt_func);';
+////            scr.textContent = 'var tgt = document.getElementById("CatChan_csi");'+
+//////                              'function mutate(){tgt.textContent+=1;}'+
+////                              'function mutate(){tgt.setAttribute("data-csi",parseInt(tgt.getAttribute("data-csi"),10)+1);}'+
+////                              'require("state").page.onChange("thread", mutate);'+
+////                              'require("state").page.onChange("page", mutate);'+
+////                              'require("state").page.onChange("catalog", mutate);';
+////            site.script_body.appendChild(scr);
+////            site.script_body.removeChild(scr);
+////            var observer2 = new MutationObserver(test_func);
+////            observer2.observe(div, {attributes: true});
+//////            observer2.observe(div.childNodes[0], {attributes: true, characterData: true});
+//////            console.log('unsafeWindow: ');
+//////            unsafeWindow.require('state').page.onChange('thread', function(e){
+//////              console.log('state_changed: ',e);
+//////            });
+////          },10000);
         }
 //      } else if (site.whereami==='page') {
 ////        var pctrls = document.getElementsByName('postcontrols')[0];
@@ -22631,7 +22631,7 @@ if (!pref.test_mode['63']) {
 //console.log(url);
 //        var cw = window.open(url,(pref.catalog_open_in_new_tab)? '_blank' : '_self');
         var window_name = (site.embed_frame_win)? site.embed_frame
-                        : (pref.catalog_open_where==='named')? name
+                        : (pref.catalog_open_where==='named')? name + ((threads[name][16].archiveFile)? 'A' : '')
                         : (pref.catalog_open_where==='_blank')? name + '_' + Date.now() : pref.catalog_open_where;
 //                        : (pref.catalog_open_in_new_tab)? ((pref.catalog_use_named_window)? name : '_blank') : '_self';
         var time_marked = (pref[embed_mode].mark_new_posts)? get_watch_time_of_a_thread(name,threads[name][8][1]) : 0;
@@ -24338,7 +24338,8 @@ if (pref.debug_mode['2']) console.log('removed: '+name);
 ////////      }
 
 //    if (embed_mode!=='thread') setTimeout(function(){ // patch for liveTag.
-    if (!window.opener) setTimeout(function(){ // patch for liveTag and archive.
+    if (!window.opener || !window.name || window.name.slice(-1)!=='A') setTimeout(function(){ // patch for liveTag and archive.
+//    if (!window.opener) setTimeout(function(){ // patch for liveTag and archive. // THIS CAUSE WRONG BEHAVIOR when the page was load by clicking [catalog]
       catalog_refresh(pref.catalog.refresh.initial && site.whereami!=='boards', embed_embed, false);
     },1);
       if (pref[embed_mode].merge) setTimeout(site2['DEFAULT'].update_posts_merge_bases.onchange_merge({target:{name:embed_mode+'.merge'}}),2);
