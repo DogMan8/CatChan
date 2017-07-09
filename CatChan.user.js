@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.07.02.1
+// @version 2017.07.09.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3018,7 +3018,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           '&emsp;<input type="checkbox" name="features.notify.favicon"> Favicon<br>'+
           '',
           'CatChan<br>'+
-          'Version 2017.07.02.1<br>'+
+          'Version 2017.07.09.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11879,6 +11879,7 @@ if (pref.test_mode['35']) return;
           get capcode(){return this.auth;},
           get md5(){return (this.image)? this.image.MD5 : undefined;},
           get sha1(){return (this.image)? this.image.SHA1 : undefined;},
+          get country(){return (this.flag)? this.flag.toUpperCase() : undefined;},
           name: 'Anonymous',
           get txt(){return this.body;},
           get com(){
@@ -12165,7 +12166,9 @@ if (pref.test_mode['35']) return;
       pn.innerHTML = '<article id="p' + post.no + '" class="glass' + ((post.ext)? ' media' : '') + '">'+
           '<input type="checkbox" class="deleted-toggle">'+
           '<header class="spaced"><input type="checkbox" class="mod-checkbox hidden">'+
-            '<b class="name">'+post.name+'</b><time>' + site2['common'].change_utc_to_local(date) + '</time>'+
+            '<b class="name">'+post.name+'</b>'+
+            ((post.country)? '<img class="flag" src="/assets/flags/' + post.country.toLowerCase() + '.svg" title="' + post.country + '">' : '')+
+            '<time>' + site2['common'].change_utc_to_local(date) + '</time>'+
             '<nav>'+
 //              '<a class="history" href="' + board + op_no + ((post.domain==='meguca')? '?last=100' : '')) + '#p'+post.no + '">No.</a>'+
 //              '<a class="history quote" href="/all/2025573?last=100#p2032325">2032325</a>'+
