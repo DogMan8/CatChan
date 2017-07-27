@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.07.16.0
+// @version 2017.07.23.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -169,7 +169,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         thread:{ env:{ disp_offset:3}},
         scan:{max:100},
         proto:{env:{event_dynamic:true,}},
-        style:{zIndex:301},
+        style:{zIndex:300},
         tooltips:{zIndex:302},
       };
       pref_default2 = true;
@@ -3178,7 +3178,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2017.07.16.0<br>'+
+          'Version 2017.07.23.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11873,6 +11873,7 @@ if (pref.features.domains['meguca']) {
     catalog_json2html3_thumbnail: function(post){
       return (post.image)? this.protocol + '//' + this.domain_url_image + // fullpath is required for desktopNotification.
         ((post.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? '/spoil/default.jpg' :
+        (post.image.thumbType===14)? '/audio.png' :
         '/images/thumb/' + post.image.SHA1 + ((post.image.thumbType===0 || post.image.thumbType===undefined && post.image.fileType===0)? '.jpg' : '.png')) : undefined;
 //        '/images/thumb/' + post.image.SHA1 + ((post.image.fileType===0)? '.jpg' : '.png')) : undefined;
     },
@@ -12019,13 +12020,13 @@ if (pref.features.domains['meguca']) {
         },
       },
       'post_json_template': (function(){
-        var fileType = ['jpg', 'png', 'gif', 'webm', 'pdf', 'svg', 'mp4', 'mp3', 'ogg', 'zip', '7z', 'tar.gz', 'tar.xz'];
+        var fileType = ['jpg', 'png', 'gif', 'webm', 'pdf', 'svg', 'mp4', 'mp3', 'ogg', 'zip', '7z', 'tar.gz', 'tar.xz', 'flac', 'noFile', 'txt'];
         return {
           get filename() {return (this.image)? this.image.name : undefined;},
           get w(){return (this.image)? this.image.dims[0] : undefined;},
           get h(){return (this.image)? this.image.dims[1] : undefined;},
-          get tn_w(){return (this.image)? ((this.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? 150 : this.image.dims[2]) : undefined;},
-          get tn_h(){return (this.image)? ((this.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? 150 : this.image.dims[3]) : undefined;},
+          get tn_w(){return (this.image)? ((this.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? 150 : this.image.dims[2] || 125) : undefined;},
+          get tn_h(){return (this.image)? ((this.image.spoiler!==undefined && !pref[cataLog.embed_mode].open_spoiler_image)? 150 : this.image.dims[3] || 125) : undefined;},
           get fsize(){return (this.image)? this.image.size : undefined;},
           get ext(){return (this.image)? '.'+fileType[this.image.fileType] : undefined;},
           get sub(){return (this.subject)? common_func.escape(this.subject) : '';},
