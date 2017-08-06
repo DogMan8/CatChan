@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.07.23.0
+// @version 2017.08.13.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -173,7 +173,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
         tooltips:{zIndex:302},
       };
       pref_default2 = true;
-    } else if (href.search(/4chan.org/)!=-1) {
+    } else if (href.search(/(4chan|4cdn).org/)!=-1) {
       domain = '4chan';
       pref_default = {
         catalog_expand_with_hr: true,
@@ -3178,7 +3178,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2017.07.23.0<br>'+
+          'Version 2017.08.13.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4607,7 +4607,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
     nickname : 'DEFAULT',
     home : '', // home is used url for iframe, so it MUST BE THE SAME ORIGIN, OR LEAVE IT BLANK.
     check_func: function(){ // for background iframe
-      if (window.location.href.indexOf(this.nickname)!=-1) {
+      if (window.location.href.indexOf(this.domain_url)!=-1) {
         site.whereami = 'other';
         site.config(this.domain_url,this.nickname);
         return true;
@@ -9999,7 +9999,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
   site2['4chan_i'] = {
     home:undefined,
     nickname:'4chan_i',
-    domain_url: 'i.4chan.org',
+    domain_url: 'i.4cdn.org',
     check_func: site2['DEFAULT'].check_func,
     proto:'4chan'
   };
@@ -11671,15 +11671,15 @@ if (pref.features.domains['meguca']) {
             cataLog.insert_myself(true);
             cataLog.show_catalog();
           }
-          var reentry_tap = function(e){
-////            console.log('reentry');
-            observer3.disconnect();
-//            this.catalog_native_prep(null, pn_filter, pn_tb);
-//            if (this.catalog_get_native_area()!=cataLog.components.initialized) { // doesn't work
-//              console.log('found background refresh');
-//              cataLog.components.initialized = this.catalog_get_native_area();
-          }; // .bind(this);
-          window.addEventListener('focus', reentry_tap, false);
+//          var reentry_tap = function(e){
+//////            console.log('reentry');
+//            observer3.disconnect();
+////            this.catalog_native_prep(null, pn_filter, pn_tb);
+////            if (this.catalog_get_native_area()!=cataLog.components.initialized) { // doesn't work
+////              console.log('found background refresh');
+////              cataLog.components.initialized = this.catalog_get_native_area();
+//          }; // .bind(this);
+//          window.addEventListener('focus', reentry_tap, false);
 
           var updated_by_native = false;
           var observe_native_bg = function(e){
@@ -11687,7 +11687,7 @@ if (pref.features.domains['meguca']) {
 ////            console.log('found an update in background');
 
             if (pref[site.whereami].embed) { // test
-              observer3.disconnect();
+//              observer3.disconnect();
 //              cataLog.catalog_obj2.masked = false;
               cataLog.general_event_handler.destroy();
 //              cataLog.triage.off();
@@ -11696,18 +11696,19 @@ if (pref.features.domains['meguca']) {
               cataLog.general_event_handler.init();
               redraw();
               site2['meguca'].catalog_native_prep(null, pn_filter, pn_tb);
-              blur_tap();
+//              blur_tap();
             }
 
           };
           var observer3 = new MutationObserver(observe_native_bg);
-          var blur_tap = function(){
-////            console.log('start observe...');
-//            observer3.observe(cataLog.parent, {childList: true}); // doesn't work
+//          var blur_tap = function(){
+//////            console.log('start observe...');
+////            observer3.observe(cataLog.parent, {childList: true}); // doesn't work
             observer3.observe(document.getElementById('threads'), {childList: true});
-//            cataLog.catalog_obj2.masked = true;
-          };
-          window.addEventListener('blur', blur_tap, false);
+////            cataLog.catalog_obj2.masked = true;
+//          };
+//          window.addEventListener('blur', blur_tap, false);
+          pref_func.settings.onchange_funcs['button_test'] = observe_native_bg; // test
 
           var loading_image = document.getElementById('loading-image');
           var skip_initial_call = loading_image.style.display!=='none';
