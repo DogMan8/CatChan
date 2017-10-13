@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.08.13.0
+// @version 2017.10.15.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3178,7 +3178,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2017.08.13.0<br>'+
+          'Version 2017.10.15.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -9741,7 +9741,7 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
         '<div class="' +((op)? 'thread_body' : 'postreply" id="post-' +post.no) + '">'+ // <td> can't be used alone.
           '<div class="postheader">'+
             '<input name="post_' + post.no+ '" value="delete" type="checkbox">'+
-            ((post.flag)? post.flag.innerHTML : '')+ //  '<img src="/images/balls/ca.png">'+
+            ((post.flag)? post.flag.outerHTML : '')+ //  '<img src="/images/balls/ca.png">'+
             '<span class="postsubject">' +post.sub+ '</span> '+
             '<span class="postername">' +post.name+ '</span> '+
             '<span class="postdate">' + date.toLocaleString()+ '</span> '+
