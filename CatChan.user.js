@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2017.10.15.0
+// @version 2017.10.22.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3178,7 +3178,7 @@ if (window.top != window.self && window.name==='') return; //don't run on frames
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2017.10.15.0<br>'+
+          'Version 2017.10.22.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -12491,6 +12491,7 @@ if (pref.features.domains['meguca']) {
         },
         get_omitted_info: function(){},
         set_omitted_info: function(){},
+        pn_name: 'thread_html',
       },
       'page_json': {
         proto: 'meguca2.catalog_json',
@@ -12560,6 +12561,7 @@ if (pref.features.domains['meguca']) {
           }
         },
 //        replace_omitted_info2: site2['4chan'].parse_funcs.page_html.replace_omitted_info2,
+        pn_name: function (post){return post.pn.getElementsByClassName('name')[0].childNodes[0];},
       },
     },
     favicon : {
