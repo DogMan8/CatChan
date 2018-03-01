@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.02.18.0
+// @version 2018.03.04.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -623,7 +623,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       },
 
 //      graph : {key: null, pipe: null},
-      uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, highlight_str:'color:red',
+      uip_tracker: {on : false, posts: true, deletion: true, interval: 10, adaptive: true, highlight_str:'color:red', annotate:true,
                     auto_open:false, auto_open_th:300, auto_open_kwd:'',
                     deletion: {show:true, name:true, name_str:'color:red', addName:true, addName_str:'DELETED_', post:false, post_str:'opacity:0.4'},
                     sage: {detect:true, name:true, name_str:'color:blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1,
@@ -961,7 +961,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 
   var cataLog = {
     threads: null,
-    insert_footer3: null,
+//    insert_footer3: null,
     scan_boards: null,
     scan_init: null,
     catalog_filter_query: null,
@@ -2907,8 +2907,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '2,<ICBX"catalog.footer.nd"> Show num of deleted posts(nd)<br>'+
               '2,<ICBX"threadStats.use"> Take statistics of each thread'+html_funcs.rollup(
                 '4,<ICBX"threadStats.full"> Issue additional fetchs if required') + '<br>'+
-              '3,<ICBX"catalog.footer.nf"> Show num of flags(nf)<br>'+
               '3,<ICBX"catalog.footer.nid"> Show num of IDs(nid)<br>'+
+              '3,<ICBX"catalog.footer.nf"> Show num of flags(nf)<br>'+
               '&emsp;&emsp;<input type="checkbox" name="catalog.footer.ctime"> Show created time(ctime)<br>'+
               '&emsp;&emsp;<input type="checkbox" name="catalog.footer.btime"> Show bumped time(btime)<br>'+
               '&emsp;&emsp;<input type="checkbox" name="catalog.footer.ptime"> Show last posted time(ptime)<br>'+
@@ -2920,8 +2920,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '<br>'+
               '&emsp;&emsp;<input type="checkbox" name="catalog.footer.archived"> Show archived<br>'+
               '&emsp;&emsp;Design:<br>'+
-              '&emsp;&emsp;&emsp;<input type="radio" name="catalog_footer_design" value="native"> U: nrtm/nr / R: r / I: i / P: page nf/nid site/board/ flags<br>'+
-              '&emsp;&emsp;&emsp;<input type="radio" name="catalog_footer_design" value="condensed"> nrtm/nr/r/i/page nf/nid site/board/ flags<br>';},
+              '&emsp;&emsp;&emsp;<input type="radio" name="catalog_footer_design" value="native"> U: nrtm/nr / R: r / I: i / P: page nid/nf site/board/ flags<br>'+
+              '&emsp;&emsp;&emsp;<input type="radio" name="catalog_footer_design" value="condensed"> nrtm/nr/r/i/page nid/nf site/board/ flags<br>';},
           'Watcher:<br>'+
           '&emsp;<input type="checkbox" name="liveTag.watch_all"> Watch all boards<br>'+
           '&emsp;<input type="checkbox" name="catalog.auto_watch"> Auto add to watch list<br>'+
@@ -3058,6 +3058,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '3,<ICBX"uip_tracker.deletion.name"> Add style to name: <ITBL30"uip_tracker.deletion.name_str"><br>'+
           '3,<ICBX"uip_tracker.deletion.addName"> Add <ITBL30"uip_tracker.deletion.addName_str"> to name<br>'+
           '3,<ICBX"uip_tracker.deletion.post"> Add style to post: <ITBL30"uip_tracker.deletion.post_str"><br>'+
+          '2,<ICBX"uip_tracker.annotate"> Annotate history of UIP from catalog<br>'+
           '2,<ICBX"uip_tracker.auto_open"> Open next thread automatically<br>'+
           '3,Conditions:<br>'+
           '4,After <input type="text" name="uip_tracker.auto_open_th" size="3" style="text-align: right;">th post<br>'+
@@ -3186,7 +3187,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.02.18.0<br>'+
+          'Version 2018.03.04.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11237,9 +11238,15 @@ if (pref.test_mode['35']) return;
       reply_to_me: 'png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAvUlEQVQ4T61TXRrDIAiDXWmeabvTzlSvVGb8hFIK3ct8aeUnJkSZxmLZBF+/hBvHWLafRQDY6Wn5B3WKANUhrIkIADQF0Zqxt0NGbP5PACREDhXMDFZREr22g+Wn9VmTMnj3RlqwmKTNJYNfAGi8MPD61mAvEnzAZlDZmA0xs7q08Q7AW5wCVC54aWaxl4A5qFWVCyE+DF830Tf7Kd/ZCBb/BwBFyMgkxNyJgVKFv5CTXeWYM4DqLsTHlD33Lx2GzAg15eTiAAAAAElFTkSuQmCC'
     },
     stats_ID: function(th, posts_new, lth){
-      if (!lth.sID) lth.sID = {ids:{}, cs:{}, nid:0, nc:0, np:0};
+      if (!lth.sID) lth.sID = {ids:{}, cs:{}, nid:0, nc:0, np:0, h:null};
       var sID = lth.sID;
-      if (th.unique_ips) sID.np = th.unique_ips;
+      if (th.unique_ips) {
+        sID.np = th.unique_ips;
+        if (!th.id && th.posts) {
+          if (!sID.h) sID.h = [];
+          sID.h.push(th.posts[th.posts.length-1].no, th.nof_posts, th.unique_ips);
+        }
+      }
       if (posts_new && posts_new.length>0 && (th.id || th.country)) {
         for (var i=0;i<posts_new.length;i++) {
           var c = posts_new[i].country;
@@ -13718,6 +13725,8 @@ if (pref.test_mode['94'] && i==='dist') continue;
 //console.log('receive: TRIAGE, '+val[1]+', '+val[2]+', '+val[3]);
 //      if (catalog_obj && catalog_obj.catalog_func()!=null) catalog_obj.catalog_func().triage_exe_0(val[1],val[2],'',true,val[3]);
       if (catalog_obj && catalog_obj.catalog_func()!=null) catalog_obj.catalog_func().triage_exe_pipe(val[1]);
+    } else if (val[0]=='UIP') {
+      if (uip_tracker) uip_tracker.annotate_from_catalog(val[1]);
     }
 else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_message(window.name? 'parent' : 'meguca',[['ECHO',val[1]]])},5000);
   }
@@ -15153,6 +15162,7 @@ if (pref.debug_mode['0']) console.log('auto_opener: '+i+': '+flag);
      uip_show_3();
     }
     function uip_show_3(){  // show
+      if (post_uip.length==0) return;
       remove_dom_event_listener();
       for (var i=0;i<post_uip.length;i++) {
         var tgt_uip = post_uip[i];
@@ -15162,7 +15172,7 @@ if (pref.debug_mode['0']) console.log('auto_opener: '+i+': '+flag);
           pn_uip.innerHTML = ' (<span>'+tgt_uip[2]+'</span>)';
           if (tgt_uip[4]) pn_uip.childNodes[1].setAttribute('style',pref.uip_tracker.highlight_str);
           if (pref.uip_tracker.posts) {
-            pn_posts = document.createElement('span');
+            var pn_posts = document.createElement('span');
             pn_posts.innerHTML = '<span>'+ tgt_uip[1] +'</span>' + ((tgt_uip[5] && pref.uip_tracker.deletion.show)? '('+tgt_uip[5].join()+')' : '') + '/';
             if (tgt_uip[3]) pn_posts.childNodes[0].setAttribute('style',pref.uip_tracker.highlight_str);
             pn_uip.insertBefore(pn_posts,pn_uip.childNodes[1]);
@@ -15171,6 +15181,7 @@ if (pref.debug_mode['0']) console.log('auto_opener: '+i+': '+flag);
             for (var j=0;j<tgt_uip[5].length;j++) sage_annotate({no:tgt_uip[5][j]},pref.uip_tracker.deletion,true);
           var post_nums = site2[site.nickname].uip_post_num(tgt_post);
           post_nums[post_nums.length-1].appendChild(pn_uip);
+          if (!pn_first && i==0) pn_first = [pn_uip, tgt_uip];
           post_uip.splice(i--,1);
         }
       }
@@ -15243,6 +15254,22 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
         }
       } else uip_tracker_destroy();
     }
+    var pn_first = null;
+    function annotate_from_catalog(vals){
+      var uip_first = (pn_first)? pn_first[1] : (post_uip.length!=0)? post_uip.splice(0,1)[0] : null;
+      for (var i=0;i<vals.length;i+=3) post_uip[post_uip.length] = [vals[i], vals[i+1], vals[i+2], false, vals[i+1]==vals[i+2] || i>=3 && vals[i+2]!=vals[i-1], null];
+      if (!uip_first) {
+        last_updated = post_uip[post_uip.length-1]; // RACING CONDITION. this is faster than network access usually.
+        pn_first = true;
+      } else {
+//        console.log('Hit: uip_tracker: racing condition');
+        var uip_last = post_uip[post_uip.length-1];
+        if (uip_last[0]!=uip_first[0] || uip_last[1]!=uip_first[1] || uip_last[2]!=uip_first[2])
+          post_uip[post_uip.length] = uip_first.slice(0,3).concat(false, uip_last[2]!=uip_first[2], null);
+        if (pn_first) pn_first[0].parentNode.removeChild(pn_first[0]);
+      }
+      uip_show_3();
+    }
     var sage_done = {};
     var sage_scheduled = {};
     function sage_detect(th){
@@ -15284,14 +15311,18 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       uip_tracker = null;
 //if (pref.debug_mode['0'] && uip_tracker===null) console.log('uip_tracker: stopped, '+value.status);
     }
-    return function(){return uip_tracker_id;}
+    return {
+      get_id: function(){return uip_tracker_id;},
+      annotate_from_catalog: annotate_from_catalog
+//      annotate_from_catalog: function(arg){setTimeout(annotate_from_catalog.bind(null, arg), 10000);} // for test
+    }
   }
   var uip_tracker=null;
   setTimeout(uip_tracker_init,1); // patch for LiveTag.
   function uip_tracker_init(){
     if (uip_tracker===null && site.features.uip_tracker && pref.features.uip_tracker && site.isthread && pref.uip_tracker.on) uip_tracker = make_uip_tracker();
     else if (!pref.uip_tracker.on) {
-      if (uip_tracker) clearTimeout(uip_tracker());
+      if (uip_tracker) clearTimeout(uip_tracker.get_id());
       uip_tracker = null;
     }
   }
@@ -15896,7 +15927,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       }
       var th = {com:lth.tags.join(' '), parse_funcs:{type_com:'txt'}, __proto__:lth}; // patch
       liveTag.prep_tags(th, lth.tag); // lth.tag returns a shallow copy, this is ok.
-      if (cataLog.threads[lth.key]) cataLog.insert_footer3(lth.key,null,null,lth);
+      if (cataLog.threads[lth.key]) cataLog.Footer.update_force(lth.key,null,null,lth);
     },
     retag_db: DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){if (cataLog.catalog_filter_changed) cataLog.catalog_filter_changed();}, 10)),
     inherit_board_name_changed: function(){
@@ -18300,7 +18331,7 @@ if (!pref.test_mode['79']) {
         lth.archived = 0;
         archiver.clean_list(lth.domain, lth.board, lth.no);
       }
-      if (footer && pref.catalog.footer.archived) cataLog.insert_footer3(lth.key);
+      if (footer && pref.catalog.footer.archived) cataLog.Footer.update_force(lth.key);
     }
     var blist = {pn:null, time_bumped:null, time_created:null, time_posted:null, flag:null, footer:null, time_tu:null,
                  nof_posts:null, nof_files:null, tags:null, page:null,
@@ -18732,7 +18763,7 @@ if (!pref.test_mode['79']) {
               cataLog.threads[th.key][16].th = th;
               cataLog.show_catalog(th.key);
             }
-            cataLog.insert_footer3(th.key);
+            cataLog.Footer.update_force(th.key);
             // CALL UPDATE_POSTS HERE.
           } else lth.pd = posts_deleted;
 //          if (src) archiver.check_deleted_posts({date:date_load}, th, {archived:true}, th_deleted); // sourced from pipe.
@@ -20696,7 +20727,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
               } // else if (pref[embed_mode].load_on_demand && tgt_th) threads_index.idx_reorder(th.key); // temporal, should be rewritten.  // place thread before ODL. // implementation is changed.
 //              if (tgt_th_status!==undefined && tgt_th[16].expand_posts) insert_thread_format_html(th,th.key,false,false,th.type_data==='json'); // format_html.update_posts_in_page(th, th.key, true);
 if (!pref.test_mode['31'])
-              if (tgt_th) Footer.update(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags, th);
+              if (tgt_th) Footer.update(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags);
 //              if (tgt_th) insert_footer3(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags, th);
 //              if (pref.liveTag.use && i===0) scan.list_nup.add_board(th.domain+th.board, (th.type_source==='catalog')? value.date : null);
 //              if (th.tags.q && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th); // stored AFTER modifying pn. // BUT, posts are deleted sometimes.
@@ -22002,7 +22033,7 @@ if (pref.test_mode['19']) { // stability test.
             th.pn.appendChild(text);
             tgt_th[18] = 'text';
           }
-          tgt_th[24] = prep_footer3(th, tgt_th[24]); // for reentry in meguca.
+          tgt_th[24] = Footer.prep_footer3(th, tgt_th[24]); // for reentry in meguca.
 //          if (from_lazy) insert_footer3(th.key, null, th.page, th.tags, th); // consolidated into show_catalog
         }
       }
@@ -22355,19 +22386,24 @@ if (pref.test_mode['19']) { // stability test.
       function func_pop_up(e){pop_up_delay(e,this.name);}
 
       var Footer = {
-        update: function(name,flags,page,tags, th){
+        timestamp: 16,
+        timestamp_inc: function(){this.timestamp+=16;},
+        update_force: function(name,flags,page,tags){
+          this.update(name,flags,page,tags, true);
+        },
+        update: function(name,flags,page,tags, force){
           var footer = threads[name][24];
           if (!footer) return;
-          if (threads[name][1]) insert_footer3(name,flags,page, tags || ((footer[4]&0x04)? liveTag.mems.getFromName(name) : null));
+          if (threads[name][1] && (footer[4]==this.timestamp || force)) this.insert_footer3(footer, name, flags || ((footer[4]&0x01)? footer[1] : null), page || ((footer[4]&0x02)? footer[2] : null), tags || (footer[4]&0x04));
           else {
-            footer[4] = (footer[4] || 0) | (flags? 0x01 : 0) | (page? 0x02 : 0) | (tags? 0x04 : 0);
+            footer[4] = (footer[4] & 0x0f) | (flags? 0x01 : 0) | (page? 0x02 : 0) | (tags? 0x04 : 0) | 0x08; // 0x08 is dirty mark
             if (flags) footer[1] = flags;
             if (page) footer[2] = page;
           }
         },
         draw: function(name){
           var footer = threads[name][24];
-          if (footer && footer[4]) insert_footer3(name,null,null, (footer[4]&0x04)? liveTag.mems.getFromName(name) : null);
+          if (footer && (footer[4] & 0x0f)) this.insert_footer3(footer, name, (footer[4]&0x01)? footer[1] : null, (footer[4]&0x02)? footer[2] : null, footer[4]&0x04);
         },
 
         pn: document.createElement('div'),
@@ -22378,168 +22414,146 @@ if (pref.test_mode['19']) { // stability test.
           flags[idx] = this.pn.childNodes[0];
           return flags[idx];
         },
+        remove_nullfy: function(footer,idx){
+          footer[0].removeChild(footer[idx]);
+          footer[idx] = null;
+        },
+
+        prep_footer3: function(th, footer_old){
+          var footer = th.footer;
+          footer.classList.add(pref.script_prefix+'_footer');
+          th.parse_funcs_html.footer_clear(th);
+          var str = footer.innerHTML.replace(/ *R:[0-9 \/]*I:[0-9 \/]*/,'');
+          str = str.replace(/P:[0-9 \/]*/,'');
+          str = str.replace(/ *\(sticky\) */,'');
+          if (str!=='') {
+            footer.innerHTML = '<span></span>' + str;
+            footer = footer.childNodes[0];
+          }
+          if (pref[embed_mode].footer.br) {
+            var footer_style = footer.getAttribute('style');
+            footer_style = ((footer_style)? footer_style + ';' : '') + 'clear:both';
+            footer.setAttribute('style',footer_style);
+          }
+          return (footer_old)? [footer, th.flags, footer_old[2], footer_old[3], 0x07, null, null] // for reentry
+                             : [footer, th.flags, null,          null,          0x07, null, null];
+        },
+        insert_footer3: function(footer, name,flags,page,tags){
+//          var footer = threads[name][24];
+          if (!footer || !footer[0]) return; // on demand drawing
+          var lth = liveTag.mems.getFromName(name);
+  //        var nums   = threads[name][19];
+          var nums2  = threads[name][8];
+  //        if (page===undefined || page===null || (page==='?' && footer[2])) page = footer[2];
+          if (page) footer[2] = page;
+          else page = footer[2] || '?';
+          var str_nr = ((pref.catalog_footer_show_nof_rep_to_me)? lth.nrtm +'/' : '' ) + lth.nr;
+          var str_nl = (pref.catalog.footer.nl && lth.ta && lth.ta.posts)? lth.ta.posts.length+'/' : '';
+          var str_nd = (pref.catalog.footer.nd && lth.pd)? '+'+lth.pd.length : '';
+          var str = ((pref.catalog.footer.archived && lth.archived)? 'A ' : '') +
+                    ((pref.catalog_footer_design==='native')?
+                      ((pref.catalog_footer_show_nof_rep)? ((lth.watched)? 'U: '+ str_nr + ' / ' : ''):'') + 'R: '+ str_nl+(nums2[2]-1)+str_nd +  ' / I: '+nums2[3] + ((pref.catalog_footer_show_page)? ' / P: '+page : '')
+                    : ((pref.catalog_footer_show_nof_rep)? ((lth.watched)? str_nr + '/' : ''):'') + str_nl+nums2[2]+str_nd + '/'+nums2[3]+ ((pref.catalog_footer_show_page)? '/'+page : '')); // trial.
+          if (str) str += ' ';
+          if (pref.catalog.footer.nf || pref.catalog.footer.nid) {
+            var str_nc = pref.catalog.footer.nf && lth.sID && lth.sID.nc;
+            var str_nid = pref.catalog.footer.nid && lth.sID && (lth.sID.nid || lth.sID.np);
+            str += (str_nid || '') + ((str_nid && str_nc)? '/' : '') + (str_nc || '') + ((str_nid || str_nc)? ' ' : '');
+          }
+          if (pref.catalog.footer.ctime || pref.catalog.footer.btime || pref.catalog.footer.ptime) {
+            var date_string = new RegExp(new Date().toLocaleDateString(),'g');
+            if (pref.catalog.footer.ctime) str += new Date(nums2[1]).toLocaleString().replace(date_string,'') + ' ';
+            if (pref.catalog.footer.btime && nums2[0]) str += new Date(nums2[0]).toLocaleString().replace(date_string,'') + ' ';
+            if (pref.catalog.footer.ptime && nums2[4]) str += new Date(nums2[4]).toLocaleString().replace(date_string,'') + ' ';
+          }
+          if (pref.catalog.footer.prate) str += Math.floor(nums2[2]/((Date.now() - nums2[1])/86400000)) + ' ';
+          if (pref.catalog_footer_show_board_name || pref.catalog_footer_show_thread_no || pref.catalog_footer_show_site_name) {
+            str += ((pref.catalog_footer_show_site_name)? lth.domain : '')+
+                   ((pref.catalog_footer_show_board_name)? lth.board : '')+
+                   ((pref.catalog_footer_show_thread_no)? lth.no : '') + ' ';
+          }
+  
+          if (pref.catalog_footer && str) {
+            if (footer[5]) footer[5].textContent = str;
+            else footer[5] = footer[0].insertBefore(document.createTextNode(str), footer[0].firstChild);
+          } else if (footer[5]) Footer.remove_nullfy(footer,5);
+  
+          if (pref.catalog_footer && pref.catalog_footer_show_tag) {
+            tags = tags && lth;
+            if (!footer[3]) {
+              footer[3] = footer[0].insertBefore(document.createElement('span'), footer[6]);
+              tags = lth;
+            } else if (tags) for (var i=0;i<2;i++) footer[3].removeChild(footer[3].firstChild);
+            if (tags) for (var i=0;i<2;i++) footer[3].appendChild(liveTag.update_tag_string(tags[i], ', ', liveTag.tag_node_onclick));
+          } else if (footer[3]) Footer.remove_nullfy(footer,3);
+  
+          if (pref.catalog_footer_show_flag && pref.catalog_footer && pref[embed_mode].t2h_num_of_posts>=0) {
+            if (!footer[6]) {
+              footer[6] = footer[0].appendChild(document.createElement('span'));
+              if (!flags) flags = footer[1];
+            }
+            if (flags && flags.length>0) {
+              for (var i=footer[6].childNodes.length-1;i>=0;i--) footer[6].removeChild(footer[6].firstChild);
+              var i = flags.length - pref[embed_mode].t2h_num_of_posts;
+              if (i<1) i=1;
+              if (flags[0] && Footer.prep_flag_dom(flags,0)) footer[6].appendChild(flags[0]);
+              while (i<flags.length) {
+                if (flags[i] && Footer.prep_flag_dom(flags,i)) footer[6].appendChild(flags[i]);
+                i++;
+              }
+              footer[1] = flags;
+            }
+          } else {
+            if (footer[6]) Footer.remove_nullfy(footer,6);
+            if (flags) footer[1] = flags;
+          }
+  
+  //        footer[0].innerHTML = (pref.catalog_footer)? str : ''; // working code
+  //        
+  //        if (pref.catalog_footer && pref.catalog_footer_show_tag) {
+  //          if (!footer[3]) {
+  //            footer[3] = document.createElement('span');
+  //            footer[3].innerHTML = '<span></span><span></span>';
+  //          }
+  //          if (tags) {
+  //            for (var i=0;i<2;i++) {
+  //              var pn = liveTag.update_tag_string(tags[i], ', ', liveTag.tag_node_onclick);
+  //              footer[3].removeChild(footer[3].childNodes[i]);
+  //              footer[3].insertBefore(pn,footer[3].childNodes[i] || null);
+  //            }
+  //          }
+  ////          if (tags) { // working code.
+  ////            for (var i=0;i<2;i++) {
+  ////              if (!tags[i][2] || force_update) {
+  ////                var pn = liveTag.update_tag_string(tags[i][0], ', ', liveTag.tag_node_onclick);
+  ////                tags[i][2] = true;
+  ////                footer[3].removeChild(footer[3].childNodes[i]);
+  ////                footer[3].insertBefore(pn,footer[3].childNodes[i] || null);
+  ////              }
+  ////            }
+  ////          }
+  //          if (footer[3].parentNode!==footer[0]) footer[0].appendChild(footer[3]);
+  //        }
+  //
+  //        if (pref.catalog_footer_show_flag && (flags || footer[1]) && pref.catalog_footer && pref[embed_mode].t2h_num_of_posts>=0) {
+  //          if (flags) footer[1] = flags;
+  //          else flags = footer[1];
+  //          var i = flags.length - pref[embed_mode].t2h_num_of_posts;
+  //          if (i<1) i=1;
+  //          if (flags[0] && Footer.prep_flag_dom(flags,0)) footer[0].appendChild(flags[0]);
+  //          while (i<flags.length) {
+  //            if (flags[i] && Footer.prep_flag_dom(flags,i)) footer[0].appendChild(flags[i]);
+  //            i++;
+  //          }
+  //////////          if (th && site.nickname!==th.domain) site2[th.domain].absolute_link(footer[0], th.board); // patch
+  //        }
+          footer[4] = Footer.timestamp;
+        }
       };
       cataLog.Footer = Footer;
-      function prep_footer3(th, footer_old){
-//if (domain!=='KC') { // temporal
-//if (domain==='8chan') { // temporal
-//      th.footer.setAttribute('name',pref.script_prefix+'_footer');
-//        if (pref.catalog_footer_show_board_name) {
-////          footer.innerHTML = '<span name="'+pref.script_prefix+'_footer">' + footer.innerHTML +'</span>' + '&emsp;' + board;
-//          footer.innerHTML = '<span>' + footer.innerHTML + '</span>' + '&emsp;' + board;
-//          footer = footer.childNodes[0];
-//        }
-        var footer = th.footer;
-        footer.classList.add(pref.script_prefix+'_footer');
-        th.parse_funcs_html.footer_clear(th);
-        var str = footer.innerHTML.replace(/ *R:[0-9 \/]*I:[0-9 \/]*/,'');
-        str = str.replace(/P:[0-9 \/]*/,'');
-        str = str.replace(/ *\(sticky\) */,'');
-        if (str!=='') {
-          footer.innerHTML = '<span></span>' + str;
-          footer = footer.childNodes[0];
-        }
-        if (pref[embed_mode].footer.br) {
-          var footer_style = footer.getAttribute('style');
-          footer_style = ((footer_style)? footer_style + ';' : '') + 'clear:both';
-          footer.setAttribute('style',footer_style);
-        }
-        return (footer_old)? [footer, th.flags, footer_old[2], footer_old[3], 0x07] // for reentry
-                           : [footer, th.flags, null,          null,          0x07];
-//} else return null;
-      }
-      function insert_footer3(name,flags,page,tags, th){
-        var footer = threads[name][24];
-if (footer && footer[0]) {
-        var lth = liveTag.mems.getFromName(name);
-//        var nums   = threads[name][19];
-        var nums2  = threads[name][8];
-//        if (page===undefined || page===null || (page==='?' && footer[2])) page = footer[2];
-        if (page) footer[2] = page;
-        else page = footer[2] || '?';
-        var str_nr = ((pref.catalog_footer_show_nof_rep_to_me)? lth.nrtm +'/' : '' ) + lth.nr;
-        var str_nl = (pref.catalog.footer.nl && lth.ta && lth.ta.posts)? lth.ta.posts.length+'/' : '';
-        var str_nd = (pref.catalog.footer.nd && lth.pd)? '+'+lth.pd.length : '';
-        var str = ((pref.catalog.footer.archived && lth.archived)? 'A ' : '') +
-                  ((pref.catalog_footer_design==='native')?
-                    ((pref.catalog_footer_show_nof_rep)? ((lth.watched)? 'U: '+ str_nr + ' / ' : ''):'') + 'R: '+ str_nl+(nums2[2]-1)+str_nd +  ' / I: '+nums2[3] + ((pref.catalog_footer_show_page)? ' / P: '+page : '')
-                  : ((pref.catalog_footer_show_nof_rep)? ((lth.watched)? str_nr + '/' : ''):'') + str_nl+nums2[2]+str_nd + '/'+nums2[3]+ ((pref.catalog_footer_show_page)? '/'+page : '')); // trial.
-        if (str) str += ' ';
-        if (pref.catalog.footer.nf || pref.catalog.footer.nid) {
-          var str_nc = pref.catalog.footer.nf && lth.sID && lth.sID.nc;
-          var str_nid = pref.catalog.footer.nid && lth.sID && (lth.sID.nid || lth.sID.np);
-          str += (str_nid || '') + ((str_nid && str_nc)? '/' : '') + (str_nc || '') + ((str_nid || str_nc)? ' ' : '');
-        }
-        if (pref.catalog.footer.ctime || pref.catalog.footer.btime || pref.catalog.footer.ptime) {
-          var date_string = new RegExp(new Date().toLocaleDateString(),'g');
-          if (pref.catalog.footer.ctime) str += new Date(nums2[1]).toLocaleString().replace(date_string,'') + ' ';
-          if (pref.catalog.footer.btime && nums2[0]) str += new Date(nums2[0]).toLocaleString().replace(date_string,'') + ' ';
-          if (pref.catalog.footer.ptime && nums2[4]) str += new Date(nums2[4]).toLocaleString().replace(date_string,'') + ' ';
-        }
-        if (pref.catalog.footer.prate) str += Math.floor(nums2[2]/((Date.now() - nums2[1])/86400000)) + ' ';
-        if (pref.catalog_footer_show_board_name || pref.catalog_footer_show_thread_no || pref.catalog_footer_show_site_name) {
-          var dbt = common_func.name2domainboardthread(name,true);
-          str += ((pref.catalog_footer_show_site_name)? dbt[0] : '')+
-                 ((pref.catalog_footer_show_board_name)? dbt[1] : '')+
-                 ((pref.catalog_footer_show_thread_no)? dbt[2] : '');
-        }
-
-//        if (pref.catalog_footer_show_tag) { // working code.
-//          var str_tags;
-//          if (tags) {
-//            var tags_count = tags[0][0].length;
-//            str_tags = tags[0][2];
-//            var i=0; 
-//            while (tags_count<pref.liveTag.max && i<tags[1][0].length) {
-//              if (tags[0][1][tags[1][0][i]]===undefined) {
-//                str_tags += tags[1][0][i] + ', ';
-//                tags_count++;
-//              }
-//              i++;
-//            }
-//            footer[3] = str_tags;
-//          } else str_tags = footer[3] || '';
-//          str += str_tags;
-//        }
-
-        footer[0].innerHTML = (pref.catalog_footer)? str : '';
-
-        if (pref.catalog_footer && pref.catalog_footer_show_tag) {
-          if (!footer[3]) {
-            footer[3] = document.createElement('span');
-            footer[3].innerHTML = '<span></span><span></span>';
-          }
-          if (tags) {
-            for (var i=0;i<2;i++) {
-              var pn = liveTag.update_tag_string(tags[i], ', ', liveTag.tag_node_onclick);
-              footer[3].removeChild(footer[3].childNodes[i]);
-              footer[3].insertBefore(pn,footer[3].childNodes[i] || null);
-            }
-          }
-//          if (tags) { // working code.
-//            for (var i=0;i<2;i++) {
-//              if (!tags[i][2] || force_update) {
-//                var pn = liveTag.update_tag_string(tags[i][0], ', ', liveTag.tag_node_onclick);
-//                tags[i][2] = true;
-//                footer[3].removeChild(footer[3].childNodes[i]);
-//                footer[3].insertBefore(pn,footer[3].childNodes[i] || null);
-//              }
-//            }
-//          }
-          if (footer[3].parentNode!==footer[0]) footer[0].appendChild(footer[3]);
-        }
-
-        if (pref.catalog_footer_show_flag && (flags || footer[1]) && pref.catalog_footer && pref[embed_mode].t2h_num_of_posts>=0) {
-          if (flags) footer[1] = flags;
-          else flags = footer[1];
-          var i = flags.length - pref[embed_mode].t2h_num_of_posts;
-          if (i<1) i=1;
-          if (flags[0] && Footer.prep_flag_dom(flags,0)) footer[0].appendChild(flags[0]);
-          while (i<flags.length) {
-            if (flags[i] && Footer.prep_flag_dom(flags,i)) footer[0].appendChild(flags[i]);
-            i++;
-          }
-////////          if (th && site.nickname!==th.domain) site2[th.domain].absolute_link(footer[0], th.board); // patch
-        }
-        footer[4] = 0;
-}
-      }
-      cataLog.insert_footer3 = insert_footer3;
-////      function footer3_click_tag_entry(e){
-////        footer3_click_tag(this.textContent, true);
-////      }
-//////      function footer3_click_tag(tag, from_tag){ // working code.
-////////        var tag = this.textContent;
-//////        footer3_click_tag_sub(tag, from_tag);
-////////        liveTag.tag_in_thread_onclick(this,e);
-////////        for (var name in liveTag.tags[tag].mems) {
-////////          var dbt = common_func.name2domainboardthread(name,true);
-////////          var tgt = liveTag.mems[dbt[0]][dbt[1]][dbt[2]];
-////////          if (tgt[0][0].indexOf(tag)!=-1) tgt[0][2] = false;
-////////          else tgt[1][2] = false;
-////////          if (threads[name]) insert_footer3(name,undefined,undefined,threads[name][17]);
-////////        }
-////////        if (pref.liveTag.ci) if (liveTag.tags[tag].ci) for (var tag in liveTag.tags[tag].ci) footer3_click_tag_sub(tag); // can't track.
-//////        if (pref.liveTag.ci) {
-//////          var tag_l = tag.toLowerCase();
-//////          for (var i in liveTag.tags) if (tag!==i && tag_l===liveTag.tags[i].key.toLowerCase()) footer3_click_tag_sub(i, from_tag);
-//////        }
-//////      }
-////      function footer3_click_tag(tag, from_tag){
-////        for (var i in liveTag.tags[tag].tgts) footer3_click_tag_sub(i, from_tag);
-////      }
-////      function footer3_click_tag_sub(tag, from_tag){
-////        if (from_tag) liveTag.tag_in_thread_onclick(tag);
-////        for (var name in liveTag.tags[tag].mems) {
-////          var dbt = common_func.name2domainboardthread(name,true);
-////          var tgt = liveTag.mems[dbt[0]][dbt[1]][dbt[2]];
-////          if (tgt[0][0].indexOf(tag)!=-1) tgt[0][2] = false;
-////          else tgt[1][2] = false;
-////          if (threads[name]) insert_footer3(name,undefined,undefined,threads[name][17]);
-////        }
-////      }
+//      cataLog.insert_footer3 = insert_footer3;
       function update_all_footers(){
-        for (var name in threads) insert_footer3(name);
+        for (var name in threads) Footer.update_force(name);
       }
 
       function re_sort_thread(){
@@ -23105,6 +23119,10 @@ if (!pref.test_mode['63']) {
         if (!site2[site.nickname].historyAPI || !site2[dbt[0]].historyAPI || !pref.pref2.meguca.historyAPI) {
           var cw = window.open(url,window_name);
           send_message(window_name, message,cw);
+          if (pref.uip_tracker.on && pref.uip_tracker.annotate) {
+            var lth = liveTag.mems.getFromName(name);
+            if (lth.sID && lth.sID.h) send_message(window_name, ['UIP',lth.sID.h]);
+          }
           if (threads[name][16].archiveFile) {
             var file = threads[name][16].archiveFile;
             send_message(window_name, ['ARCHIVER',['SUB_INIT',(file==='IDB')? {IDB:true, domain:dbt[0], board:(pref.test_mode['80'])? dbt[1].slice(0,-5)+'/' : dbt[1], no:dbt[2]} : // cut '_IDB'
@@ -23121,7 +23139,7 @@ if (!pref.test_mode['63']) {
         else site2['DEFAULT'].check_reply.set_unwatch(threads[name][19]);
         if (pref.liveTag.style) liveTag.update_ur(name,0,true);
 //        site2[cnst.name2domainboardthread(name,true)[0]].insert_footer2(threads[name][0],threads[name][18],threads[name][19],threads[name][8]);
-        insert_footer3(name);
+        Footer.update_force(name);
 //        if (reorder_thread_idx(name)) show_catalog(name); // called in triage_exe
         if (pref.notify.favicon) notifier.favicon.set(threads);
       }
@@ -23452,6 +23470,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
         this.ref_count = this.ref_count_init;
         this.drawn_y = 0;
         drawn_idx= 0; // temporal patch, should be this.drawn_idx
+        cataLog.Footer.timestamp_inc();
       },
 //      backup_mb_state: function(idx){
 //        if (this.drawn_idx_mb==-1) {
@@ -23471,8 +23490,32 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
 //      drawn_idx_mb: -1,
 //      ref_count_mb: 0,
     };
+      if (pref.test_mode['96'] && embed_mode==='catalog') {
+        catalog_obj2_proto = {
+          func_track_shown_org: catalog_obj2_proto.func_track_shown,
+          func_track_shown: function(name, draw_on_demand){
+            var y_old = this.drawn_y;
+            var check_y = this.od_count%this.od_width==0;
+            this.func_track_shown_org(name, draw_on_demand && check_y);
+            if (check_y && y_old==this.drawn_y) this.od_width++;
+            this.od_count++;
+          },
+          func_track_reset_org: catalog_obj2_proto.func_track_reset,
+          func_track_reset: function(){
+            this.func_track_reset_org();
+            this.od_count = 0;
+          },
+          func_od_reset: function(){
+            this.od_width = 1;
+            show_catalog_cont();
+          },
+          od_width: 1, // on_demand_mode
+          od_count: 0,
+          __proto__: catalog_obj2_proto
+        };
+      }
       scroll_event_src.addEventListener('scroll', show_catalog_cont, false);
-      window.addEventListener('resize', show_catalog_cont, false);
+      window.addEventListener('resize', (pref.test_mode['96'] && embed_mode==='catalog')? catalog_obj2_proto.func_od_reset.bind(catalog_obj2_proto) : show_catalog_cont, false);
       var catalog_obj2 = catalog_obj2_proto;
       if (embed_mode==='page' && site2[site.nickname].all_boards && site2[site.nickname].all_boards.indexOf(site.board)!=-1) { // PATCH
         catalog_obj2 = {
@@ -25934,7 +25977,7 @@ if (!pref.test_mode['42']) {
       var idx_old;
       for (var p=end-1;p>=start;p--) {
         var idx = Math.floor((lths[p]-time_base)/time_unit);
-        if (--j>=0 && idx===idx_old && !pref.stats.patch_tm) continue; // full scan at test_mode['96']
+        if (--j>=0 && idx===idx_old && !pref.stats.patch_tm) continue; // full scan at patch_tm
         var idx_over = idx - pref.stats.len_capture -1;
         if (idx_over>0) {
           idx -= update_posts_no_time(ldbst, time_unit, idx_over);
