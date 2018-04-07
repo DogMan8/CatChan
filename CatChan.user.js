@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.03.18.0
+// @version 2018.04.08.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -321,7 +321,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       auto_update_period : 10,
       auto_update_countdown : true,
 
-      popup:true, colorID:true, backlink:true, popup_truncated:true,
+      popup:true, colorID:true, backlink:true, popup_truncated:true, bl_ec:false, bl_rm:true,  // backlink_explicit_cross, baclink_remove_if_OP
       link_show_op:true,
       expand_thumbnail_inline:true, localtime:true,
       expand_thumbnail_inline_all_after:false,
@@ -329,7 +329,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       hide_posts_without_images:false,
       thumbnail:{
         inline:{limit_width: true, limit_height:false, margin_width: 40, margin_height: 0, webm: true, webm_mute:false, webm_loop:false, ondemand:true, ref_height:400},
-        hover: {limit_width: true, limit_height: true, margin_width: 40, margin_height: 0, webm:false, webm_mute: true, webm_loop:false},
+        hover: {limit_width: true, limit_height: true, margin_width: 40, margin_height: 0, webm:false, webm_mute: true, webm_loop:false, zoom:false},
       },
       open_spoiler_text: false,
       open_spoiler_image: false,
@@ -337,6 +337,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       scroll_lock: false,
       use_expander_always: false,
       popup2:'no',
+      popup2_sel:'auto',
+      popup2_sel_tolerance:10,
       posts_search_op: 'opaque',
       posts_search_op_opacity: 40,
       deleted_posts: {detect:'acc', store:'LS', merge:true, auto_clean:true},
@@ -573,7 +575,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         text_mode: {mode:'graphic', sub:true, name:false, com:true},
         appearance: {
           titleBar: {filter: true, settings: true, refresh: true, num_of_pages: true, boards_selector: true},
-          initial: {state: 'maximized', width: 400, height: 400}
+          initial: {state: 'max', width: 400, height: 400}
         },
 
         t2h_sel: 'no',
@@ -989,6 +991,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     triage: null,
     GEH: null,
     insert_myself: null,
+    DIH: null,
   }
 
   pref_func = (function(){
@@ -1781,13 +1784,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             filter: {
               kwd: {
                 re: 'Regular Expression.',
-                ci: 'Case insensitive. Don\'t distinguish uppercase and lowercase.',
-                sentence: '"XXXX YYYY" matches itself instead of matching "XXXX" and/or "YYYY"',
+                ci: 'Case insensitive. Don\'t distinguish upper and lower case.',
+                sentence: '"XXXX YYYY" matches itself as a whole instead of matching "XXXX" and/or "YYYY"',
               },
               time: 'Time : Hide threads which have no posts after the time.',
-              time_creation: 'Time(Creation Time) : Hide threads which are created before the time.',
+              time_creation: 'Time(Creation Time) : Hide threads which were created before the time.',
               time_watch: 'Watch: watch threads which have posts after the time.',
-              time_watch_creation: 'Watch(Creation Time): watch threads which are created after the time.',
+              time_watch_creation: 'Watch(Creation Time): watch threads which were created after the time.',
             }
           },
 //          'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
@@ -2205,7 +2208,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         show_hide : function(e){
           if (pref_func.settings.pn13===null) {
             var pos = ((e.clientX*2>window.innerWidth)? 'right':'left') + ':0px:' + ((e.clientY*2>window.innerHeight)? 'bottom:0':'top:'+site.header_height())+'px';
-            var pn13 = cnst.init(pos+':Show:tb',cnst.void_func,cnst.void_func,pref_func.settings.show_hide,cnst.void_func)[0];
+            var pn13 = cnst.init(pos+':Show:tb',cnst.void_func,cnst.void_func,pref_func.settings.show_hide,cnst.void_func);
             var pn13_0_2 = cnst.add_to_tb(pn13,
               '<select name="settings.indexing">'+
                 '<option>' + pref_func.settings.options.join('</option><option>') + '</option>'+
@@ -2310,7 +2313,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '3,<ICBX"' +pref+ 'limit_width"> Limit to browser\'s width - '+
               '<ITB3"' +pref+ 'margin_width"> px<br>'+
               '3,<ICBX"' +pref+ 'limit_height"> Limit to browser\'s height - '+
-              '<ITB3"' +pref+ 'margin_height"> px';
+              '<ITB3"' +pref+ 'margin_height"> px<br>'+
+              (inline_or_hover==='hover'? '3,<ICBX"' +pref+ 'zoom"> Click to zoom mode if limited':'');
           },
           env: function(mode, str_inner){
             return '1,Environment values:(advanced option)'+ this.rollup(
@@ -2658,15 +2662,17 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '&emsp;&emsp;<input type="radio" name="float.click_area" value="thumbnail">Thumbnail<br>'+
           '&emsp;&emsp;<input type="radio" name="float.click_area" value="entire">Entire thread card<br>'+
           '&emsp;<input type="checkbox" name="float.popup2"> Use pop-up window<br>'+
-          '&emsp;&emsp;appear/disappear:<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog_popdown" value="imm">immediately<br>'+
-          '&emsp;&emsp;&emsp;<input type="radio" name="catalog_popdown" value="delay">delayed '+
-          '<input type="text" name="catalog_popup_delay" size="6" style="text-align: right;">'+
-          '<input type="text" name="catalog_popdown_delay" size="6" style="text-align: right;"> ms<br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog_popup_size_fix"> Fix size when you move it<br>'+
+          '2,appear/disappear:<br>'+
+          '3,<IR"catalog_popdown,imm">immediately<br>'+
+          '3,<IR"catalog_popdown,delay">delayed: <ITB4"catalog_popup_delay"><ITB4"catalog_popdown_delay"> ms<br>'+
+          '2,grab to move / select text:<br>'+
+          '3,<IR"proto.popup2_sel,move">Move always<br>'+
+          '3,<IR"proto.popup2_sel,auto">Auto, padding-x:<ITB4"proto.popup2_sel_tolerance"> px<br>'+
+          '3,<IR"proto.popup2_sel,sel">Select always<br>'+
+          '3,<ICBX"catalog_popup_size_fix"> Fix size when you move it<br>'+
 //          '&emsp;&emsp;<input type="checkbox" name="catalog_localtime"> Localtime<br>'+
           '&emsp;At initial:<br>'+
-          '&emsp;&emsp;<input type="radio" name="catalog.appearance.initial.state" value="maximized">Maximized<br>'+
+          '&emsp;&emsp;<input type="radio" name="catalog.appearance.initial.state" value="max">Maximized<br>'+
           '&emsp;&emsp;<input type="radio" name="catalog.appearance.initial.state" value="floating">Floating '+
           '<input type="text" name="catalog.appearance.initial.width" size="4" style="text-align: right;"> x '+
           '<input type="text" name="catalog.appearance.initial.height" size="4" style="text-align: right;"><br>'+
@@ -3098,9 +3104,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '&emsp;&emsp;&emsp;<input type="checkbox" name="catalog.catalog_json"> From json file<br>'+
           '1,Lazy load/draw<br>'+
           '2,Catalog/IndexPage/Float <br>'+
-          '3,<ICBX"catalog.lazyDraw_merge" style="opacity:0">'+
+          '3,<ICBX"catalog.lazyDraw_merge" style="visibility:hidden">'+
           '<ICBX"page.lazyDraw_merge">'+
-          '<ICBX"float.lazyDraw_merge" style="opacity:0"> Draw posts<br>'+
+          '<ICBX"float.lazyDraw_merge" style="visibility:hidden"> Draw posts<br>'+
           '3,<input type="checkbox" name="catalog.draw_on_demand">'+
           '<input type="checkbox" name="page.draw_on_demand">'+
           '<input type="checkbox" name="float.draw_on_demand"> Draw threads<br>'+
@@ -3181,7 +3187,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.03.18.0<br>'+
+          'Version 2018.04.08.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4365,9 +4371,28 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return str+'::'+ ((start_point)? this.debug_show_proto('/'+start_point['debug____proto'],start_point, ['debug____proto','proto'], 'debug____proto') :
                                       'NONE');
     },
+    debug_parse_funcs_parse: function(domain, src_type, str, force) {
+      var src_types = [src_type+'_template', src_type];
+      for (var s=0;s<2;s++) {
+        var strs = this.debug_parse_funcs(domain+':'+src_types[s]).split(',');
+        for (var i=0;i<strs.length;i++) {
+          var idx_s = strs[i].lastIndexOf(':');
+          if (strs[i].substr(idx_s+1)===str) {
+            strs.splice(i+1,strs.length-i-1);
+            var hier_str = strs[(i>0)?i-1:i].replace(/[^\/]*\//g,'').replace(/:[^:]*$/,'').replace(/\./,':');
+            var root_str = strs[0].replace(/::.*/,'');
+            if (hier_str!==root_str) strs[strs.length] = ' (==='+hier_str+')';
+            return [strs, hier_str];
+          }
+          if (idx_s===-1) strs.splice(i--,1);
+          else strs[i]=strs[i].substr(0,idx_s+1);
+        }
+      }
+      return [strs, hier_str];
+    },
     debug_parse_funcs_all: function(str) {
       var domains = ['DEFAULT','4chan','vichan','lain','8chan','KC','meguca','meguca1','meguca2','dist'];
-      var types = ['','_json','_html'];
+      var types = ['','_json','_html']; // ,'_json_template','_html_template']; // '' for common
       var srcs = ['common','post','thread','page','catalog'];
       var objs = {};
       for (var d=0;d<domains.length;d++)
@@ -4377,28 +4402,22 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             if (domains[d]!=='DEFAULT' && srcs[s]==='common' || !site2[domains[d]]) continue; // !site2[domains[d]] is a patch for 'dist'
             var src_type = srcs[s]+types[t];
             if (site2[domains[d]].parse_funcs[src_type]) {
-              var strs = this.debug_parse_funcs(domains[d]+':'+src_type).split(',');
-              for (var i=0;i<strs.length;i++) {
-                var idx_s = strs[i].lastIndexOf(':');
-                if (strs[i].substr(idx_s+1)===str) {
-                  strs.splice(i+1,strs.length-i-1);
-                  var hier_str = strs[(i>0)?i-1:i].replace(/[^\/]*\//g,'').replace(/:[^:]*$/,'').replace(/\./,':');
-                  var root_str = strs[0].replace(/::.*/,'');
-                  if (hier_str!==root_str) strs[strs.length] = ' (==='+hier_str+')';
-                  break;
-                }
-                if (idx_s===-1) strs.splice(i--,1);
-                else strs[i]=strs[i].substr(0,idx_s+1);
-              }
+              var result = this.debug_parse_funcs_parse(domains[d], src_type, str);
+              var strs = result[0];
+              var hier_str = result[1];
+//            try {
               var obj_root = site2[domains[d]].parse_funcs[src_type];
               if (obj_root) {
                 var obj = obj_root[str];
                 var flag = true;
                 for (var i in objs) if (objs[i][0]===obj) {strs[strs.length] = ' (==='+i+')'; flag=false; objs[i][1]++; break;}
-//                if (flag) objs[domains[d]+':'+src_type] = obj;
+  //              if (flag) objs[domains[d]+':'+src_type] = obj;
                 if (flag) objs[hier_str] = [obj,1];
               }
               if ((typeof(obj_root[str])==='string' || typeof(obj_root[str])==='number')) strs[str.length] = ', '+obj_root[str];
+//            } catch(e){
+//              if (src_type.indexOf('_template')==-1) throw e; // templates don't have parse_funcs and cause excaption.
+//            }
               console.log(strs.join(''));
             }
           }
@@ -4455,11 +4474,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var nh = pn.naturalHeight;
       var fw = (nw>w)? nw/w : 1;
       var fh = (nh>h)? nh/h : 1;
-      if (fh>1) pn.setAttribute('width', (fw>=fh)? w : nw/fh);
-      if (fw>1) pn.setAttribute('height',(fh>=fw)? h : nh/fw);
-//      var f  = (fw>fh)? fw : fh;
-//      pn.setAttribute('width',  nw/f);
-//      pn.setAttribute('height', nh/f);
+//      if (fh>1 || fw>1) {
+        pn.setAttribute('width', (fw>=fh)? w : nw/fh);
+        pn.setAttribute('height',(fh>=fw)? h : nh/fw);
+//      }
+////      var f  = (fw>fh)? fw : fh;
+////      pn.setAttribute('width',  nw/f);
+////      pn.setAttribute('height', nh/f);
     },
     kwd_prep_regexp: function(kwd) {
       if (!kwd.str) return [];
@@ -4915,14 +4936,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     get_ops : function(doc){return [];}, // returns array of op numbers from the document.
     get_posts : function(doc) {return [];}, // returns array of posts numbers from the document.
 //    absolute_link : function(doc){}, // change link from relative to absolute which includes site URL.
-    absolute_link : function(doc){
+    absolute_link : function(pn){
+      var prefix = this.protocol + '//' + this.domain_url;
       var tgts = ['src','href'];
-      var all = doc.pn.getElementsByTagName('*'); //'*[src],*[href]'
+      var all = pn.getElementsByTagName('*'); //'*[src],*[href]'
       for (var i=0;i<all.length;i++) {
         for (var j=0;j<tgts.length;j++) {
           var tgt = all[i].getAttribute(tgts[j]);
           if (tgt && tgt.indexOf('http')!=0 && tgt.indexOf('mailto:')!=0 && tgt.indexOf('blob')!=0 && tgt.substr(0,2)!='//')
-            all[i].setAttribute(tgts[j],this.protocol + '//' + this.domain_url + tgt); // working code.
+            all[i].setAttribute(tgts[j], prefix + tgt);
 //            all[i].setAttribute(tgts[j],site2[doc.domain].protocol + '//' + site2[doc.domain].domain_url + tgt); // working code.
         }
       }
@@ -5357,10 +5379,10 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //      return offset_top;
       return marked_first_post;
     },
-    format_pn: function(pn,thq_no, pref_env, post){
+    format_pn: function(pn,thq_no, pref_env, post, th){
       if (!pref_env) pref_env = pref[cataLog.embed_mode];
       if (pref_env.colorID) this.colorID(pn);
-      if (pref_env.backlink) this.backlink(pn,thq_no);
+      if (pref_env.backlink) this.backlink(pn,thq_no, th); // th for short href.
       if (pref_env.localtime) this.localtime(pn);
       if (post) { // BUG, CALLED TWISE TIMES for deleted posts in embed_mode==='thread'
 //        if (cataLog.embed_mode==='page' || cataLog.embed_mode==='thread') site2['DEFAULT'].check_reply.add_you(post, true); // "cataLog.embed_mode==='page'" is a patch.
@@ -5370,7 +5392,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
     },
     colorID: function(){},
-    backlink: function(){},
     localtime: function(){},
     unmark_post_from_event: function(e) {
       e.target.removeEventListener('mouseover', site2['common'].unmark_post_from_event, false);
@@ -5478,7 +5499,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var th_q = site2[th.domain].popups_href2th_q(et.getAttribute('href'));
       if (!th_q) return;
       var dbt = th_q[2];
-      if (pref[cataLog.embed_mode].env.event_dynamic && pref[cataLog.embed_mode].env.popup_native && site.nickname===th.domain) return;
+      if (pref[cataLog.embed_mode].env.event_dynamic && pref[cataLog.embed_mode].env.popup_native && site.nickname===th.domain && !pref.test_mode['98']) return;
       var pn;
       var pnode = et;
       function out(){
@@ -5516,7 +5537,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           }
           pn = site2[th.domain_html].post_json2html(th_q[0][th_q[1]], dbt[1]);
         } else pn = th_q[0][th_q[1]].pn.cloneNode(true);
-        site2[th.domain_html].format_pn(pn, th_q[0][th_q[1]]);
+        site2[th.domain_html].format_pn(pn, th_q[0][th_q[1]], null, null, th_q[0]);
       }
       pn.style = {};
       pn.style.position = 'fixed';
@@ -5532,7 +5553,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       pn.onmouseover = out;
       site2[site.nickname].popups_post_pnode(pnode).appendChild(pn);
 //      site2['DEFAULT'].popup_info = null;
-      if (pref.debug_mode['10']) site2[th.domain].popups_debug('popup: '+th_q[1]+': ',th_q[0]);
+      if (pref.debug_mode['10']) console.log('popup: '+th_q[1]+': '+site2[th.domain].popups_debug(th_q[0]));
 //      }
     },
 //    popups_post: function(sender,e){
@@ -5543,24 +5564,24 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return pnode;
     },
     
-    popups_href2dbtp: function(href, src, th){
-      if (href[0]==='#') {
-        href = th.board+'res/'+th.no+'.html'+href;
-        src.setAttribute('href',href);
-      }
-      var hrefs = href.split('/');
-      var p = hrefs[hrefs.length-1].substr(hrefs[hrefs.length-1].indexOf('#')+1);
-      var t = hrefs[hrefs.length-1].substr(0,hrefs[hrefs.length-1].indexOf('.'));
-      var b = (hrefs.length>=3)? '/'+hrefs[hrefs.length-3]+'/' : site.board;
-      var d = this.nickname;
-      return [d,b,t,p];
-    },
+//    popups_href2dbtp: function(href, src, th){
+//      if (href[0]==='#') {
+//        href = th.board+'res/'+th.no+'.html'+href;
+//        src.setAttribute('href',href);
+//      }
+//      var hrefs = href.split('/');
+//      var p = hrefs[hrefs.length-1].substr(hrefs[hrefs.length-1].indexOf('#')+1);
+//      var t = hrefs[hrefs.length-1].substr(0,hrefs[hrefs.length-1].indexOf('.'));
+//      var b = (hrefs.length>=3)? '/'+hrefs[hrefs.length-3]+'/' : site.board;
+//      var d = this.nickname;
+//      return [d,b,t,p];
+//    },
     popups_href2th_q: function(href,src,th){
       var dbt = this.popups_href2dbtp(href,src,th);
 //      var th = liveTag.mems[d][b][t];
       var th = liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]});
-      if (th.q===undefined) th.q = {};
-      if (!liveTag.mems[dbt[0]][dbt[1]][dbt[2]] || !liveTag.mems[dbt[0]][dbt[1]][dbt[2]].q) return null; // patch for accessibility check. 'if (!th)' doesn't work.
+      if (th.q===undefined) th.q = Object.create(th); // crosslink, CYCLIC REFERENCE.
+      if (!liveTag.mems[dbt[0]][dbt[1]][dbt[2]] || !liveTag.mems[dbt[0]][dbt[1]][dbt[2]].q) {if (pref.debug_mode['33']) console.log('popups_href2th_q: '+dbt); return null;} // patch for accessibility check. 'if (!th)' doesn't work. // WHY???
       return [liveTag.mems[dbt[0]][dbt[1]][dbt[2]].q, dbt[3], dbt];
     },
 ////    popups_add: function(posts, posts_old, th){ // working code.
@@ -5640,7 +5661,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       if (!tgt_th16.popups) tgt_th16.popups = Object.create(null);
       var popups = tgt_th16.popups;
       var lth = liveTag.mems[th.domain][th.board][th.no];
-      if (lth.q===undefined) lth.q = {};
+      if (lth.q===undefined) lth.q = Object.create(lth); // usual, lth.q is made in popups_href2th_q if crosslink. CYCLIC REFERENCE.
       if (posts) if (th.type_data==='html') {for (var i=0;i<posts.length;i++) if (!posts[i].no) Object.defineProperty(posts[i],'no',{value:th.parse_funcs.no(posts[i])});}
 //                 else for (var i=0;i<posts.length;i++) if (!posts[i].pn) posts[i].pn = this.post_json2html(posts[i],th.board);
       var posts_exist = {};
@@ -5674,7 +5695,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       if (!pref.catalog.filter.kwd.posts_active) for (var i in popups) {
         if (posts_exist[i]===undefined) {
 //          this.popups_release(popups[i], i, th.key); // BUG???
-          this.popups_release(lth.q, i, th.key);
+          this.popups_release(lth, i);
           delete popups[i];
         }
       }
@@ -5684,85 +5705,193 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        var link_regex = />>[0-9]+$|>>>\/[0-z_]+\/[0-9]+$/;
 //        var link_regex = />>(>\/.+\/)*[0-9]+$/;
 //    popups_link_regex: />>(>\/.+\/)*[0-9]+(\s\(You\))*$/, // patch for '(You)'
-    popups_link_regex: /^>>(>\/.+\/)*[0-9]+/, // patch for '(You)' and '(OP)'
-    popups_add_1: function(th, post, activate, thq, op, quote){
-      var op_regexp = /^>>/+th.no+'(\\s|\\(|$)/';
-      var quotes = [];
+    popups_link_regex: /^>>(>\/[^/]+\/)*[0-9]+/, // patch for '(You)' and '(OP)'
+    popups_add_1: function(th, post, activate, thq, op, dig){
       if (!post.pn) post.pn = site2[th.domain_html].post_json2html(post,th.board);
-      var as = post.pn.getElementsByTagName('a');
-      for (var j=0;j<as.length;j++) {
-//        if (as[j].textContent.search(/>>[0-9]+$/)!=-1) {
-        var as_txt = as[j].textContent;
-        if (as_txt.search(this.popups_link_regex)!=-1) {
-          if (activate) as[j].onmouseover = this.popups_post_entry;
-          var th_q = site2[th.domain].popups_href2th_q(as[j].getAttribute('href'),as[j],th); // this may change href, so this must be here.
-          if (pref[cataLog.embed_mode].link_show_op && as_txt.search(op_regexp)===0 && as_txt.indexOf('(OP)')==-1) as[j].textContent += ' (OP)';
-          var a_class = as[j].parentNode.getAttribute('class');
-          if (!a_class || a_class.indexOf(site2[th.domain_html].backlink_class)==-1) { // skip backlinks
-            if (th_q) {
-              var lthq_no = parseInt(th_q[1],10);
-              quotes[quotes.length] = [thq, lthq_no]; // quotes may be multiple.  // use 'thq' instead of 'th_q[0]' for test_mode['80']
-              site2[th.domain_html].popups_add_backlink(thq,lthq_no,th.key+'#'+post.no, th); // backlinks keep being unique using object key.
-            }
+      var as = site2[th.domain_html].post_pn2ce(post.pn).getElementsByTagName('a');
+      if (as.length>0) {
+        var op_regexp = new RegExp('^>>'+th.no+'(\\s|\\(|$)');
+        var quotes = [];
+        for (var j=0;j<as.length;j++) {
+  //        if (as[j].textContent.search(/>>[0-9]+$/)!=-1) {
+          var as_txt = as[j].textContent;
+          if (as_txt.search(this.popups_link_regex)!=-1) {
+            if (activate) as[j].onmouseover = this.popups_post_entry;
+            var th_q = site2[th.domain].popups_href2th_q(as[j].getAttribute('href'),as[j],th); // this may change href, so this must be here.
+            if (pref[cataLog.embed_mode].link_show_op && as_txt.search(op_regexp)===0 && as_txt.indexOf('(OP)')==-1) as[j].textContent += ' (OP)';
+  //          var a_class = as[j].parentNode.getAttribute('class');
+  //          if (!a_class || a_class.indexOf(site2[th.domain_html].backlink_class)==-1) { // skip backlinks
+              if (th_q) {
+                var lthq_no = parseInt(th_q[1],10);
+                quotes[quotes.length] = [th_q[0], lthq_no]; // quotes may be multiple.
+//                quotes[quotes.length] = [thq, lthq_no]; // quotes may be multiple.  // use 'thq' instead of 'th_q[0]' for test_mode['80'] // BUG. MUST USE th_q[0]
+                var skey = th_q[2][0]!==th.domain? th.key : th_q[2][1]!==th.board? th.board+th.no : th_q[2][2]!=th.no? th.no : null;
+                site2[th.domain_html].popups_add_backlink(th_q[0],lthq_no, skey!==null? skey+'#'+post.no : post.no, th, dig);
+//                site2[th.domain_html].popups_add_backlink(thq,lthq_no, skey!==null? skey+'#'+post.no : post.no, th, dig);
+              }
+  //          }
           }
         }
       }
-      this.popups_set(thq,post.no,post, quote && quotes.length!=0 && quotes);
+      this.popups_set(thq,post.no,post, quotes && quotes.length!=0 && quotes);
       if (op) thq[post.no].isOP = site2[th.domain_html].popups_op_func_set(post.pn);
     },
-    popups_add_backlink: function(thq, no, key, th){
+    popups_add_backlink: function(thq, no, key, th, dig){
       if (thq[no]===undefined) {
         thq[no] = [key];
-        this.popups_set_waiting(thq,no);
+        if (dig) this.popups_set_waiting(thq,no);
       } else if (Array.isArray(thq[no])) {
-        if (thq[no].indexOf(key)==-1) thq[no][thq[no].length] = key;
+        if (thq[no].indexOf(key)==-1) {
+          thq[no][thq[no].length] = key;
+          if (dig) this.popups_set_waiting(thq,no); // may not waiting because of 'dig'.
+        }
       } else {
         if (!thq[no].backlinks) thq[no].backlinks = [];
-        if (thq[no].backlinks.indexOf(key)==-1) {
-          thq[no].backlinks[thq[no].backlinks.length] = key;
-          if (thq[no].pn) if (pref[cataLog.embed_mode].backlink) site2[th.domain_html].add_backlinks(thq[no].pn,thq[no].backlinks,thq[no].backlinks.length-1, th);
+        var blks = thq[no].backlinks;
+        if (blks.indexOf(key)==-1) {
+          blks[blks.length] = key;
+          if (thq[no].pn) if (pref[cataLog.embed_mode].backlink) site2[th.domain_html].add_backlinks(thq[no].pn, blks, blks.length-1, th);
         }
       }
     },
+    add_backlinks: function(pn,backlinks,target, th){ // this refers site2[domain_html]
+      var bks_pn = this.add_backlinks_bks_query(pn);
+      var bks = bks_pn || this.add_backlinks_bks();
+      if (!target) bks.innerHTML = ''; // this hits target===0 also and clean up.
+      for (var i=(target || 0);i<backlinks.length;i++) {
+        this.add_backlinks_add_1(bks, this.popups_backlink2dbtpth(backlinks[i], th));
+        if (target) break;
+      }
+      if (!bks_pn) this.add_backlinks_bks_append(pn, bks);
+    },
+    popups_backlink2dbtpth: function(backlink, th){
+      var dbtp;
+      var dbtpth = (typeof(backlink)==='number')? [th.domain, th.board, th.no, backlink, '>>'+backlink]
+          : (dbtp = backlink.split(/[\/#]/),
+             dbtp.length==2? [th.domain, th.board, dbtp[0], dbtp[1], '>>'+(pref.proto.bl_ec? dbtp[0]+'#':'')+dbtp[1]]
+                           : [dbtp[0] || th.domain, '/'+dbtp[1]+'/', dbtp[2], dbtp[3], (dbtp[0]? '>>>>'+dbtp[0]:'>>>')+'/'+dbtp[1]+'/'+(pref.proto.bl_ec? dbtp[2]+'#':'')+dbtp[3]]);
+      var domain = dbtpth[0]; // this refers site2[domain_html], not site2[domain].
+      var href = site2[domain].link_dbtp2href(dbtpth);
+      dbtpth[5] = (domain!==site.nickname)? site2[domain].absolute_link_1(href) : href;
+      return dbtpth;
+    },
+    remove_backlink: function(pn,idx){}, // dummy
     popups_remove_backlink: function(thq, no, key){
       if (!thq[no]) return; // 'quotes' may be multiple, then hit this line.
       var ary = (Array.isArray(thq[no]))? thq[no] : thq[no].backlinks;
-//if (pref.debug_mode['12'] && !ary) {
-//  console.log('error in popups_remove_backlinks:');
-//  console.log(thq);
-//  console.log(no);
-//  console.log(key);
-//}
       var idx = ary.indexOf(key);
-      if (idx>=0) ary.splice(idx,1);
-//      else console.log('ERROR in handling popups ' + no+', '+key+', '+thq[no].backlinks); // quotes allows multiple, but backlink doesn't, delettioni of a post which has multiple links to a post hits this line.
-      if (ary.length===0 && thq[no].remove_if_no_backlinks) delete thq[no];
-      if (pref.debug_mode['10']) this.popups_debug('popups_remove_backlinks: '+no+': '+key+': ', thq);
+      if (idx>=0) {
+        ary.splice(idx,1);
+        if (thq.no===no && pref.proto.bl_rm) if (thq[no]) this.remove_backlink(thq[no].pn, idx); // remove op only for faster execution. // includes cross link
+        if (ary.length===0) return true; // prevent from infinite loop by reference loop of anchors.
+      }
+//      else console.log('ERROR in handling popups ' + no+', '+key+', '+thq[no].backlinks); // quotes allows multiple, but backlink doesn't, deletion of a post which has multiple links to a post hits this line.
+//      if (ary.length===0 && thq[no].remove_if_no_backlinks) delete thq[no];
+//      if (pref.debug_mode['10']) console.log('popups_remove_backlink: '+(idx>=0?'suc':'fail')+', '+no+'<-'+key+':    '+this.popups_debug(thq));
+//      if (ary.length===0) return true;
     },
     popups_set: function(thq, no, val, quotes){
       if (thq[no]===undefined) {
         thq[no] = val;
-        thq[no].backlinks = undefined; // PATCH FOR MEGUCA, meguca has backlinks in native.
+        if (thq[no].backlinks) thq[no].backlinks = undefined; // PATCH FOR MEGUCA, meguca has backlinks in native.
       } else if (Array.isArray(thq[no])) {
         val.backlinks = thq[no];
         thq[no] = val;
       } else { // for multiple entry at editing===true, update thq[no].
-        val.backlinks = thq[no].backlinks;
+        if (thq[no].backlinks) val.backlinks = thq[no].backlinks;
         thq[no] = val;
       }
       if (quotes) thq[no].quotes = quotes;
       if (val.editing) this.popups_set_waiting(thq,no); // keep updating while editing by 'popups_fetched'
-      else if (thq.waiting) this.popups_remove_waiting(thq,no);
+      this.popups_remove_waiting(thq,no);
     },
-    popups_release: function(thq, no, th_key){
-      var thq_no = thq[no];
-      if (thq_no.quotes)
-        for (var i=0;i<thq_no.quotes.length;i++)
-          this.popups_remove_backlink(thq_no.quotes[i][0], thq_no.quotes[i][1], th_key+'#'+no);
-      if (!thq_no.backlinks || thq_no.backlinks.length===0) delete thq[no];
-      else thq_no.remove_if_no_backlinks = 1;
-      if (pref.debug_mode['10']) this.popups_debug('popups_release: '+no+': ', thq);
+    popups_release: function(lth, no){ // in-place, on-demand ver.
+      var quotes = [];
+      var i=0;
+      if (pref.debug_mode['12']) var initial_cond = {no:no, lth:lth, len:Object.keys(lth.q).length};
+      prep_quotes(lth, no);
+      while (--i>=0) {
+        var tgt = quotes[i];
+        lth = tgt[0];
+        no  = tgt[1];
+        if (tgt.length==4) {
+          var q = tgt[2];
+          var p = tgt[3];
+          var skey = q.domain!==lth.domain? lth.key : q.board!==lth.board? lth.board+lth.no : q.no!=lth.no? lth.no : null;
+          if (this.popups_remove_backlink(q, p, skey!==null? skey+'#'+no : parseInt(no,10))) { // only true if removed successfully, this prevents infinite loop by reference loop.
+            this.popups_remove_waiting(q,p);
+            prep_quotes(Object.getPrototypeOf(q), p);// emulates recursive call // overwrite for in-place
+          }
+        } else {
+          if (lth.no!=no && lth.q && lth.q[no])
+            if (!lth.q[no].backlinks || lth.q[no].backlinks.length===0) delete lth.q[no];
+//            else if (lth.q[no].quote) lth.q[no].quote = null; // nullyf for strict accordance, but redundant.
+//          if (pref.debug_mode['10']) console.log('popups_release: '+no+':    '+this.popups_debug(lth.q));
+        }
+      }
+      if (pref.debug_mode['12']) console.log('popups_release: '+initial_cond.lth.key+': '+Object.keys(initial_cond.lth.q).length+' <- '+initial_cond.len+', '+initial_cond.no+
+                                             ((pref.debug_mode['10'])? '    '+this.popups_debug(lth.q):''));
+      function prep_quotes(lth, no){
+        quotes[i++] = [lth, no];
+        var qts = lth.q && lth.q[no] && lth.q[no].quotes; // lth may refer archived thread, which never have loaded.
+        if (qts) for (var j=qts.length-1;j>=0;j--) quotes[i++] = [lth, no, qts[j][0], qts[j][1]];
+      }
     },
+//    popups_release: function(lth, no){ // working code. loop ver.
+//      var quotes = format_quotes(lth, no, lth.q[no].quotes);
+//      while (quotes.length>0) {
+//        var tgt = quotes.shift();
+//        lth = tgt[0];
+//        no  = tgt[1];
+//        if (tgt.length==4) {
+//          var q = tgt[2];
+//          var p = tgt[3];
+//          var skey = q.domain!==lth.domain? lth.key : q.board!==lth.board? lth.board+lth.no : q.no!=lth.no? lth.no : null;
+//          if (this.popups_remove_backlink(q, p, skey? skey+'#'+no : parseInt(no,10))) {
+//            this.popups_remove_waiting(q,p);
+//            var lth_next = Object.getPrototypeOf(q);
+//            quotes = format_quotes(lth_next, p, lth_next.q[p].quotes).concat(quotes); // emulates recursive call
+//            lth_next.q[p].quotes = null; // prevent from infinite loop by reference loop of anchors.
+//          }
+//        } else {
+//          if (lth.no!=no && (!lth.q[no].backlinks || lth.q[no].backlinks.length===0)) delete lth.q[no];
+//          if (pref.debug_mode['10']) console.log('popups_release: '+no+':    '+this.popups_debug(lth.q));
+//        }
+//      }
+//      function format_quotes(lth,no, quotes){
+//        return (quotes)? quotes.map(function(v){return [lth, no].concat(v);}).concat([[lth, no]]) : [[lth, no]];
+//      }
+//    },
+////    popups_release_list: [], // DOESN'T WORK, leaves must be removed first, or lost reference and get too complicated procedures.
+////    popups_release_recursive: function(){ // avoid recursive calls
+////      while (this.popups_release_list.length>0) {
+////        var tgt = this.popups_release_list.pop();
+////        this.popups_release(tgt[0], tgt[1], tgt[2]);
+////      }
+////    },
+//    popups_release: function(lth, no){ // working code // , thq_no_in){
+//      var thq = lth.q;
+//      var thq_no = thq[no]; //  || thq_no_in;
+//      if (thq_no.quotes)
+//        for (var i=0;i<thq_no.quotes.length;i++) {
+//          var q = thq_no.quotes[i][0];
+//          var p = thq_no.quotes[i][1];
+//          var skey = q.domain!==lth.domain? lth.key : q.board!==lth.board? lth.board+lth.no : q.no!=lth.no? lth.no : null;
+//          if (this.popups_remove_backlink(q, p, skey? skey+'#'+no : parseInt(no,10))) {
+//            this.popups_remove_waiting(q,p);
+////            this.popups_release_list.push([Object.getPrototypeOf(q), p, q[p]]); // DOESN'T WORK
+//            try { 
+//              this.popups_release(Object.getPrototypeOf(q), p); // RECURSIVE CALLS MAY CAUSE STACKOVERFLOW.
+//            } catch(e){
+//              setTimeout(this.popups_release.bind(this,Object.getPrototypeOf(q), p),0);
+//            }
+//          }
+//        }
+//      if (lth.no!=no && (!thq_no.backlinks || thq_no.backlinks.length===0)) delete thq[no];
+////      else thq_no.remove_if_no_backlinks = 1;
+//      if (pref.debug_mode['10']) console.log('popups_release: '+no+':    '+this.popups_debug(lth.q));
+////      if (!thq_no_in && this.popups_release_list.length>0) this.popups_release_recursive();
+//    },
     popups_set_waiting: function(thq,no){
       if (!thq.waiting) thq.waiting = [no];
       else {
@@ -5772,9 +5901,12 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
     },
     popups_remove_waiting: function(thq,no){
+      if (!thq.waiting) return;
       var idx = thq.waiting.indexOf(no);
-      if (idx!=-1) thq.waiting.splice(idx,1);
-      if (thq.waiting.length===0) delete thq.waiting;
+      if (idx!=-1) {
+        thq.waiting.splice(idx,1);
+        if (thq.waiting.length===0) delete thq.waiting;
+      }
     },
     popups_fetched: function(th, lth, start){ // 'if (lth.q && lth.q.waiting)' is checked by caller.
       if (!start) start = 0;
@@ -5824,21 +5956,32 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //      }
       return post;
     },
-    backlink: function(pn,thq_no){
+    backlink: function(pn,thq_no, th){
       var backlinks = (thq_no)? ((Array.isArray(thq_no))? thq_no : thq_no.backlinks) : null;
-      if (backlinks) this.add_backlinks(pn,backlinks);
+      if (backlinks) this.add_backlinks(pn,backlinks, undefined, th);
     },
 
-    popups_debug: function(kwd, thq){
-      var d_str = '';
-      for (var i in thq) d_str += i+':'+((Array.isArray(thq[i]))? thq[i] : (thq[i].backlinks || thq[i].remove_if_no_backlinks))+', ';
-      console.log(kwd+d_str);
+    popups_debug: function(thq){
+      if (!thq) return '';
+      var keys = Object.keys(thq);
+      var d_str = keys.length+', '+thq.key+': ';
+      for (var j=0;j<keys.length;j++) {
+        var i = keys[j];
+        d_str += i+':'+((Array.isArray(thq[i]))? thq[i] : (thq[i].backlinks || thq[i].remove_if_no_backlinks || 'P'))+', ';
+      }
+      return d_str;
     },
-    toplevel_anchor: function(th, th_no){
-      var as = th.pn.getElementsByTagName('a');
+    toplevel_anchor_pos:1,
+    toplevel_anchor: function(pn, th){
+      var as = pn.getElementsByTagName('a');
+      var pos = this.toplevel_anchor_pos;
+      var dbtp = [th.domain, th.board, th.no, null];
       for (var i=0;i<as.length;i++) {
         var href = as[i].getAttribute('href');
-        if (href && href[0]==='#') as[i].setAttribute('href',this.link_dbtp2href([th.domain, th.board, th_no, href.substr(1), 'href']));
+        if (href && href[0]==='#') {
+          dbtp[3] = href.substr(pos);
+          as[i].setAttribute('href',this.link_dbtp2href(dbtp));
+        }
       }
     },
 
@@ -6882,6 +7025,10 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       return (post.com)? post.com.replace(/<[^>]*>/g,' ').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&') : ''; // most of lainchan, speed: 9.4/1.99, misshit 4%
     },
     patch:{},
+    post_pn2ce: function(pn){
+      return (pn.lastChild.tagName==='BLOCKQUOTE')? pn.lastChild : pn.getElementsByTagName('blockquote')[0];
+    },
+//    post_pn2ce: function(pn){return pn;},
   };
   site2['common'] = { // common functions
     absorb_children: function(pn){
@@ -8656,69 +8803,82 @@ if (pref.test_mode['0']) {
         else break;
       }
     },
-    add_backlinks: function(pn,backlinks,target,th){
-      var bks = pn.getElementsByClassName('mentioned')[0];
-      if (!bks) {
-        var bks = document.createElement('span');
-        bks.setAttribute('class','mentioned unimportant');
-        var ref = pn.getElementsByClassName('post_no')[1];
-        var pnode = ref.parentNode;
-        do {ref = ref.nextSibling;} while (ref && ref.tagName==='I');
-        pnode.insertBefore(bks,ref);
-      }
-      if (!target) bks.innerHTML = '';
-      for (var i=(target || 0);i<backlinks.length;i++) {
-        var dbtp = backlinks[i].split(/[\/#]/);
-        dbtp[1] = '/' + dbtp[1] + '/';
-        var domain = dbtp[0];
-        var board = dbtp[1];
-        var post_no = dbtp[3];
-        var href = site2[domain].link_dbtp2href(dbtp);
-        if (domain!==site.nickname) href = site2[domain].absolute_link_1(href);
-////        var href = backlinks[i].split('/');
-////        var post_no = href[href.length-1].substr(href[href.length-1].indexOf('#')+1);
-////        href[href.length-1] = 'res/'+href[href.length-1].replace('#','.html#');
-////        var domain = href[0];
-////        href[0] = '';
-////        href = href.join('/');
-////        if (domain!==site.nickname) href = this.absolute_link_1(href);
-//////        bk_str += '<a class="mentioned" onclick="highlightReply(\''+post_no+'\');" href="'+href+'">&gt;&gt;'+post_no+'</a>';
-        var blk = null;
-        if (target!==undefined)
-          for (var j=0;j<bks.childNodes.length;j++)
-            if (bks.childNodes[j].textContent==='>>'+post_no) {
-              blk = bks.childNodes[j];
-              break;
-            }
-        if (!blk) {
-          blk = document.createElement('a');
-          blk.setAttribute('class','mentioned');
-          blk.setAttribute('href',href);
-          blk.textContent = (th && domain!==th.domain)? '>>>>'+domain+board+post_no :
-                            (th && board!==th.board)? '>>>'+board+post_no :
-                            '>>'+post_no;
-          blk.onclick = this.backlink_onclick;
-          bks.appendChild(blk);
-          blk.onmouseover = this.popups_post_entry;
-        }
-        if (target) break;
-      }
+    add_backlinks_bks: (function(){
+      var bks = document.createElement('span');
+      bks.setAttribute('class','mentioned unimportant');
+      return function(){
+        return bks.cloneNode(false);
+      };
+    })(),
+    add_backlinks_add_1: (function(){
+      var blk = document.createElement('a');
+      blk.setAttribute('class','mentioned'); // mentioned-XXXX in lainchan.
+      return function(bks, dbtpth){
+        var pn = blk.cloneNode(true);
+        pn.setAttribute('href',dbtpth[5]);
+        pn.textContent = dbtpth[4];
+        pn.onclick = this.backlink_onclick;
+        pn.onmouseover = this.popups_post_entry;
+        bks.appendChild(pn);
+      };
+    })(),
+    add_backlinks_bks_query: function(pn){
+      return pn.getElementsByClassName('mentioned')[0];
     },
-////    link_get_dbt: function(href){ // /a/res/no.html#post
-////      var href = href.split('/');
-////      var p = href[href.length-1].substr(href[href.length-1].indexOf('#')+1);
-////      var t = href[href.length-1].substr(0,href[href.length-1].indexOf('.html'));
-////      var b  = href[href.length-3] || site.board;
-////      var d  = '8chan';
-////      return [d,'/'+b+'/',t,p];
+////    add_backlinks: function(pn,backlinks,target,th){
+////      var bks_pn = pn.getElementsByClassName('mentioned')[0];
+////      var bks = bks_pn || this.add_backlinks_bks();
+////      if (!target) bks.innerHTML = '';
+////      for (var i=(target || 0);i<backlinks.length;i++) {
+////        var dbtp = this.popups_backlink2dbtpth(backlinks[i], th);
+////        var domain = dbtp[0];
+//////        var board = dbtp[1];
+//////        var post_no = dbtp[3];
+////        var href = site2[domain].link_dbtp2href(dbtp);
+////        if (domain!==site.nickname) href = site2[domain].absolute_link_1(href);
+//////        var blk = null; // IS THIS REQUITED???
+//////        if (target!==undefined)
+//////          for (var j=0;j<bks.childNodes.length;j++)
+//////            if (bks.childNodes[j].textContent==='>>'+post_no) {
+//////              blk = bks.childNodes[j];
+//////              break;
+//////            }
+//////        if (!blk)
+////        this.add_backlinks_add_1(bks, dbtp, href);
+////        if (target) break;
+////      }
+////      if (!bks_pn) {
+////        var ref = pn.getElementsByClassName('post_no')[1];
+////        var pnode = ref.parentNode;
+////        do {ref = ref.nextSibling;} while (ref && ref.tagName==='I');
+////        pnode.insertBefore(bks,ref);
+////      }
 ////    },
+    add_backlinks_bks_append: function(pn, bks){
+      var ref = pn.getElementsByClassName('post_no')[1];
+      var pnode = ref.parentNode;
+      do {ref = ref.nextSibling;} while (ref && ref.tagName==='I');
+      pnode.insertBefore(bks,ref);
+    },
+    popups_href2dbtp: function(href, src, th){
+//      if (href[0]==='#') {
+//        href = th.board+'res/'+th.no+'.html'+href;
+//        src.setAttribute('href',href);
+//      }
+      var hrefs = href.split('/');
+      var p = hrefs[hrefs.length-1].substr(hrefs[hrefs.length-1].indexOf('#')+1);
+      var t = hrefs[hrefs.length-1].substr(0,hrefs[hrefs.length-1].indexOf('.'));
+      var b = (hrefs.length>=3)? '/'+hrefs[hrefs.length-3]+'/' : site.board;
+      var d = this.nickname;
+      return [d,b,t,p];
+    },
     link_dbtp2href: function(dbtp){
       return dbtp[1] + 'res/' + dbtp[2] + '.html#' + dbtp[3];
     },
     backlink_onclick: function(){
       highlightReply.call(this,parseInt(this.textContent.substr(2),10));
     },
-    backlink_class: 'mentioned',
+//    backlink_class: 'mentioned',
     colorID: function(pn) {
       var id = pn.getElementsByClassName('poster_id')[0];
       if (id) {
@@ -8794,6 +8954,9 @@ if (pref.test_mode['0']) {
         '</div>';
       pn.innerHTML = html_str;
       return pn.childNodes[0];
+    },
+    post_pn2ce: function(pn){
+      return (pn.lastChild.className==='body')? pn.lastChild : pn.getElementsByClassName('body')[0];
     },
     post_json2html_file : function(post, board, multifile) {
       var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
@@ -9697,10 +9860,10 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
     },
 
     popups_href2dbtp: function(href, src, th){
-      if (href[0]==='#' && th) {
-        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1)]);
-        src.setAttribute('href',href);
-      }
+//      if (href[0]==='#' && th) {
+//        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1)]);
+//        src.setAttribute('href',href);
+//      }
       var hrefs = href.split(/[\/#]/);
       var p = hrefs[hrefs.length-1];
       var t = hrefs[hrefs.length-2].replace('thread-','').replace('.html','');
@@ -9760,6 +9923,9 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
           '</div>'+
         '</div>'; //'<td>';
       return pn.childNodes[0];
+    },
+    post_pn2ce: function(pn){ // NOT DEBUGGED BECAUSE KC WAS CLOSED.
+      return (pn.lastChild.firstChild.tagName==='BLOCKQUOTE')? pn.lastChild.firstChild : pn.getElementsByTagName('blockquote')[0];
     },
     post_json2html_file : function(post, board, multifile) {
       var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
@@ -10089,6 +10255,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         },
         __proto__:obj.thread
       };
+      if (pref.test_mode['98']) obj.page.mouseover = obj.catalog.mouseover;
       return obj;
     })(),
     domain_url: 'boards.4chan.org',
@@ -10128,7 +10295,8 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
     //    catalog_bordercolor : '#f0e0d6',
     get_next_image: function(img,top){
       var imgs = cataLog.parent.querySelectorAll('img[data-md5]');
-      var idx = Array.prototype.indexOf.call(imgs,img.previousSibling);
+      var idx = Array.prototype.indexOf.call(imgs,img);
+      if (idx==-1) idx = Array.prototype.indexOf.call(imgs,img.previousSibling);
       if (top) while (imgs[idx+1] && imgs[idx+1].offsetTop<top) idx++;
       if (idx>=0) {
         while (imgs[idx+1] && imgs[idx+1].parentNode.getAttribute('href').search(/\.webm$/)!=-1) idx++;
@@ -10856,10 +11024,10 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 ////      }
 ////    },
     popups_href2dbtp: function(href, src, th){
-      if (href[0]==='#' && th) {
-        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(1), 'href']);
-        src.setAttribute('href',href);
-      }
+//      if (href[0]==='#' && th) {
+//        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(2)]);
+//        src.setAttribute('href',href);
+//      }
       var hrefs = href.split(/[\/#]/);
       var p = hrefs[hrefs.length-1].substr(1);
       var t = hrefs[hrefs.length-2];
@@ -10934,72 +11102,81 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       pn.appendChild(post_pn);
       return pn;
     },
-    add_backlinks: function(pn,backlinks,target){
-if (pref.test_mode['35']) return;
-      var bks = pn.getElementsByClassName(this.backlink_parent_class)[0];
-      if (!bks) {
-        bks = document.createElement('div'); // why div???
-        bks.setAttribute('class',this.backlink_parent_class);
-        pn.getElementsByClassName('desktop')[0].appendChild(bks); // for 4chan-X v1.13.8.7
-//        var ref = this.backlink_parent_prevSib(pn);
-//        ref.parentNode.insertBefore(bks,ref.nextSibling);
-      }
-      if (!target) bks.innerHTML = '';
-      for (var i=(target || 0);i<backlinks.length;i++) {
-        var dbtp = backlinks[i].split(/[\/#]/);
-        dbtp[1] = '/' + dbtp[1] + '/';
-        var domain = dbtp[0];
-        var board = dbtp[1];
-        var post_no = dbtp[3];
-        var href = site2[domain].link_dbtp2href(dbtp);
-////        var href = backlinks[i].split('/');
-////        var post_no = href[href.length-1].substr(href[href.length-1].indexOf('#')+1);
-////        href[href.length-1] = 'thread/'+href[href.length-1];
-////        var domain = href[0];
-////        href[0] = '';
-////        href = href.join('/');
-        if (domain!==site.nickname) href = site2[domain].absolute_link_1(href);
-
-        var blk = null;
-////        if (target!==undefined) // may be working in page???
-////          for (var j=0;j<bks.childNodes.length;j++)
-////            if (bks.childNodes[j].textContent==='>>'+post_no) {
-////              blk = bks.childNodes[j];
-////              break;
-////            }
-        if (target!==undefined) {
-          var as = bks.getElementsByTagName('a');
-          for (var j=0;j<as.length;j++)
-            if (as[j].textContent==='>>'+post_no) {
-              blk = as[j];
-              break;
-            }
-        }
-        if (!blk) {
-          blk = document.createElement('a');
-          blk.setAttribute('class',this.backlink_class);
-          blk.setAttribute('href',href);
-          blk.textContent = '>>'+post_no;
-          if (dbtp[0]!=='4chan' || pref.test_mode['91']) {
-            blk.onclick = this.backlink_onclick;
-            blk.onmouseover = this.popups_post_entry;
-          }
-          var blk2 = document.createElement('span');
-          blk2.appendChild(blk);
-          blk2.appendChild(document.createTextNode(' '));
-          bks.appendChild(blk2);
-        }
-        if (target) break;
-      }
+    remove_backlink: function(pn,idx){
+      var bks = pn && pn.getElementsByClassName('backlink')[0];
+      var blk = bks && bks.childNodes[idx];
+      if (blk) bks.removeChild(blk);
     },
+    add_backlinks_bks: (function(){
+      var bks = document.createElement('div'); // why div???
+      bks.setAttribute('class','backlink');
+      return function(){
+        return bks.cloneNode(false);
+      }
+    })(),
+    add_backlinks_add_1: (function(){
+      var blk = document.createElement('a');
+      blk.setAttribute('class','quotelink');
+      var blk2 = document.createElement('span');
+      blk2.appendChild(blk);
+      blk2.appendChild(document.createTextNode(' '));
+      return function(bks, dbtpth){
+        blk.setAttribute('href',dbtpth[5]);
+        blk.textContent = dbtpth[4];
+        var pn = blk2.cloneNode(true);
+        if (dbtpth[0]!=='4chan' || pref.test_mode['91']) { // TO BE REMOVED
+          var pn1 = pn.firstChild;
+          pn1.onclick = this.backlink_onclick;
+          pn1.onmouseover = this.popups_post_entry;
+        }
+        bks.appendChild(pn);
+      };
+    })(),
+    add_backlinks_bks_query: function(pn){
+      return pn.getElementsByClassName('backlink')[0];
+    },
+////    add_backlinks: function(pn,backlinks,target, th){
+////if (pref.test_mode['35']) return;
+////      var bks_pn = pn.getElementsByClassName('backlink')[0];
+////      var bks = bks_pn || this.add_backlinks_bks();
+////      if (!target) bks.innerHTML = ''; // this hits target===0 also and clean up.
+////      for (var i=(target || 0);i<backlinks.length;i++) {
+////        var dbtp = this.popups_backlink2dbtpth(backlinks[i], th);
+//////        var domain = dbtp[0];
+//////        var board = dbtp[1];
+//////        var post_no = dbtp[3];
+//////        var txt = dbtp[4];
+//////        var href = site2[domain].link_dbtp2href(dbtp);
+//////        if (domain!==site.nickname) href = site2[domain].absolute_link_1(href);
+////
+//////        var blk = null; // IS THIS REQUIRED???
+//////        if (target!==undefined) {
+//////          var as = bks.getElementsByTagName('a');
+//////          for (var j=0;j<as.length;j++)
+//////            if (as[j].textContent===txt) {
+//////              blk = as[j];
+//////              break;
+//////            }
+//////        }
+//////        if (!blk)
+////        this.add_backlinks_add_1(bks, dbtp);
+////        if (target) break;
+////      }
+////      if (!bks_pn) pn.getElementsByClassName('desktop')[0].appendChild(bks); // for 4chan-X v1.13.8.7
+//////        var ref = this.backlink_parent_prevSib(pn);
+//////        ref.parentNode.insertBefore(bks,ref.nextSibling);
+////    },
+    add_backlinks_bks_append: function(pn, bks){
+      pn.getElementsByClassName('desktop')[0].appendChild(bks); // for 4chan-X v1.13.8.7
+    },
+    toplevel_anchor_pos:2,
     link_dbtp2href: function(dbtp){
-      return dbtp[1] + 'thread/' + dbtp[2] + ((dbtp[4]==='href')? '#' : '#p') + dbtp[3];
+      return dbtp[1] + 'thread/' + dbtp[2] + '#p' + dbtp[3];
     },
     backlink_onclick: function(){
-      highlightReply.call(this,parseInt(this.textContent.substr(2),10));
+      highlightReply.call(this,parseInt(this.textContent.substr(2),10)); // call native function in 4chan.
     },
-    backlink_class: 'quotelink',
-    backlink_parent_class: 'backlink',
+//    backlink_class: 'quotelink',
     backlink_parent_prevSib: function(pn){return pn.getElementsByClassName('postNum')[1];},
 
 //    post_json2html : site2['vichan'].post_json2html,
@@ -11460,10 +11637,10 @@ if (pref.features.domains['meguca']) {
     post_json2html_fname_server: function(post){return (post.image)? post.image.src : undefined;},
     post_json2html_fname: function(post){return (post.image)? post.image.imgnm : undefined;},
     popups_href2dbtp: function(href, src, th){
-      if (href[0]==='#' && th) {
-        href = th.board+href;
-        src.setAttribute('href',href);
-      }
+//      if (href[0]==='#' && th) {
+//        href = th.board+href;
+//        src.setAttribute('href',href);
+//      }
       var hrefs = href.split(/[\/#]/);
       var p = hrefs[hrefs.length-1];
       var t = hrefs[hrefs.length-2];
@@ -11790,7 +11967,7 @@ if (pref.features.domains['meguca']) {
               site2['meguca'].historyAPI_blocking = false;
               if (!skip_initial_call) {
 ////                console.log('mascot off');
-                cataLog.image_hover_remove();
+                cataLog.DIH.image_hover_remove();
                 cataLog.general_event_handler.destroy();
 //                cataLog.triage.off();
                 for (var name in cataLog.threads) cataLog.remove_thread(name, true);
@@ -11981,7 +12158,7 @@ if (pref.features.domains['meguca']) {
           var th = Object.create(obj); // keep original as it is for archiving.
           if (th.sticky) th.sticky = true; // overwrite property of the same name before setting prototype to use polarity.
           th.board = '/' + obj.board +'/';
-          obj.no = obj.id;
+          obj.no = obj.id || obj.no; // '|| obj.no' for restoring from archive.
           delete obj.id;
           var posts = [obj];
 ////          var flag = false; // working code -2016.10.06
@@ -12181,7 +12358,8 @@ if (pref.features.domains['meguca']) {
   common_func.Object_modifyDescriptor(site2['meguca2'],'check_func',{writable:false}); // for reentry.
 
   site2['meguca'] = { // meguca.org v3
-    domain_url_image: 'images.meguca.org/assets',
+    domain_url_image: 'meguca.org/assets', // changed around 2018.04.01
+//    domain_url_image: 'images.meguca.org/assets',
     check_func: site2['meguca2'].check_func, // needed as a own property.
 //    url_boards_json: function(){return ['https://meguca.org/json/' + ((pref.pref2['meguca'].utilize_boards_json)? 'boardTimestamps' : 'boardList'), 'json'];},
     url_boards_json : function(){return ['https://meguca.org/json/board-list', 'json'];},
@@ -12243,7 +12421,7 @@ if (pref.features.domains['meguca']) {
       while (pnode.tagName!=='ARTICLE' && pnode.parentNode) pnode = pnode.parentNode;
       return pnode;
     },
-    backlink_class: 'backlinks', // for popups_add_1
+//    backlink_class: 'backlinks', // for popups_add_1
     add_backlinks_pn: function(pn, target){
       var bks = pn.getElementsByClassName('backlinks')[0];
       if (!bks) {
@@ -12276,12 +12454,11 @@ if (pref.features.domains['meguca']) {
       }
       bks.pn.appendChild(blk);
     },
-    add_backlinks: function(pn,backlinks,target){
+    add_backlinks: function(pn,backlinks,target, th){ // MUST CHANGE TO USE site2['DEFAULT'].add_backlinks, but meguca is down and I can't debugg it now, so I leave this.
       var bks = this.add_backlinks_pn(pn, target);
       for (var i=(target || 0);i<backlinks.length;i++) {
-        var dbtp = backlinks[i].split(/[\/#]/);
+        var dbtp = this.popups_backlink2dbtpth(backlinks[i], th);
         var domain = dbtp[0];
-        dbtp[1] = '/' + dbtp[1] + '/';
         var href = site2[domain].link_dbtp2href(dbtp);
         if (domain!==site.nickname) href = site2[domain].absolute_link_1(href);
         if (bks.hrefs[href]!==null) this.add_backlinks_add_1(bks, dbtp, href);
@@ -12289,10 +12466,10 @@ if (pref.features.domains['meguca']) {
       }
     },
     popups_href2dbtp: function(href, src, th){
-      if (href[0]==='#' && th) {
-        href = th.board+th.no+href; // this.link_dbtp2href([th.domain, th.board, th.no, href.substr(2)]);
-        src.setAttribute('href',href);
-      }
+//      if (href[0]==='#' && th) {
+//        href = th.board+th.no+href; // this.link_dbtp2href([th.domain, th.board, th.no, href.substr(2)]);
+//        src.setAttribute('href',href);
+//      }
       var hrefs = href.split(/[\/#]/);
       var p = hrefs[hrefs.length-1].substr(1); // remove 'p'
       var b = '/'+hrefs[hrefs.length-3]+'/';
@@ -12300,6 +12477,7 @@ if (pref.features.domains['meguca']) {
       if (!t) t = -1;
       return ['meguca',b,t,p]
     },
+    toplevel_anchor_pos:2,
     link_dbtp2href: function(dbtp){
       return dbtp[1] + dbtp[2] + '#p' + dbtp[3];
     },
@@ -12580,8 +12758,9 @@ if (pref.features.domains['meguca']) {
         },
 //        footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('deleted-toggle')[0]);},
         get_max_page: function(doc){
-          var len = doc.getElementsByClassName('pagination')[0].childNodes.length;
-          return (len<=1)? len : len-1;
+          var len;
+          var pgn = doc.getElementsByClassName('pagination')[0];
+          return pgn? (len = pgn.childNodes.length, (len<=1)? len : len-1) : 1;
         },
         proto: 'thread_html',
       },
@@ -12632,6 +12811,13 @@ if (pref.features.domains['meguca']) {
         },
 //        replace_omitted_info2: site2['4chan'].parse_funcs.page_html.replace_omitted_info2,
         pn_name: function (post){return post.pn.getElementsByClassName('name')[0].childNodes[0];},
+      },
+      'thread_json': {
+        prep_to_archive: function(obj){
+          obj[0].posts = obj.slice(1);
+          return obj[0];
+        },
+        proto: 'meguca2.thread_json',
       },
     },
     favicon : {
@@ -14395,58 +14581,142 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //  })();
 
   var cnst = (function(){
-    function opacity(pn, increase){
-      var op = parseFloat(pn.style.opacity);
-      if (isNaN(op)) op=1;
-      if (increase) pn.style.opacity = (op+0.1>=1)? 1 : op+0.1;
-      else if (!increase) pn.style.opacity = (op-0.1<=0.1)? 0.1: op-0.1;
-    }
-    function rollup(tb,pn, options){
-      if (pn.style.display=='none') { // for dollchan
-        tb.style.width = ''; // means 'auto'
-        pn.style.display = ''; // for dollchan
+    var opts = new WeakMap();
+    var tb_funcs = {
+      op_p: function(e){
+        var s = e.currentTarget.parentNode.style;
+        var op = parseFloat(s.opacity) || 1;
+        s.opacity = (e.target.name==='op_p')? ((op+0.1>=1)? 1 : op+0.1)
+                                            : ((op-0.1<=0.1)? 0.1: op-0.1);
+      },
+      roll_toggle: function(e, options){
+        if (options.cn.style.display=='none') this.rolldown(options);
+        else this.rollup(options);
+      },
+      roll_if_auto: function(e, from_start){
+        var options = opts.get(e.currentTarget);
+        if (!options) return; // for popup
+        if (from_start) {
+          if (options.auto_roll && options.cn.style.display!=='none') {
+            this.rollup(options);
+            options.auto_unroll = true;
+          }
+        } else if (options.auto_unroll && options.cn.style.display==='none') {
+          this.rolldown(options);
+          options.auto_unroll = false;
+        }
+      },
+      rolldown: function(options){
+        options.tb.style.width = '';
+        options.cn.style.display = ''; // for dollchan
         if (options.rolldown) options.rolldown.call(options.this_obj);
-      } else {
-        tb.style.width = tb.offsetWidth + 'px'; // for dollchan
-        pn.style.display = 'none'; // for dollchan
+      },
+      rollup: function(options){
+        options.tb.style.width = options.tb.offsetWidth + 'px'; // for dollchan
+        options.cn.style.display = 'none'; // for dollchan
         if (options.rollup) options.rollup.call(options.this_obj);
+      },
+      top: function(e, options){
+        this.maximize(options.pn, options.tb, options.cn, e.target.name, options, e.target);
+      },
+//    var state_arr = ['top','bottom','float','max']; // ['top','bottom','max','float']; // changed 2018.03.30, probably a bug.
+      maximize: function(pn,tb,cn, req, options, button_pressed){
+        var state = options.maximize_state;
+        var now = state[0];
+  //      if (options.before_maximize) options.before_maximize(state_str, now);
+        common_func.overwrite_prop(state[5].style,{display:'inline'});
+        if (now==='float') state = [req, pn.style.left, pn.style.top, cn.style.width, cn.style.height, button_pressed];
+        else {state[0] = req; state[5] = button_pressed;}
+        if (req==='max') {
+          var header_height = site.header_height();
+          common_func.overwrite_prop(pn.style, {left:'0px', top:header_height + 'px', position:'fixed', resize:'none'});
+          common_func.overwrite_prop(cn.style,
+            {width: document.documentElement.clientWidth + 'px', height: document.documentElement.clientHeight - tb.offsetHeight - header_height + 'px', resize:'none'});
+        } else if (req==='float'){
+          common_func.overwrite_prop(pn.style, {left:state[1], top:state[2], position:'fixed', resize:'both'});
+          common_func.overwrite_prop(cn.style, options.maximize_float_style_pnch1 || {width:state[3], height:state[4], resize:'both'});
+        } else {
+          var ref = site.embed_to[req]; // 'top' or 'bottom'
+          if (ref){
+            common_func.overwrite_prop(pn.style, options.maximize_embed_style_pn || {left:'auto', top:'auto', position:'static', resize:'none'});
+            common_func.overwrite_prop(cn.style, options.maximize_embed_style_pnch1 || {width:'auto', height:'auto', resize:'none'});
+            ref.parentNode.insertBefore(pn,ref);
+          }
+        }
+        common_func.overwrite_prop(button_pressed.style,{display:'none'});
+        options.maximize_state = state;
+        if (options.maximize) options.maximize.call(options.this_obj, req, now);
+      },
+      exit: function(e, options){
+        options.exit.call(options.this_obj,e);
+      },
+    };
+    tb_funcs.op_m = tb_funcs.op_p;
+    tb_funcs.bottom = tb_funcs.top;
+    tb_funcs.float = tb_funcs.top;
+    tb_funcs.max = tb_funcs.top;
+    function tb_clicks(e){
+      var func = (e.type==='click')? e.target.tagName==='BUTTON' && tb_funcs[e.target.name]
+                                   : (e.target.tagName==='DIV' || e.target.tagName==='SPAN') && tb_funcs['roll_toggle']; // double click
+      if (func) {
+        e.stopPropagation();
+        func.call(tb_funcs, e, opts.get(e.currentTarget.parentNode));
       }
     }
-    var state_arr = ['top','bottom','max','float'];
-    function maximize(pn,tb,req, options){
-      var state = options.maximize_state;
-      var state_str = state_arr[req];
-      var state_old_str = state_arr[state[0]];
-//      if (options.before_maximize) options.before_maximize(state_str, state_old_str);
-      common_func.overwrite_prop(tb.childNodes[1].childNodes[state[0]].style,{display:'inline'});
-      if (state[0]==2) state = [req, pn.style.left, pn.style.top, pn.childNodes[1].style.width, pn.childNodes[1].style.height];
-      else state[0] = req;
-      if (req==3) { // maximize
-        var header_height = site.header_height();
-        common_func.overwrite_prop(pn.style, {left:'0px', top:header_height + 'px', position:'fixed', resize:'none'});
-        common_func.overwrite_prop(pn.childNodes[1].style,
-          {width: document.documentElement.clientWidth + 'px', height: document.documentElement.clientHeight - tb.offsetHeight - header_height + 'px', resize:'none'});
-      } else if (req==2){ // float
-        common_func.overwrite_prop(pn.style, {left:state[1], top:state[2], position:'fixed', resize:'both'});
-        common_func.overwrite_prop(pn.childNodes[1].style, options.maximize_float_style_pnch1 || {width:state[3], height:state[4], resize:'both'});
-      } else {
-//        var ref = site2[site.nickname].embed_to[site.whereami][(req==0)?'top':'bottom'];
-        var ref = site.embed_to[(req==0)?'top':'bottom'];
-        if (ref){
-          common_func.overwrite_prop(pn.style, options.maximize_embed_style_pn || {left:'auto', top:'auto', position:'static', resize:'none'});
-          common_func.overwrite_prop(pn.childNodes[1].style, options.maximize_embed_style_pnch1 || {width:'auto', height:'auto', resize:'none'});
-          ref.parentNode.insertBefore(pn,ref);
+//    function tb_dblclick(e){
+//      if (e.target.tagName==='DIV' || e.target.tagName==='SPAN') tb_funcs['roll_toggle'](e);
+//    }
+    function tb_mousedown2(e){
+      prep_drag(e.currentTarget.parentNode.parentNode);
+      e.stopPropagation();
+    }
+    function tb_mousedown(e){
+      prep_drag(e.currentTarget.parentNode);
+      e.stopPropagation();
+    }
+    function div_mousedown(e){
+      if (!(pref.proto.popup2_sel==='sel' || mouse_cursor_on_text(e))) prep_drag(e.currentTarget);
+    }
+    function prep_drag(pn){
+      pn.draggable = true;
+      pn.addEventListener('dragstart', div_dragstart_dynamic, false);
+      pn.addEventListener('mouseup', div_mouseup, false);
+    }
+    function div_mouseup(e){
+      e.currentTarget.removeEventListener('mouseup', div_mouseup, false);
+      e.currentTarget.draggable = false;
+    }
+    function mouse_cursor_on_text(e){
+      if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='SELECT') return true;
+      if (pref.proto.popup2_sel==='move') return false;
+      var et_cn = e.target.childNodes;
+//      if (et_cn.length===1) return et_cn[0].nodeType===3; // textNode
+      var range = new Range();
+      for (var i=0;i<et_cn.length;i++) {
+        var tx = (et_cn[i].tagName==='BUTTON' || et_cn[i].tagName==='SELECT')? 0 : pref.proto.popup2_sel_tolerance;
+        range.selectNode(et_cn[i]);
+        var rects = range.getClientRects();
+        for (var j=0;j<rects.length;j++) {
+          var rect = rects[j];
+          if (rect.bottom>e.clientY && e.clientY>=rect.top)
+            if (rect.left-tx < e.clientX && e.clientX < rect.right+tx) return true;
         }
       }
-      common_func.overwrite_prop(tb.childNodes[1].childNodes[req].style,{display:'none'});
-      options.maximize_state = state;
-      options.maximize_state_str = state_str;
-      if (options.maximize) options.maximize.call(options.this_obj,state_str, state_old_str);
+      return false;
     }
     var drag_sx;
     var drag_sy;
 //    var drag_cursor_style;
-    function div_dragstart(e){
+    var root_body = document.body;
+    function div_dragstart_dynamic(e){ // with tb or popup
+      e.currentTarget.removeEventListener('dragstart', div_dragstart_dynamic, false);
+      e.currentTarget.removeEventListener('mouseup', div_mouseup, false);
+      tb_funcs.roll_if_auto(e, true);
+      div_dragstart(e, true)
+    }
+    function div_dragstart(e, dynamic){ // static
+      var cT = e.currentTarget;
+//      if (this.pn) this.pn.removeEventListener('dragstart', this.event_funcs.dragstart, false);
       drag_sx = e.screenX;
       drag_sy = e.screenY;
 //      drag_cursor_style = pn.style.cursor;
@@ -14456,35 +14726,39 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       e.dataTransfer.dropEffect = 'move';
 //      e.preventDefault();
       e.stopPropagation(); // prevent from invoking twice when legend on chart is moved.
-      if (!e.currentTarget.style) e.style = {};
-      e.currentTarget.style.opacity = 0.4;
-      div_dragend_caller = this;
-      e.currentTarget.addEventListener('dragend', div_dragend, false);
-      document.getElementsByTagName('body')[0].addEventListener('dragover',div_dragover,false);
+      cT.style.opacity = 0.4;
+//      div_dragend_caller = this;
+      cT.addEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
+      root_body.addEventListener('dragover',div_dragover,false);
     }
     function div_dragover(e){ // http://www.html5rocks.com/ja/tutorials/dnd/basics/
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
     }
-    var div_dragend_caller;
-    function div_dragend(e){
-      document.getElementsByTagName('body')[0].removeEventListener('dragover',div_dragover,false);
-      e.currentTarget.removeEventListener('dragend', div_dragend, false);
-//      console.log('drag_end');
-//      e.currentTarget.style.left   = (parseInt(e.currentTarget.style.left.replace(/px/,''))   + e.screenX - drag_sx) + 'px';
-      if (e.currentTarget.style.left!='') e.currentTarget.style.left   = (parseInt(e.currentTarget.style.left.replace(/px/,''))   + e.screenX - drag_sx) + 'px';
-      else e.currentTarget.style.right = (parseInt(e.currentTarget.style.right.replace(/px/,''))   - e.screenX + drag_sx) + 'px';
-      if (e.currentTarget.style.bottom!='') e.currentTarget.style.bottom = (parseInt(e.currentTarget.style.bottom.replace(/px/,'')) - e.screenY + drag_sy) + 'px'; // from bottom.
-      else e.currentTarget.style.top = (parseInt(e.currentTarget.style.top.replace(/px/,'')) + e.screenY - drag_sy) + 'px';
-//      pn.style.cursor = drag_cursor_style;
-      if (div_dragend_caller.dragend) div_dragend_caller.dragend.call(div_dragend_caller.this_obj,e);
-      div_dragend_caller = null;
-      e.currentTarget.style.opacity = 1;
+//    var div_dragend_caller;
+    function div_dragend_dynamic(e){
+      div_dragend(e, true);
+      tb_funcs.roll_if_auto(e, false);
+      e.currentTarget.draggable = false;
+    }
+    function div_dragend(e, dynamic){
+      root_body.removeEventListener('dragover',div_dragover,false);
+      var cT = e.currentTarget;
+      var s = cT.style;
+      cT.removeEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
+      if (s.left!='') s.left  = (parseInt(s.left ,10) + e.screenX - drag_sx) + 'px';
+      else            s.right = (parseInt(s.right,10) - e.screenX + drag_sx) + 'px';
+      if (s.bottom!='') s.bottom = (parseInt(s.bottom,10) - e.screenY + drag_sy) + 'px';
+      else              s.top =    (parseInt(s.top   ,10) + e.screenY - drag_sy) + 'px';
+//      if (div_dragend_caller.dragend) div_dragend_caller.dragend.call(div_dragend_caller.this_obj,e); // isn't used anymore.
+//      div_dragend_caller = null;
+      s.opacity = 1;
     }
     function div_scroll(e){
       var val = (!brwsr.ff)? e.wheelDelta : -e.detail*40;
-      if (e.currentTarget.style.bottom!='') e.currentTarget.style.bottom = (parseInt(e.currentTarget.style.bottom.replace(/px/,'')) - val) + 'px'; // from bottom.
-      else e.currentTarget.style.top = (parseInt(e.currentTarget.style.top.replace(/px/,'')) + val) + 'px';
+      var s = e.currentTarget.style;
+      if (s.bottom!='') s.bottom = (parseInt(s.bottom,10) - val) + 'px'; // from bottom.
+      else s.top = (parseInt(s.top,10) + val) + 'px';
       e.preventDefault();
     }
     var tile = {
@@ -14530,52 +14804,72 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //          pn.style.border = '1px solid blue';
 //          pn.style.border = 'none';
         } else {
-          if (!brwsr.ff) pn.addEventListener('mousewheel', div_scroll, false);
-          else pn.addEventListener('DOMMouseScroll', div_scroll, false);
+          var pop = true;
+          pn.addEventListener(brwsr.mousewheel, div_scroll, false);
           pn.name = 'catalog_pop';
           i=1;
+          pn.draggable = false;
         }
         pn.setAttribute('class', pref.script_prefix+'_window');
-        var rollup_func_tb = null;
+//        var rollup_func_tb = null;
         var tgt = pn;
-        var funcs = func_str.split(':');
         while (i<funcs.length) {
           var arg = funcs[i++];
           if (arg=='tb') {
             pn.setAttribute('class', pref.script_prefix+'_titleBar');
 //            pn.style.background = '#b5ccf9';
-            pn.innerHTML = '<div>' +
-                '<div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button><span>&emsp;</span></div>' +
+            pn.innerHTML = '<div style="height:auto;overflow:hidden">' +
+                '<div style="float: left"><button type="button" name="roll_toggle">-</button><button type="button" name="op_m"><</button><button type="button" name="op_p">></button><span style="width:16px;display:inline-block"></span></div>' +
 //                '<div style="float: right"><button type="button">[]</button><button type="button">X</button></div>' +
-                '<div style="float: right"><button style="display:inline">^</button><button style="display:inline">_</button><button style="display:none">o</button><button style="display:inline">[]</button><button>X</button></div>' +
+                '<div style="float: right"><button style="display:inline" name="top">^</button><button style="display:inline" name="bottom">_</button><button style="display:none" name="float">o</button><button style="display:inline" name="max">[]</button><button name="exit">X</button></div>' +
                 '<div></div>' +
               '</div>' +
               '<div class="' + pref.script_prefix + '_window" style="margin: 0px 3px 3px 3px;clear:both"></div>';
 //              '<div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>';
 //            pn.innerHTML = '<div><div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button></div><div style="float: right"><button type="button">X</button></div><div></div></div><div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>'
             var tb = pn.childNodes[0];
-            tb.childNodes[2].style.height = tb.childNodes[0].offsetHeight + 'px';
-            tb.childNodes[0].style.cursor = 'move';
-            tb.childNodes[2].style.cursor = 'move';
-            rollup_func_tb = function(){rollup(pn,pn.childNodes[1], options);};
-            tb.childNodes[0].childNodes[0].onclick = rollup_func_tb;
-            tb.childNodes[0].childNodes[1].onclick = function(){opacity(pn, false);};
-            tb.childNodes[0].childNodes[2].onclick = function(){opacity(pn, true);};
-            tb.childNodes[0].childNodes[3].ondblclick = rollup_func_tb;
-            tb.childNodes[2].ondblclick = rollup_func_tb;
-            options.maximize_state = [2];
-            options.maximize_state_str = 'float';
-            tb.childNodes[1].childNodes[0].onclick = function(){maximize(pn,tb,0, options);}; // can reduce footprint if 'prototype' is used.
-            tb.childNodes[1].childNodes[1].onclick = function(){maximize(pn,tb,1, options);};
-            tb.childNodes[1].childNodes[2].onclick = function(){maximize(pn,tb,2, options);};
-            tb.childNodes[1].childNodes[3].onclick = function(){maximize(pn,tb,3, options);};
-            tb.childNodes[1].childNodes[4].onclick = (options.this_obj)? options.exit.bind(options.this_obj) : options.exit;
+//            tb.childNodes[2].style.height = tb.childNodes[0].offsetHeight + 'px';
+//            tb.childNodes[0].style.cursor = 'move';
+//            tb.childNodes[2].style.cursor = 'move';
+//            rollup_func_tb = function(){rollup(pn,pn.childNodes[1], options);};
+//            tb.childNodes[0].childNodes[0].onclick = rollup_func_tb;
+//            tb.childNodes[0].childNodes[1].onclick = function(){opacity(pn, false);};
+//            tb.childNodes[0].childNodes[2].onclick = function(){opacity(pn, true);};
+//            tb.childNodes[0].childNodes[3].ondblclick = rollup_func_tb;
+//            tb.childNodes[2].ondblclick = rollup_func_tb;
+            options.maximize_state = ['float',null,null,null,null,tb.childNodes[1].childNodes[2]];
+//            options.maximize_state_str = 'float';
+//            tb.childNodes[1].childNodes[0].onclick = function(){maximize(pn,tb,0, options);}; // can reduce footprint if 'prototype' is used.
+//            tb.childNodes[1].childNodes[1].onclick = function(){maximize(pn,tb,1, options);};
+//            tb.childNodes[1].childNodes[2].onclick = function(){maximize(pn,tb,2, options);};
+//            tb.childNodes[1].childNodes[3].onclick = function(){maximize(pn,tb,3, options);};
+//            tb.childNodes[1].childNodes[4].onclick = (options.this_obj)? options.exit.bind(options.this_obj) : options.exit;
 //            if (brwsr.ff) {
             pn.draggable = false;
-            tb.childNodes[0].draggable = true;
-            tb.childNodes[2].draggable = true;
+//            tb.childNodes[0].draggable = true;
+//            tb.childNodes[2].draggable = true;
 //            }
             tgt = pn.childNodes[1];
+            tb.onclick = tb_clicks;
+            tb.ondblclick = tb_clicks;
+//            tb.ondblclick = tb_dblclick;
+            tb.childNodes[0].onmousedown = tb_mousedown2;
+            tb.childNodes[1].onmousedown = tb_mousedown2;
+            tb.childNodes[2].onmousedown = tb_mousedown2;
+            tb.onmousedown = tb_mousedown;
+            options.tb = tb;
+            options.cn = pn.childNodes[1];
+            opts.set(pn,options);
+          } else if (arg=='tb_press') {
+            var btn = funcs[i++];
+            if (btn!=='float') tb_clicks({target:tb.getElementsByTagName('button')[btn], currentTarget:tb, type:'click', stopPropagation:function(){}});
+          } else if (arg=='embed') {
+            tb.childNodes[0].onmousedown = null; // overwrite
+            tb.childNodes[1].onmousedown = null;
+            tb.childNodes[2].onmousedown = null;
+            tb.onmousedown = null;
+          } else if (arg=='bottom_top') {
+            this.bottom_top(pn);
           } else if (arg=='txt' || (brwsr.ff && arg=='button')) {
             tgt.appendChild(document.createTextNode(funcs[i++]));
             tgt.style.cursor = 'pointer';
@@ -14603,41 +14897,41 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //            console.log(tile);
           } else tgt.style[arg] = funcs[i++];
         }
-        options.event_funcs = {};
-        options.event_funcs.dragstart = div_dragstart.bind(options);
-        pn.addEventListener('dragstart', options.event_funcs.dragstart, false);
+//        options.event_funcs = {};
+        if (tb || pop) pn.addEventListener('mousedown', div_mousedown, false);
+        else pn.addEventListener('dragstart', div_dragstart, false);
+//        options.event_funcs.dragstart = div_dragstart.bind(options);
+//        pn.addEventListener('dragstart', options.event_funcs.dragstart, false);
         tile.last_pn = pn;
+//        options.rollup_func_tb = rollup_func_tb;
         options.pn = pn;
-        options.rollup_func_tb = rollup_func_tb;
-        options.tb = tb;
         if (options_is_given) return options;
-        return (rollup_func_tb)? [pn,rollup_func_tb] : pn;
+        return pn;
+//        return (rollup_func_tb)? [pn,rollup_func_tb] : pn;
       },
       tile_set_bottom: function(){if (tile.last_pn) tile.bottom = tile.last_pn.offsetHeight;},
       tile_set_left: function(){if (tile.last_pn) tile.left = tile.last_pn.offsetWidth;},
       bottom_top: function(pn){
         if (pn.style.bottom) {
-          pn.style.top = (window.innerHeight - parseInt(pn.style.bottom.replace(/px/,''),10) - pn.offsetHeight) + 'px';
+          pn.style.top = (window.innerHeight - parseInt(pn.style.bottom,10) - pn.offsetHeight) + 'px';
           pn.style.bottom = '';
         }
         if (pn.style.right) {
-          pn.style.left = (window.innerWidth - parseInt(pn.style.right.replace(/px/,''),10) - pn.offsetWidth) + 'px';
+          pn.style.left = (window.innerWidth - parseInt(pn.style.right,10) - pn.offsetWidth) + 'px';
           pn.style.right = '';
         }
       },
-      div_dragend: div_dragend,
       void_func: function(){},
-      drag_sx : function(){return drag_sx;},
-      drag_sy : function(){return drag_sy;},
+      div_dragstart: div_dragstart,
+      div_scroll: div_scroll,
       div_destroy: function(pn,child_of_body, options){
         pref_func.tooltips.remove_hier(pn);
         pref_func.tooltips.remove_root(pn);
         if (child_of_body) pn.parentNode.removeChild(pn);
-        pn.removeEventListener('dragstart', (options)? options.event_funcs.dragstart : div_dragstart, false);
-        if (pn.name=='catalog_pop') {
-          if (!brwsr.ff) pn.removeEventListener('mousewheel', div_scroll, false);
-          else pn.removeEventListener('DOMMouseScroll', div_scroll, false);
-        }
+        if (pn.name || opts.has(pn)) pn.removeEventListener('mousedown', div_mousedown, false);
+        else pn.removeEventListener('dragstart', div_dragstart, false);
+//        pn.removeEventListener('dragstart', (options)? options.event_funcs.dragstart : div_dragstart, false);
+        if (pn.name) pn.removeEventListener(brwsr.mousewheel, div_scroll, false);
         return null;
       },
       add_to_tb: function(pn,str){
@@ -14694,7 +14988,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       make_popup: function(parent,tgt,html,onchange_func){
         parent[tgt] = cnst.init('left:0px:tile:get:bottom:Show:tb',cnst.void_func,cnst.void_func, function(){
             parent[tgt] = cnst.div_destroy(parent[tgt], true);
-          },cnst.void_func)[0];
+          },cnst.void_func);
         parent[tgt].childNodes[1].innerHTML = html;
         pref_func.add_onchange(parent[tgt].childNodes[1],onchange_func);
       },
@@ -14994,7 +15288,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
   var cnst_obj = (function(){
     site.script_body = document.createElement('div');
     site.script_body.className = pref.script_prefix;
-    site.script_body.innerHTML = '<div style="display:none"></div>';
+    site.script_body.innerHTML = '<div style="display:none"></div><div></div>';
+    site.popup_body = site.script_body.childNodes[1];
     site.root_body.appendChild(site.script_body);
     if (site.features.postform && pref.features.postform && !(site.postform!=null || site2[site.nickname].postform.activation)) {
       var draft = document.createElement('div');
@@ -16192,6 +16487,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       var btags = this.mems[dbt[0]][dbt[1]][dbt[2]].btags;
       if (btags) for (var i=0;i<btags.length;i++) this.key_dirty[(pref.liveTag.ci)? btags[i].toLowerCase() : btags[i]] = null;
       if (pref3.stats.use) stats.thread_removed(dbt);
+      if (tags.q) tags.q = null; // cut cyclic reference, lth.q.__proto__  = lth
       delete this.mems[dbt[0]][dbt[1]][dbt[2]];
       this.update_pn_buf.delayed_do();
 //      if (pref.debug_mode['3']) console.log('remove: '+name);
@@ -18283,7 +18579,7 @@ if (!pref.test_mode['79']) {
                                                 [site0.domains[pref.archive.domain],
                                                  '/'+pref.archive.board.replace(/\//g,'')+'/'];
       if (pref.test_mode['80']) dbt[1] = dbt[1].slice(0,-1) + ((IDB)? '_IDB/' : '_File/');
-      if (pref.archive.fix_inconsistency) {
+      if (pref.archive.fix_inconsistency && dbt[0]!=='meguca') {
         if (th_obj.posts[0].no!=dbt[2]) { // lain/drg/4654
           th_obj.posts = [common_func.deep_copy(th_obj.posts[0])].concat(th_obj.posts);
           th_obj.posts[0].no = dbt[2];
@@ -19266,6 +19562,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       pn12_button.addEventListener('click', show_hide, false); // show_hide
     }
     styleSheet.init(embed_mode); // patch, but WHY???
+    if (pref.test_mode['98'] && embed_mode==='catalog') styleSheet.register('.backlink','display:inline;font-size:0.8em;');
 //if (!(brwsr.ff && embed_mode==='catalog' && site.nickname==='4chan')) styleSheet.init(); // patch, but WHY???
 ////////if (!(brwsr.ff && embed_mode==='catalog' && site.nickname==='4chan')) { // patch, but WHY??? // working code.
 //////////    var ss = document.styleSheets[document.styleSheets.length-1];
@@ -19452,11 +19749,19 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var initialize_loop = true;
 
       var pn12_0_4 = document.createElement('div');
-      var pn12_whole = cnst.init('left:0px:tile:get:bottom:resize:both:Show:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto',
-        function(){pn12_0_4.style.display='';},function(){pn12_0_4.style.display='none';},show_hide,show_catalog_cont);
-      var pn12 = pn12_whole[0];
-      if (embed_embed) pn12.style.display = 'none';
-      var pn12_rollup_func = pn12_whole[1];
+      var pn12 = cnst.init3({
+        func_str:'left:0px:tile:get:bottom:resize:both:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto'+
+          ((embed_embed)? ':display:none:embed':'') + ':Show:bottom_top' + ((embed_mode==='float')? ':tb_press:'+pref.catalog.appearance.initial.state:''),
+        rolldown: function(){pn12_0_4.style.display='';},
+        rollup: function(){pn12_0_4.style.display='none';},
+        exit: show_hide,
+        maximize: show_catalog_cont,
+        get auto_roll(){return pref.catalog_auto_rollup_when_moving;}}).pn;
+//      var pn12_whole = cnst.init('left:0px:tile:get:bottom:resize:both:Show:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto',
+//        function(){pn12_0_4.style.display='';},function(){pn12_0_4.style.display='none';},show_hide,show_catalog_cont);
+//      var pn12 = pn12_whole[0];
+//      if (embed_embed) pn12.style.display = 'none';
+//      var pn12_rollup_func = pn12_whole[1];
 
 //// test for prototype base coding.
 ////      var pn12_whole = new Cnst2('left:0px:tile:get:bottom:resize:both:Show:tb:width:400px:height:400px:resize:both:overflow:auto',
@@ -19464,29 +19769,24 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 ////      var pn12 = pn12_whole.pn;
 ////      var pn12_rollup_func = pn12_whole.funcs.rollup;
 
-      cnst.bottom_top(pn12);
+//      cnst.bottom_top(pn12);
       var pn12_0 = pn12.childNodes[0];
       var pn12_1 = pn12.childNodes[1];
-//      pn12_1.innerHTML = '<div style="display:none"></div><div></div>'; // doesn't work
-//      pn12_1.innerHTML = '<div style="display:none"></div><div style="width:inherit;height:800px;resize:both;overflow:auto"></div>'; // doesn't work
-//      pn12_1.innerHTML = '<div style="display:none"></div><div style="width:inherit;height:inherit;resize:both;overflow:auto"></div>'; // doesn't work
-//    var pn12_0_4 = pn12_1.childNodes[0];
-//      var pn12_1_1 = pn12_1.childNodes[1];
-      pn12_1.id = 'catalog_debug';
-      var autorollup_state = false;
-      function auto_hide_catalog() {
-        if (pref.catalog_auto_rollup_when_moving) {
-          if (pn12_1.style.display!='none') {
-            pn12_rollup_func();
-            autorollup_state = true;
-          } else if (autorollup_state) {
-            pn12_rollup_func();
-            autorollup_state = false;
-          }
-        }
-      }
-      pn12.addEventListener('dragstart', auto_hide_catalog, false);
-      pn12.addEventListener('dragend'  , auto_hide_catalog, false);
+//      pn12_1.id = 'catalog_debug'; // working code.
+//      var autorollup_state = false;
+//      function auto_hide_catalog() {
+//        if (pref.catalog_auto_rollup_when_moving) {
+//          if (pn12_1.style.display!='none') {
+//            pn12_rollup_func();
+//            autorollup_state = true;
+//          } else if (autorollup_state) {
+//            pn12_rollup_func();
+//            autorollup_state = false;
+//          }
+//        }
+//      }
+//      pn12.addEventListener('dragstart', auto_hide_catalog, false);
+//      pn12.addEventListener('dragend'  , auto_hide_catalog, false);
       var pn12_0_2 = cnst.add_to_tb(pn12,
 //        '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
 //        '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
@@ -22150,13 +22450,13 @@ if (pref.test_mode['19']) { // stability test.
             for (var j=0;j<posts_used.length;j++) {
               var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
               if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) {
-                tn_imgs[i].onclick = expand_thumbnail_inline;
+                tn_imgs[i].onclick = DIH.expand_thumbnail_inline;
 //                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set; // REDUNDANT???
                 if (expand_now) {
                   if (expand_on_demand) {
-                    expand_thumbnail_queue_add(tn_imgs[i]);
+                    DIH.expand_thumbnail_queue_add(tn_imgs[i]);
                     expand_now = false;
-                  } else expand_thumbnail_inline.call(tn_imgs[i], null, true);
+                  } else DIH.expand_thumbnail_inline.call(tn_imgs[i], null, true);
                 }
               }
             }
@@ -22230,8 +22530,7 @@ if (pref.test_mode['19']) { // stability test.
               tgt_th[16].parse_funcs_html = th.parse_funcs_html;
             }
             Object.defineProperty(th, 'footer', {value: th.parse_funcs_html.footer(th), writable:true, enumerable:true, configurable:true});
-            site2[th.domain].toplevel_anchor(th, th.no); // Files in op are out of posts[0].pn sometimes, so these must be called with 'th'.
-            if (site.nickname!==th.domain) site2[th.domain].absolute_link(th);
+            this.prep_anchor_links(th.pn, th); // Files in op are out of posts[0].pn sometimes, so these must be called with 'th'.
 //            if (th.localArchive) if (!pref.test_mode['67']) archiver.url2file(th.localArchive, th); // merged to root html generator to prevent needless prefetch.
 //            if (th.parse_funcs.has_editing) for (var i=0;i<th.posts.length;i++) if (th.posts[i].editing)
 //              th.posts[i].pn.classList.add(pref.script_prefix+'_post_editing');
@@ -22248,14 +22547,18 @@ if (pref.test_mode['19']) { // stability test.
 //            }
 //          }
         },
+        prep_anchor_links: function(pn, th){
+          site2[th.domain].toplevel_anchor(pn, th);
+          if (site.nickname!==th.domain) site2[th.domain].absolute_link(pn);
+        },
         prepare_html_post: function(th, post, thq, pref_env){
-          if (!post.pn) post.pn = site2[th.domain_html].parse_funcs['post_json'].pn(post);
-          if (!pref_env) {
-            site2[th.domain].toplevel_anchor(post, th.no); // for updating by type_source==='html'
-            if (site.nickname!==th.domain) site2[th.domain].absolute_link(post);
+          if (!post.pn) {
+            post.pn = site2[th.domain_html].parse_funcs['post_json'].pn(post);
+            if (!thq) thq = th.lth.q; // for expand old posts, to add backlinks.
           }
+          if (!pref_env) this.prep_anchor_links(post.pn, th);
 //          if (th.localArchive) if (!pref.test_mode['67']) archiver.url2file(th.localArchive, post); // merged to root html generator to prevent needless prefetch.
-          site2[th.domain_html].format_pn(post.pn, (thq)? thq[post.no] : null, pref_env, post);
+          site2[th.domain_html].format_pn(post.pn, (thq)? thq[post.no] : null, pref_env, post, th);
           if (post.editing) post.pn.classList.add(pref.script_prefix+'_post_editing');
 //          if (post.editing) post.pn.style.background = '#cec952';
         },
@@ -22548,14 +22851,20 @@ if (pref.test_mode['19']) { // stability test.
             var proto = {enumerable:true, configurable:true};
             for (var i=0;i<arr.length;i++) {
               var tmp = arr[i].slice(1,-1).split(rx);
-              if (tmp.length>=5) {
+              if (tmp.length>=3) {
                 for (var j=1;j<tmp.length;j+=2) tmp[j] = funcs[tmp[j]](pf);
-                for (var j=tmp.length-3;j>=0;j-=2) if (!tmp[j-1] && !tmp[j+1]) tmp.splice(j,2); // access tmp[-1], but ok.
-                if (tmp.length>=3) Object.defineProperty(obj, len++, {get: funcs['concat'].bind(null, tmp), __proto__:proto});
-              } else if (tmp.length>=3) {
-                var func = funcs[tmp[1]](pf);
-                if (func && (tmp[0] || tmp[2])) func = funcs['wrap'].bind(null, tmp[0], func, tmp[2]);
-                if (func) Object.defineProperty(obj, len++, {get: func, __proto__:proto});
+                for (var j=tmp.length-3;j>=0;j-=2) if (!tmp[j+1]) tmp.splice(j,2); else if (j>0 && !tmp[j-1]) tmp[j]='';
+                if (tmp[1]) Object.defineProperty(obj, len++, {get: (tmp.length>=5)?    funcs['concat'].bind(null, tmp)
+                                                                  : (tmp[0] || tmp[2])? funcs['wrap'].bind(null, tmp[0], tmp[1], tmp[2])
+                                                                  :                     tmp[1], __proto__:proto});
+//              if (tmp.length>=5) { // working code, but has a bug.
+//                for (var j=1;j<tmp.length;j+=2) tmp[j] = funcs[tmp[j]](pf);
+//                for (var j=tmp.length-3;j>=0;j-=2) if (!tmp[j-1] && !tmp[j+1]) tmp.splice(j,2); // access tmp[-1], but ok.
+//                if (tmp.length>=3) Object.defineProperty(obj, len++, {get: funcs['concat'].bind(null, tmp), __proto__:proto});
+//              } else if (tmp.length>=3) {
+//                var func = funcs[tmp[1]](pf);
+//                if (func && (tmp[0] || tmp[2])) func = funcs['wrap'].bind(null, tmp[0], func, tmp[2]);
+//                if (func) Object.defineProperty(obj, len++, {get: func, __proto__:proto});
               } else if (arr[i]) Object.defineProperty(obj, len++, {value: arr[i], __proto__:proto});
             }
             obj.length = len;
@@ -22623,7 +22932,7 @@ if (pref.test_mode['19']) { // stability test.
               }
   
               if (pf.ctime) str += this.format_time(nums2[1]) + ' ';
-              if (pf.rctime) str += str += this.format_relative_time(nums2[1]) + ' ';
+              if (pf.rctime) str += this.format_relative_time(nums2[1]) + ' ';
               if (pf.btime && nums2[0]) str += this.format_time(nums2[0]) + ' ';
               if (pf.rbtime && nums2[0]) str += this.format_relative_time(nums2[0]) + ' ';
               if (pf.ptime && nums2[4]) str += this.format_time(nums2[4]) + ' ';
@@ -22975,222 +23284,313 @@ if (pref.test_mode['19']) { // stability test.
         }
       }
 
-      var image_hover_instance = null;
-      var image_prefetched_instance = null;
-      var image_expand_on_demand_instance = null;
-      var image_expanding = [];
-      function image_hover_prep(img,src){
-        var img_ex = clone_img(img, 'hover',null,src);
-        if (!img_ex) return;
-        img_ex.style.position = 'fixed';
-        img_ex.style.top = '0px';
-        img_ex.style.right = '0px';
-        img_ex.style.pointerEvents = 'none';
-//        if (pref.test_mode['69']) archiver.test_dl(img_ex.src);
-        return img_ex;
-      }
-      function image_hover_add(e,src){
-        if (pref[embed_mode].image_hover) {
-          var divert = image_prefetched_instance && image_prefetched_instance[1]===this;
-          var img_ex;
-          if (divert) {
-            img_ex = image_prefetched_instance[0];
-            img_ex.style.display = '';
-            image_prefetched_instance = null;
-          } else {
-            img_ex = image_hover_prep(this,src);
-            if (!img_ex) return;
-          }
-          img_ex.style.zIndex = pref[embed_mode].image_hover_zIndex;
-          this.onmouseout = image_hover_remove;
-          if (!divert) site.script_body.appendChild(img_ex);
-          e.preventDefault();
-////          scan_boards.priority_up(8);
-////          img_ex.onload  = scan_boards.priority_release;
-////          img_ex.onerror = scan_boards.priority_release;
-          httpd.pause_req();
-          img_ex.onload  = httpd.pause_cancel;
-          img_ex.onerror = httpd.pause_cancel;
-          if (image_hover_instance) image_hover_remove();
-          image_hover_instance = img_ex;
+      var DIH = (function(){ // Dynamic Image Handler
+        var hover_tn = null;
+        var hover_ex = null;
+        var hover_pf = null;
+        var image_expand_on_demand_instance = null;
+        var image_expanding = [];
+        var zoom = null;
+        function image_hover_prep(img,src, mode){
+          var img_ex = clone_img(img, src, mode, 'hover');
+          if (!img_ex) return;
+          img_ex.style.position = 'fixed';
+          img_ex.style.top = '0px';
+          img_ex.style.right = '0px';
+          img_ex.style.pointerEvents = 'none';
+  //        if (pref.test_mode['69']) archiver.test_dl(img_ex.src);
+          return img_ex;
         }
-        if (image_prefetched_instance) {
-          image_prefetched_instance[0].parentNode.removeChild(image_prefetched_instance[0]);
-          image_prefetched_instance = null;
+        function get_mode(e){
+          return e.currentTarget===site.popup_body? 'page' : embed_mode;
         }
-        if (pref[embed_mode].image_prefetch) {
-          var name = get_name_recursive(this);
-          var img_next = site2[site.nickname].get_next_image(this);
-          if (img_next) {
-            var img_pf = image_hover_prep(img_next);
-            img_pf.style.display = 'none';
-            site.script_body.appendChild(img_pf);
-            image_prefetched_instance = [img_pf,img_next];
-          }
-        }
-//        if (pref[embed_mode].image_hover) { // working code.
-//          var img_ex = clone_img(this);
-//          img_ex.style.position = 'fixed';
-//          img_ex.style.top = '0px';
-//          img_ex.style.right = '0px';
-//          img_ex.style.pointerEvents = 'none';
-//          img_ex.style.zIndex = 101;
-//          this.onmouseout = image_hover_remove;
-//          site.script_body.appendChild(img_ex);
-//          e.preventDefault();
-//          scan_boards.priority_up(8);
-//          img_ex.onload  = scan_boards.priority_release;
-//          img_ex.onerror = scan_boards.priority_release;
-//          if (image_hover_instance) image_hover_remove();
-//          image_hover_instance = img_ex;
-//        }
-          
-      }
-      cataLog.image_hover_add = image_hover_add;
-      function image_hover_remove(){
-        if (image_hover_instance) site.script_body.removeChild(image_hover_instance);
-        image_hover_instance = null;
-      }
-      cataLog.image_hover_remove = image_hover_remove;
-      function image_hover_reentry(img){
-        if (image_hover_instance && image_hover_instance.src===img.src) image_hover_instance.src = clone_img_make_src(img);
-      }
-      cataLog.image_hover_reentry = image_hover_reentry;
-      function clone_img_make_src(img, inline_or_hover, from_initial){
-        var name = get_name_recursive(img);
-        if (!from_initial && pref[embed_mode].env.event_dynamic && inline_or_hover!==undefined &&
-          ((inline_or_hover==='inline')? pref[embed_mode].env.expand_thumbnail_inline_native : pref[embed_mode].env.image_hover_native)) return;
-//        &&  common_func.fullname2dbt(name)[0]===site.nickname) return;
-        if (!name) return img.src; // patch for expand all at initial in 4chan, BUT I DON'T KNOW WHY...
-        var tgt_domain_html = (pref.catalog.mimic_base_site)? site.nickname : threads[name][16].domain_html;
-//        var tgt_th16 = threads[name][16];
-////      var src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : img.parentNode.href) || pn.src;
-//        return ((tgt_th16.type_html==='catalog')? // working code
-//          site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src && site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src(img) :
-//          site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img)) || img.src;
-        if (embed_mode!=='catalog') return site2[tgt_domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
-//        if (embed_mode!=='catalog') return site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
-        else {
-          var lth = liveTag.mems.getFromName(name);
-          return site2[lth.domain].parse_funcs[lth.th.type_parse].get_op_src(lth.th, img);
-        }
-      }
-      function clone_img(img, inline_or_hover, from_initial, src){
-        var pn = img.cloneNode();
-//        pn.src = (embed_mode==='page')? img.parentNode.href : pn.src; // TEMPORARILY!!!
-        if (!src) src = clone_img_make_src(img, inline_or_hover, from_initial);
-        if (!src) return; // return when native dynamic function works.
-        var ext = (src.search(/^blob/)===0)? site2['DEFAULT'].parse_funcs.post_html.img2ext(img) : '';
-        if (src.indexOf('data-ext')!=-1) { // PATCH for archive
-          ext = src.slice(src.indexOf('data-ext')+10).replace(/".*/,'');
-          src = src.replace(/".*/,'');
-        }
-        if (src.substr(-5,5)==='.webm' || ext==='.webm' || img.getAttribute('data-ext')==='.webm') {
-          if (pref[embed_mode].thumbnail[inline_or_hover].webm && !from_initial) {
-            if (image_hover_instance && image_hover_instance.src===src) {
-              pn = image_hover_instance;
-              image_hover_instance = null;
-              pn.style.position = '';
-              pn.style.top = '';
-              pn.style.right = '';
-              pn.style.pointerEvents = '';
-  //            pn.play();
+        function image_hover_add(e,src){
+          var mode = get_mode(e);
+          var img_tn = this; // e.currentTarget;
+          if (pref[embed_mode].image_hover) {
+            var divert = hover_pf && hover_pf[1]===img_tn;
+            var img_ex;
+            if (divert) {
+              img_ex = hover_pf[0];
+              img_ex.style.display = '';
+              hover_pf = null;
             } else {
-              var pn = document.createElement('video');
-              pn.controls = true;
-              pn.autoplay = true;
-              //  <video controls="" loop="" autoplay="" class="expandedWebm" src="xxx.webm" style="max-width: 957px; max-height: 587px;"></video> // 4chan
+              img_ex = image_hover_prep(img_tn,src, mode);
+              if (!img_ex) return;
             }
-if (!pref.test_mode['63']) {
-            pn.loop  = pref[embed_mode].thumbnail[inline_or_hover].webm_loop;
-            pn.muted = pref[embed_mode].thumbnail[inline_or_hover].webm_mute;
-}
-          } else return null;
-        }
-        pn.src = src;
-        pn.style.width = 'auto';
-        pn.style.height = 'auto';
-        if (pref[embed_mode].thumbnail[inline_or_hover].limit_width)  pn.style.maxWidth  = (window.innerWidth  - pref[embed_mode].thumbnail[inline_or_hover].margin_width)  + 'px';
-        if (pref[embed_mode].thumbnail[inline_or_hover].limit_height) pn.style.maxHeight = (window.innerHeight - pref[embed_mode].thumbnail[inline_or_hover].margin_height) + 'px';
-        return pn;
-      }
-      function expand_thumbnail_inline(e, from_initial){
-        if (pref[embed_mode].expand_thumbnail_inline && image_expanding.indexOf(this)==-1) {
-          var img_ex = clone_img(this, 'inline', from_initial);
-          if (!img_ex) {expand_thumbnail_on_demand_set.call(this);return;}
-//          if (!img_ex) return;
-          if (img_ex.tagName!=='VIDEO') {
-            img_ex.style.display = 'none';
-            img_ex.addEventListener('load',expand_thumbnail_inline_load, false);
-            this.style.opacity = 0.5;
+            img_ex.style.zIndex = pref[embed_mode].image_hover_zIndex;
+            img_tn.addEventListener('mouseout', image_hover_remove_tn, false);
+            if (!divert) site.script_body.appendChild(img_ex);
+            e.preventDefault();
+            httpd.pause_req();
+            img_ex.onload  = image_hover_onload;
+            img_ex.onerror = httpd.pause_cancel;
+            if (hover_ex) image_hover_remove(); // placed after show to reduce redraw.
+            hover_tn = img_tn;
+            hover_ex = img_ex;
           }
-          this.parentNode.insertBefore(img_ex,this.nextSibling);
-//          this.onclick = null; // can't track event accurately because 'on demand expand' mode adds click event to images which have a native expansion event.
-          image_expanding.push(img_ex);
-          
-          if (e) e.preventDefault();
-          if (img_ex.tagName==='VIDEO') {
-            expand_thumbnail_inline_load.call(img_ex);
-            img_ex.play(); // may be diverted from image_hover
-          }
-        }
-      }
-      function expand_thumbnail_inline_load(){
-        this.previousSibling.style.display = 'none';
-        this.style.display = '';
-        this.previousSibling.style.opacity = '';
-        this.removeEventListener('load',expand_thumbnail_inline_load, false);
-        this.onclick = shrink_thumbnail_inline;
-        if (site2[site.nickname].format_expanded_thumbnail) site2[site.nickname].format_expanded_thumbnail(this);
-        var idx = image_expanding.indexOf(this);
-        if (idx>=0) image_expanding.splice(idx,1);
 
-        if (site.patch.expand_thumbnail_inline_load) site.patch.expand_thumbnail_inline_load.call(this);
-        expand_thumbnail_on_demand_set.call(this);
-      }
-      function expand_thumbnail_on_demand_set(){
-        if (pref[embed_mode].expand_thumbnail_inline && (pref[embed_mode].expand_thumbnail_initial || pref[embed_mode].expand_thumbnail_inline_all_after)) {
-          var img_next = site2[site.nickname].get_next_image(this,get_now_height()); // now_height for jump scroll
-          if (img_next && img_next.style.display!=='none') expand_thumbnail_on_demand(img_next);
-        }
-      }
-      function expand_thumbnail_on_demand(img){
-        var ref_height = get_ref_height(pref[embed_mode].thumbnail.inline.ref_height/100);
-        var offsetTop;
-        if (Array.isArray(img)) {
-          var tgt;
-          var nowHeight = get_now_height();
-          for (var i=0;i<img.length;i++) {
-            var ot = img[i].offsetTop;
-            if (ot>=nowHeight && ot<offsetTop || i===0) {
-              tgt = img[i];
-              offsetTop = ot;
+          if (hover_pf) {
+            hover_pf[0].parentNode.removeChild(hover_pf[0]);
+            hover_pf = null;
+          }
+          if (pref[embed_mode].image_prefetch) {
+            var name = get_name_recursive(img_tn);
+            var img_next = site2[site.nickname].get_next_image(img_tn);
+            if (img_next) {
+              var img_pf = image_hover_prep(img_next, null, mode);
+              img_pf.style.display = 'none';
+              site.script_body.appendChild(img_pf);
+              hover_pf = [img_pf,img_next];
             }
           }
-          img = tgt;
-        } else offsetTop = img.offsetTop;
-        if (offsetTop<ref_height || !pref[embed_mode].thumbnail.inline.ondemand) {
-          image_expand_on_demand_instance = null;
-          expand_thumbnail_inline.call(img, null, true);
-        } else image_expand_on_demand_instance = img;
-      }
-      function expand_thumbnail_queue_add(img){
-        if (!image_expand_on_demand_instance) image_expand_on_demand_instance = img;
-        else if (Array.isArray(image_expand_on_demand_instance)) image_expand_on_demand_instance[image_expand_on_demand_instance.length] = img;
-        else image_expand_on_demand_instance = [image_expand_on_demand_instance, img];
-        show_catalog_cont(); // patch, delayed 200ms
-      }
-      function shrink_thumbnail_inline(e){
-//        this.previousSibling.onclick = expand_thumbnail_inline;
-        this.previousSibling.style.display = '';
-        e.preventDefault();
-        
-        if (this.getAttribute('data-originalWidth')) {
-          var pnode = this.parentNode.parentNode;
-          pnode.style.width = this.getAttribute('data-originalWidth');
         }
-        this.parentNode.removeChild(this);
+        function image_hover_remove_tn(e){
+          hover_tn.removeEventListener('mouseout', image_hover_remove_tn, false);
+          image_hover_remove();
+        }
+        function image_hover_remove(){
+          if (hover_ex) site.script_body.removeChild(hover_ex);
+          hover_ex = null;
+        }
+        function image_hover_onload(e){
+          httpd.pause_cancel();
+          var pf = pref[embed_mode].thumbnail['hover'];
+          if (!pf.zoom) return;
+          var img = e.target;
+          var s = img.style;
+          if (pf.limit_width  && (img.naturalWidth > parseInt(s.maxWidth,10)) || pf.limit_height && (img.naturalHeight > parseInt(s.maxHeight,10))) {
+            hover_tn.addEventListener('mouseout', image_hover_zoom_end, false);
+            hover_tn.addEventListener('mousemove', image_hover_zoom_prep, false);
+            hover_tn.addEventListener('click', image_hover_zoom_start, false);
+            zoom = {x:document.documentElement.clientWidth - img.clientWidth, y:img.clientHeight, state:null};
+//            zoom = {x:document.documentElement.clientWidth - parseInt(s.maxWidth,10), y:parseInt(s.maxHeight,10), state:null};
+          }
+        }
+        function zoom_included(e){
+          return e.clientX>zoom.x && e.clientY<zoom.y;
+        }
+        function image_hover_zoom_prep(e){
+          if (zoom_included(e)) {
+            if (!zoom.state) {
+              e.target.style.cursor = 'zoom-in';
+              zoom.state = true;
+            }
+          } else if (zoom.state) {
+            e.target.style.cursor = 'auto';
+            zoom.state = false;
+          }
+        }
+        function image_hover_zoom_end(e){
+          var tn = e.currentTarget;
+          tn.removeEventListener('mouseout', image_hover_zoom_end, false);
+          tn.removeEventListener('mousemove', image_hover_zoom_prep, false);
+          tn.removeEventListener('click', image_hover_zoom_start, false);
+          tn.style.cursor = null;
+        }
+        function image_hover_zoom_start(e){
+          if (zoom_included(e)) {
+            e.stopPropagation();
+            e.preventDefault();
+            image_hover_zoom_end(e);
+            e.currentTarget.removeEventListener('mouseout', image_hover_remove_tn, false);
+            hover_ex.onmouseout = image_hover_remove;
+            hover_ex.style.pointerEvents = 'auto';
+            image_hover_zoom_in({target:hover_ex, clientX:e.clientX, clientY:e.clientY});
+            hover_ex.draggable = true;
+            hover_ex.ondragstart = cnst.div_dragstart;
+            hover_ex['on'+brwsr.mousewheel] = cnst.div_scroll;
+          }
+        }
+        function maxWidth(inline_or_hover){
+          return document.documentElement.clientWidth  - pref[embed_mode].thumbnail[inline_or_hover].margin_width;
+        }
+        function maxHeight(inline_or_hover){
+          return document.documentElement.clientHeight - pref[embed_mode].thumbnail[inline_or_hover].margin_height;
+        }
+        function zoom_factor(img){
+          var fx = img.naturalWidth/(parseInt(img.style.maxWidth,10) || maxWidth('hover'));
+          var fy = img.naturalHeight/(parseInt(img.style.maxHeight,10) || maxHeight('hover'));
+          return (fx>fy)? fx : fy;
+        }
+        function zoom_in_place(e, s, f){
+          s.top = parseInt(s.top,10)*f - e.clientY * (f-1) + 'px';
+          s.right = parseInt(s.right,10)*f - (document.documentElement.clientWidth - e.clientX) * (f-1) + 'px';
+        }
+        function image_hover_zoom_in(e){
+          var s = e.target.style;
+          zoom_in_place(e, s, zoom_factor(hover_ex));
+          s.maxWidth  = 'none';
+          s.maxHeight = 'none';
+          s.cursor  = 'zoom-out';
+          e.target.onclick = image_hover_zoom_out;
+        }
+        function image_hover_zoom_out(e){
+          var s = e.target.style;
+          zoom_in_place(e, s, 1/zoom_factor(hover_ex));
+          s.maxWidth  = maxWidth('hover')+'px';
+          s.maxHeight = maxHeight('hover')+'px';
+          s.cursor = 'zoom-in';
+          e.target.onclick = image_hover_zoom_in;
+        }
+
+        function clone_img_make_src(img, mode, inline_or_hover, from_initial){
+          var name = get_name_recursive(img);
+          if (!from_initial && pref[embed_mode].env.event_dynamic && inline_or_hover!==undefined &&
+            ((inline_or_hover==='inline')? pref[embed_mode].env.expand_thumbnail_inline_native : pref[embed_mode].env.image_hover_native)) return;
+  //        &&  common_func.fullname2dbt(name)[0]===site.nickname) return;
+          if (!name) return img.src; // patch for expand all at initial in 4chan, BUT I DON'T KNOW WHY...
+          var tgt_domain_html = (pref.catalog.mimic_base_site)? site.nickname : threads[name][16].domain_html;
+  //        var tgt_th16 = threads[name][16];
+  ////      var src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : img.parentNode.href) || pn.src;
+  //        return ((tgt_th16.type_html==='catalog')? // working code
+  //          site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src && site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src(img) :
+  //          site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img)) || img.src;
+          if (mode!=='catalog') return site2[tgt_domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
+  //        if (embed_mode!=='catalog') return site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
+          else {
+            var lth = liveTag.mems.getFromName(name);
+            return site2[lth.domain].parse_funcs[lth.th.type_parse].get_op_src(lth.th, img);
+          }
+        }
+        function clone_img(img, src, mode, inline_or_hover, from_initial){
+          var pn = img.cloneNode();
+  //        pn.src = (embed_mode==='page')? img.parentNode.href : pn.src; // TEMPORARILY!!!
+          if (!src) src = clone_img_make_src(img, mode, inline_or_hover, from_initial);
+          if (!src) return; // return when native dynamic function works.
+          var ext = (src.search(/^blob/)===0)? site2['DEFAULT'].parse_funcs.post_html.img2ext(img) : '';
+          if (src.indexOf('data-ext')!=-1) { // PATCH for archive
+            ext = src.slice(src.indexOf('data-ext')+10).replace(/".*/,'');
+            src = src.replace(/".*/,'');
+          }
+          if (src.substr(-5,5)==='.webm' || ext==='.webm' || img.getAttribute('data-ext')==='.webm') {
+            if (pref[embed_mode].thumbnail[inline_or_hover].webm && !from_initial) {
+              if (hover_ex && hover_ex.src===src) {
+                pn = hover_ex;
+                hover_ex = null;
+                pn.style.position = '';
+                pn.style.top = '';
+                pn.style.right = '';
+                pn.style.pointerEvents = '';
+    //            pn.play();
+              } else {
+                var pn = document.createElement('video');
+                pn.controls = true;
+                pn.autoplay = true;
+                //  <video controls="" loop="" autoplay="" class="expandedWebm" src="xxx.webm" style="max-width: 957px; max-height: 587px;"></video> // 4chan
+              }
+  if (!pref.test_mode['63']) {
+              pn.loop  = pref[embed_mode].thumbnail[inline_or_hover].webm_loop;
+              pn.muted = pref[embed_mode].thumbnail[inline_or_hover].webm_mute;
+  }
+            } else return null;
+          }
+          pn.src = src;
+          pn.style.width = 'auto';
+          pn.style.height = 'auto';
+          if (pref[embed_mode].thumbnail[inline_or_hover].limit_width)  pn.style.maxWidth  = (document.documentElement.clientWidth  - pref[embed_mode].thumbnail[inline_or_hover].margin_width)  + 'px';
+          if (pref[embed_mode].thumbnail[inline_or_hover].limit_height) pn.style.maxHeight = (document.documentElement.clientHeight - pref[embed_mode].thumbnail[inline_or_hover].margin_height) + 'px';
+          return pn;
+        }
+        function expand_thumbnail_inline(e, from_initial){
+          var mode = get_mode(e || {currentTarget:this});
+          if (pref[embed_mode].expand_thumbnail_inline && image_expanding.indexOf(this)==-1) {
+            var img_ex = clone_img(this, null, mode, 'inline', from_initial);
+            if (!img_ex) {expand_thumbnail_on_demand_set.call(this);return;}
+  //          if (!img_ex) return;
+            if (img_ex.tagName!=='VIDEO') {
+              img_ex.style.display = 'none';
+              img_ex.addEventListener('load',expand_thumbnail_inline_load, false);
+              this.style.opacity = 0.5;
+            }
+            this.parentNode.insertBefore(img_ex,this.nextSibling);
+  //          this.onclick = null; // can't track event accurately because 'on demand expand' mode adds click event to images which have a native expansion event.
+            image_expanding.push(img_ex);
+            
+            if (e) e.preventDefault();
+            if (img_ex.tagName==='VIDEO') {
+              expand_thumbnail_inline_load.call(img_ex);
+              img_ex.play(); // may be diverted from image_hover
+            }
+          }
+        }
+        function expand_thumbnail_inline_load(){
+          this.previousSibling.style.display = 'none';
+          this.style.display = '';
+          this.previousSibling.style.opacity = '';
+          this.removeEventListener('load',expand_thumbnail_inline_load, false);
+          this.onclick = shrink_thumbnail_inline;
+          if (site2[site.nickname].format_expanded_thumbnail) site2[site.nickname].format_expanded_thumbnail(this);
+          var idx = image_expanding.indexOf(this);
+          if (idx>=0) image_expanding.splice(idx,1);
+  
+          if (site.patch.expand_thumbnail_inline_load) site.patch.expand_thumbnail_inline_load.call(this);
+          expand_thumbnail_on_demand_set.call(this);
+        }
+        function expand_thumbnail_on_demand_set(){
+          if (pref[embed_mode].expand_thumbnail_inline && (pref[embed_mode].expand_thumbnail_initial || pref[embed_mode].expand_thumbnail_inline_all_after)) {
+            var img_next = site2[site.nickname].get_next_image(this,get_now_height()); // now_height for jump scroll
+            if (img_next && img_next.style.display!=='none') expand_thumbnail_on_demand(img_next);
+          }
+        }
+        function expand_thumbnail_on_demand(img){
+          var ref_height = get_ref_height(pref[embed_mode].thumbnail.inline.ref_height/100);
+          var offsetTop;
+          if (Array.isArray(img)) {
+            var tgt;
+            var nowHeight = get_now_height();
+            for (var i=0;i<img.length;i++) {
+              var ot = img[i].offsetTop;
+              if (ot>=nowHeight && ot<offsetTop || i===0) {
+                tgt = img[i];
+                offsetTop = ot;
+              }
+            }
+            img = tgt;
+          } else offsetTop = img.offsetTop;
+          if (offsetTop<ref_height || !pref[embed_mode].thumbnail.inline.ondemand) {
+            image_expand_on_demand_instance = null;
+            expand_thumbnail_inline.call(img, null, true);
+          } else image_expand_on_demand_instance = img;
+        }
+        function expand_thumbnail_queue_add(img){
+          if (!image_expand_on_demand_instance) image_expand_on_demand_instance = img;
+          else if (Array.isArray(image_expand_on_demand_instance)) image_expand_on_demand_instance[image_expand_on_demand_instance.length] = img;
+          else image_expand_on_demand_instance = [image_expand_on_demand_instance, img];
+          show_catalog_cont(); // patch, delayed 200ms
+        }
+        function shrink_thumbnail_inline(e){
+  //        this.previousSibling.onclick = expand_thumbnail_inline;
+          this.previousSibling.style.display = '';
+          e.preventDefault();
+          
+          if (this.getAttribute('data-originalWidth')) {
+            var pnode = this.parentNode.parentNode;
+            pnode.style.width = this.getAttribute('data-originalWidth');
+          }
+          this.parentNode.removeChild(this);
+        }
+        return {
+//          get_mode: function(e){return e.currentTarget===site.popup_body? 'page' : embed_mode;},
+          image_hover_add: image_hover_add,
+          image_hover_remove: image_hover_remove,
+          image_hover_reentry: function(img, mode){
+            if (!mode) mode = embed_mode; // TEMPORAL PATCH. all reentry func in GIH must be revised.
+            if (hover_ex && hover_ex.src===img.src) hover_ex.src = clone_img_make_src(img, mode);
+          },
+          expand_thumbnail_inline: expand_thumbnail_inline,
+          expand_thumbnail_on_demand: function(){
+            if (image_expand_on_demand_instance) expand_thumbnail_on_demand(image_expand_on_demand_instance);
+          },
+          expand_thumbnail_queue_add: expand_thumbnail_queue_add,
+        };
+      })();
+      function image_hover_add(e,src){
+        DIH.image_hover_add.call(this,e,src);
       }
+      cataLog.DIH = DIH;
+      cataLog.image_hover_add = image_hover_add;
+      cataLog.image_hover_reentry = DIH.image_hover_reentry;
 
       function get_name_recursive(pn){
         while (pn && !pn.name) pn = pn.parentNode;
@@ -23414,7 +23814,7 @@ if (!pref.test_mode['63']) {
         ref_heights = null;
         if (drawn_idx!==true) show_catalog();
         else if (cataLog.catalog_obj2.lazy_draw) cataLog.catalog_obj2.lazy_draw();
-        if (image_expand_on_demand_instance) expand_thumbnail_on_demand(image_expand_on_demand_instance);
+        cataLog.DIH.expand_thumbnail_on_demand();
       }
       var ref_heights = null;
       function get_ref_height(threshold){
@@ -23825,7 +24225,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
             return true;
           },
           func_track_shown: function(name, draw_on_demand){
-            this.__proto__.func_track_shown(name, draw_on_demand);
+            this.__proto__.func_track_shown.call(this, name, draw_on_demand);
             this.ref_count = show_catalog_skip_hs(this.ref_count);
           },
           __proto__: catalog_obj2_proto
@@ -24389,11 +24789,14 @@ if (!pref.test_mode['49']) {
                  (pref[embed_mode].popup2!=='pv' && search_result && {posts:search_result, __proto__:th}) || th;
             format_html.prepare_html_prep_posts(th); // REDUNDANT for 2nd times or later.
 //            insert_thread_prepare_html_lazy(threads[name], !threads[name][0], false, true); // is this the better? not debugged yet.
-            var pn_result = site2[site.nickname].page_json2html3(th,th.board,th.op_img_url, true);
+            var pn_result = site2[site.nickname].page_json2html3(th,th.board,th.op_img_url, true); // th.posts[x].pn are re-ssigned, and this causes conflicts in embed_mode===page.
+            if (pref.test_mode['98'] && pref[embed_mode].popup) format_html.prep_anchor_links(pn_result, th);
 //            if ((search_result || pref[embed_mode].popup2==='dp') && th.posts[0].search_result===false) site2[th.domain_html].update_posts0_class(th.posts[0].pn, th.posts[0].search_result);
+            for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, lth && lth.q && lth.q[th.posts[i].no], null, th.posts[i], th);
             site2['DEFAULT'].check_reply.set_own_posts(th);
-            for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, lth && lth.q && lth.q[th.posts[i].no], null, th.posts[i]);
             if (pref[embed_mode].mark_new_posts) format_html.update_draw(th.key, pn_result, th);
+            if (pref.test_mode['98'] && pref[embed_mode].popup && site2[th.domain].popups_add) site2[th.domain].popups_add({posts:th.posts, __proto__:threads[name][16]}, th, false);
+            pn.name = th.key;
           } else pn_result = document.createTextNode('You must be set to store posts at least 1, see \'Catalog\' tab in settings.');
           pn.appendChild(pn_result);
           catalog_attr_set(name,pn.childNodes[0]);
@@ -24409,7 +24812,7 @@ if (!pref.test_mode['49']) {
           catalog_attr_set(name,pn);
 }
         }
-        pn = site.root_body.appendChild(pn);
+        pn = site.popup_body.appendChild(pn);
         if (pref.catalog_popup_size_fix) { 
           pn.style.width  = pn.offsetWidth + 'px';
           pn.style.height = pn.offsetHeight + 'px';
@@ -24612,7 +25015,7 @@ if (!pref.test_mode['49']) {
           if (!threads[name]) return;
           var dbt = common_func.fullname2dbt(name);
           var lth = liveTag.mems.getFromName(name);
-          if (!pn_only) if (threads[name][16].popups) for (var i in threads[name][16].popups) site2[dbt[0]].popups_release(lth.q, i, name); // remove cross thread/board links.
+          if (!pn_only) if (threads[name][16].popups) for (var i in threads[name][16].popups) site2[dbt[0]].popups_release(lth, i); // remove cross thread/board links.
           remove_threads_events(name);
           if (threads[name][1]) {
             if (pop_up_status[name]) pop_down_op(name);
@@ -24979,11 +25382,12 @@ if (pref.test_mode['95'] && site.nickname==='dist') site2[site.nickname].testPos
 //      var flag_initial_refresh = (site.whereami==='boards') && pref.catalog.refresh.except_bt;
 
       if (embed_frame) site2[site.nickname].catalog_frame_prep(pn12);
-      else if (embed_mode==='float') {
-        if (pref.catalog.appearance.initial.state==='maximized') pn12_0.childNodes[1].childNodes[3].onclick();
-        else if (pref.catalog.appearance.initial.state==='top') pn12_0.childNodes[1].childNodes[0].onclick();
-        else if (pref.catalog.appearance.initial.state==='bottom') pn12_0.childNodes[1].childNodes[1].onclick();
-      }
+//      else if (embed_mode==='float') pn12_0.getElementsByTagName('button')[pref.catalog.appearance.initial.state].onclick();
+//      else if (embed_mode==='float') {
+//        if (pref.catalog.appearance.initial.state==='maximized') pn12_0.childNodes[1].childNodes[3].onclick();
+//        else if (pref.catalog.appearance.initial.state==='top') pn12_0.childNodes[1].childNodes[0].onclick();
+//        else if (pref.catalog.appearance.initial.state==='bottom') pn12_0.childNodes[1].childNodes[1].onclick();
+///      }
       if (embed_embed) {  // for native catalog
 //        pn12.style.display = 'none';
         setTimeout(function(){ // patch for liveTag.
@@ -25527,6 +25931,7 @@ if (pref.test_mode['0']) {
           common_func.dom_addEventListener(this.subscribers, this.parent, 'change', this.change);
           if (pref.test_mode['87'] || pref.test_mode['93']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
           this.setup();
+          if (pref.test_mode['98']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
         },
         destroy: function(){
           this.setup(true);
@@ -25537,6 +25942,17 @@ if (pref.test_mode['0']) {
       cataLog.general_event_handler = new GEH(triage_parent);
       setTimeout(cataLog.general_event_handler.init.bind(cataLog.general_event_handler), 500); // WHY 500ms delay?
 
+      if (pref.test_mode['98']) { // dynamic popups
+        function mouseover(e){
+          var et = e.target;
+          if (et.tagName==='A') // popup_erply
+            if (et.textContent.search(site2['DEFAULT'].popups_link_regex)!=-1) site2['DEFAULT'].popups_post_entry.call(site2['DEFAULT'],e);
+//          var href = e.target.getAttribute('href');
+//          console.log('Danchor: '+href);
+        }
+        site.popup_body.addEventListener('mouseover',mouseover,false);
+      }
+      
       return {
         destroy: function(){ // destructor
           cataLog.general_event_handler.destroy();
@@ -25563,8 +25979,8 @@ if (pref.test_mode['0']) {
           window.removeEventListener('storage', site2[site.nickname].prep_own_posts_event, false); // debug
           scroll_event_src.removeEventListener('scroll', show_catalog_cont, false);
           window.removeEventListener('resize', show_catalog_cont, false);
-          pn12.removeEventListener('dragstart', auto_hide_catalog, false);
-          pn12.removeEventListener('dragend'  , auto_hide_catalog, false);
+//          pn12.removeEventListener('dragstart', auto_hide_catalog, false);
+//          pn12.removeEventListener('dragend'  , auto_hide_catalog, false);
 //          pn12_triage.removeEventListener('mouseover', catalog_triage_out_clear, false);
 //          pn12_triage.removeEventListener('mouseout' , catalog_triage_out_delay, false);
           pn12 = null;
@@ -26267,7 +26683,7 @@ if (!pref.test_mode['42']) {
 //        '<input type="checkbox" name="chart.inst.separate">Separate estimated, observed and alive<br>',
         'Show: Posts/Threads:<br>',
         '&emsp;&emsp;<input type="checkbox" name="chart.inst.show.np">'+
-        '<input type="checkbox" name="chart.inst.show.nt" disabled style="opacity:0"> Estimated, '+
+        '<input type="checkbox" name="chart.inst.show.nt" disabled style="visibility:hidden"> Estimated, '+
         '<input type="checkbox" name="chart.inst.clip_np">Clip: '+
           '<input type="text" name="chart.inst.clip_np_val" size="4" style="text-align: right;"><br>',
         '&emsp;&emsp;<input type="checkbox" name="chart.inst.show.p">'+
@@ -26722,7 +27138,7 @@ if (pref.test_mode['41']) {
 //if (pref.test_mode['17']) pn7 = cnst.init('left:0px:tile:get:bottom:Show',cnst.void_func,cnst.void_func,show_hide,cnst.void_func); // leaks nodes.
 if (pref.test_mode['17']) {pn7 = document.createElement('div');pn7.innerHTML='<div></div><div></div>';site.root_body.appendChild(pn7);} // leaks nodes.
 else 
-        pn7 = cnst.init('left:0px:tile:get:bottom:Show:tb',cnst.void_func,cnst.void_func,show_hide,cnst.void_func)[0];
+        pn7 = cnst.init('left:0px:tile:get:bottom:Show:tb',cnst.void_func,cnst.void_func,show_hide,cnst.void_func);
 if (pref.test_mode['17']) pn7_1 = pn7;
 else 
         pn7_1 = pn7.childNodes[1];
@@ -27445,7 +27861,7 @@ if (pref.test_mode['17']) {
         if (pn10==null) {
           var left = tgt.offsetLeft - tgt.scrollLeft;
           var top = tgt.offsetTop - tgt.scrollTop + site.header_height();
-          pn10 = cnst.init('left:'+left+'px:top:'+top+'px:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
+          pn10 = cnst.init('left:'+left+'px:top:'+top+'px:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func);
 //          pn10 = cnst.init('left:0px:tile:get:bottom:overflow:hidden:Show:tb',function(){site.components.postform_comment.focus();},cnst.void_func,show_hide,cnst.void_func)[0];
           pn10.id = 'pn10_debug';
 //          pn10_2 = cnst.add_to_tb(pn10,'<input type="checkbox" name="workaround_for_dollchan">workaround for dollchan<input type="checkbox" name="prevent_redirection">prevent redirection');
