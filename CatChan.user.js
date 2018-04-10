@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.04.08.0
+// @version 2018.04.08.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3187,7 +3187,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.04.08.0<br>'+
+          'Version 2018.04.08.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5791,6 +5791,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //      if (ary.length===0) return true;
     },
     popups_set: function(thq, no, val, quotes){
+      if (no<=2) if (!Object.hasOwnProperty.call(thq,no)) thq[no] = undefined; // PATCH before renaming, now thq has prototype, [0][1] or [2] returns tags or watch.
       if (thq[no]===undefined) {
         thq[no] = val;
         if (thq[no].backlinks) thq[no].backlinks = undefined; // PATCH FOR MEGUCA, meguca has backlinks in native.
