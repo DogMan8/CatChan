@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.05.27.0
+// @version 2018.05.27.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3230,7 +3230,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.05.27.0<br>'+
+          'Version 2018.05.27.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -23520,7 +23520,7 @@ if (pref.test_mode['19']) { // stability test.
             native:    '(ar )(U: nm/nr / )R: (lp/)(r1)(+dp) / I: (im)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
             condensed: '(ar )(nm/)(nr/)(lp/)(rp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
             meguca:    '(ar )(dn)(bd)(no) (nm/)(nr/)(lp/)(rp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr ) ',
-            get custom_str(){return pref[myself.mode].footer.custom_str;},
+//            get custom_str(){return pref[myself.mode].footer.custom_str;}, // patch for minify. This line hits a bug in minifier.
           };
           function compile(myself_in){
             myself = myself_in;
