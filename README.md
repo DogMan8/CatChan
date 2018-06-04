@@ -45,6 +45,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2018.06.10.0: Improved GUI for posts serach.<br>
 v2018.05.27.1: Patched a bug of minifier.<br>
 v2018.05.27.0: Fixed bugs, cleaned up and added some functions.<br>
 v2018.04.08.1: Fixed a bug.(degrade)<br>
