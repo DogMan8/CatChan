@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.05.27.1
+// @version 2018.06.10.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -291,6 +291,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       IDB_thread_sel_options: null,
     },
     refresh:{ count:0},
+    search_posts_active_once: false,
+    scan: {
+      get loosen(){return pref4.search_posts_active_once && pref.proto.searchAc.loosen;},
+      get max(){return this.loosen? pref.proto.searchAc.max : pref.scan.max;},
+      get max_threads(){return this.loosen? pref.proto.searchAc.max_threads : pref.scan.max_threads;},
+      get max_threads_at_refresh(){return this.loosen? pref.proto.searchAc.max_threads_at_refresh : pref.catalog.max_threads_at_refresh;},
+    }
   };
   
   function pref_default(for_save) {
@@ -321,6 +328,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       auto_update : false,
       auto_update_period : 10,
       auto_update_countdown : true,
+      storePosts:'auto', sourceOfSP:'auto', searchAs:true, searchAsA:false, searchAc:{loosen:true, max:1000, max_threads:10000, max_threads_at_refresh:10000},
 
       popup:true, colorID:true, backlink:true, popup_truncated:true, popup_zIndex:100,
       popup_hlt:true, bl_ec:false, bl_rm:true,  // popup_highlight, backlink_explicit_cross, baclink_remove_if_OP
@@ -333,6 +341,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       thumbnail:{
         inline:{limit_width: true, limit_height:false, margin_width: 40, margin_height: 0, webm: true, webm_mute:false, webm_loop:false, ondemand:true, ref_height:400},
         hover: {limit_width: true, limit_height: true, margin_width: 40, margin_height: 0, webm:false, webm_mute: true, webm_loop:false,
+                popup_delay:50, popdown_delay:500, popdown:'delay', popup_mMove:true,
                 dragfloat:true, df_dblC:true, df_mW:true, df_cV:true, zoom:false},
       },
       open_spoiler_text: false,
@@ -345,7 +354,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       posts_search_op: 'opaque',
       posts_search_op_opacity: 40,
       deleted_posts: {detect:'acc', store:'LS', merge:true, auto_clean:true},
-      auto_config_posts_search: true,
+//      auto_config_posts_search: true,
       imagesearch: {
         use: true,
         google: true,
@@ -1652,7 +1661,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         function show(e){
 //          if (!pref.tooltips.help.show) return;
           var name = e && (e.target.name || e.target.getAttribute('name')) || this.name;
-          if (!name && e.target.tagName==='LABEL') name = e.target.childNodes[0].name;
+          if (name && e && e.target.type==='radio') name += ', '+e.target.value;
+          if (!name && e.target.tagName==='LABEL') name = e.target.childNodes[0].name + (e.target.childNodes[0].type==='radio'? ', '+e.target.childNodes[0].value : '');
           if (name==='SHOW2_I') name = e.target.previousSibling.childNodes[1].getAttribute('name');
           if (name==='SHOW2') name = e.target.childNodes[1].getAttribute('name');
           if (!name) return; // for add_root
@@ -2321,11 +2331,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          },
           popup: function(mode){
             return '2,<ICBX"'+mode+'.popup"> Pop up reply' + this.rollup(
-              '3,<IC"proto.popup_hlt">Highlight the post if it is visible<br>'+
-              '3,<IR"proto.popdown,imm">immediately<br>'+
-              '3,<IR"proto.popdown,delay">delayed: <ITB4"proto.popup_delay"><ITB4"proto.popdown_delay"> ms<br>'+
-              '4,<IC"proto.popup_mMove">Don\'t popup while mouse is moving<br>'+
-              '3,zIndex: <ITB3"' +mode+ '.popup_zIndex">')+'<br>';
+              this.popup_delay('proto.', mode+'.popup_zIndex', true)+
+              '3,<IC"proto.popup_hlt">Highlight the post if it is visible')+'<br>';
+          },
+          popup_delay: function(pf, pfz, down_delay){
+            return '4,<IR"'+pf+'popdown,imm">immediately<br>'+
+              '4,<IR"'+pf+'popdown,delay">delayed: <ITB4"'+pf+'popup_delay">'+(down_delay? '<ITB4"'+pf+'popdown_delay">':'')+' ms<br>'+
+              '5,<IC"'+pf+'popup_mMove">Don\'t popup while mouse is moving<br>'+
+              '4,zIndex: <ITB3"'+pfz+'"><br>';
           },
           expand_thumbnail_inline: function(mode){
             return '2,<ICBX"' +mode+ '.expand_thumbnail_inline"> Image expansion at click'+ this.rollup(
@@ -2336,16 +2349,16 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               this.expand_thumbnail_1(mode,'inline'))+ '<br>';
           },
           expand_thumbnail_hover: function(mode){
-            var pref = mode+'.thumbnail.hover.';
-            return '2,<ICBX"' +mode+ '.image_hover"> Image hover'+ this.rollup(
-              '3,<ICBX"' +mode+ '.image_prefetch"> Prefetch next image<br>'+
+            var pf = mode+'.thumbnail.hover.';
+            return '2,<IC"' +mode+ '.image_hover">Image hover'+ this.rollup(
+              (pref.test_mode['103']? this.popup_delay(pf, mode+'.image_hover_zIndex', false):'')+
+              '3,<IC"' +mode+ '.image_prefetch">Prefetch next image<br>'+
               this.expand_thumbnail_1(mode,'hover')+'<br>'+
-              '3,<ICBX"' +pref+ 'dragfloat"> Drag tnumbnail to make it window<br>'+
-              '4,<ICBX"' +pref+ 'df_dblC"> Double click to close<br>'+
-              '4,<ICBX"' +pref+ 'df_mW"> Wheel to scroll<br>'+
-              '4,<ICBX"' +pref+ 'df_cVssth"> Continue playing video<br>'+
-              '3,<ICBX"' +pref+ 'zoom"> Click to zoom mode if limited<br>'+
-              '3,zIndex: <ITB3"' +mode+ '.image_hover_zIndex">')+'<br>';
+              '3,<IC"' +pf+ 'dragfloat">Drag tnumbnail to make it window<br>'+
+              '4,<IC"' +pf+ 'df_dblC">Double click to close<br>'+
+              '4,<IC"' +pf+ 'df_mW">Wheel to scroll<br>'+
+              '4,<IC"' +pf+ 'df_cV">Continue playing video<br>'+
+              '3,<IC"' +pf+ 'zoom">Click to zoom mode if limited')+'<br>';
           },
           expand_thumbnail_1: function(mode,inline_or_hover){
             var pref = mode+'.thumbnail.'+inline_or_hover+'.';
@@ -2367,10 +2380,29 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               str_inner + '<br>'+
               '2,<IC"' +mode+ '.popup_native_kill">Suppress native static popup') + '<br>';
           },
+          posts_for_search: function(mode){
+            return '2,'+ this.rollup_radio(mode+'.storePosts',' :Num of posts to store for search', 3, '',
+              ['no:No additional posts are stored for search.<br>5,Search will be done only from posts for preview.',
+               'ALL:All posts are stored always.<br>5,Search will be done from all posts without preparation scan.',
+               'auto:All posts in all scanned threads are stored after the first activation of search.<br>5,Need (automatic) scans prior to search. (usual usage)',
+               'ALL_agg:All posts in all scanned threads are stored.<br>5,Search will be done from all scanned threads.<br>5,This is an option for search from entire domains.<br>'+
+               '3,<IC"proto.searchAc.loosen">Auto loosen limits at the first activation'+this.rollup(
+                 '6,Max boards of a scan: <ITB6"proto.searchAc.max"><br>'+
+                 '6,Max threads of a scan: <ITB6"proto.searchAc.max_threads"><br>'+
+                 '6,Max threads at refresh (auto deletion): <ITB6"proto.searchAc.max_threads_at_refresh"><br>'+
+                 '5,<BTN"tighten_loosed_limits,Tighten loosed limits">')+'<br>'+
+               '3,<IC"proto.searchAs">Auto scan from this (virtual) board if needed <BTN"scanBoardIf,Scan"><BTN"scanBoard,Rescan"><br>'+
+               '3,<IC"proto.searchAsA">Auto scan from all (virtual) boards if needed <BTN"scanSiteIf,Scan"><BTN"scanSite,Rescan">']) +'<br>'+
+              '2,'+ this.rollup_radio(mode+'.sourceOfSP',' :Posts to be used for search', 3,
+              '3,Posts may be stored also by function of deleted posts detection.<br>'+
+              '3,Number of stored posts can be shown in footer.<br>',
+              ['auto:All stored posts.(usual usage)',
+              'pv:Posts for preview only.<br>5,Search will be done only from recent or newer posts,<br>5,which depends on preview settings.']) +'<br>';
+          },
           op_in_search_result: function(mode){
             return '2,' + this.rollup_radio(mode+'.posts_search_op', ' :Unmatched OP in search result', 3, '',
-                ['show:Show', 'opaque:Opaque: <ITB3"' +mode+ '.posts_search_op_opacity"> %','hide:Hide']) + '<br>'+
-              '2,<ICBX"' + mode + '.auto_config_posts_search"> Auto config and scan at searching posts<br>';
+              ['show:Show', 'opaque:Opaque: <ITB3"' +mode+ '.posts_search_op_opacity"> %','hide:Hide']) + '<br>';
+//              '2,<ICBX"' + mode + '.auto_config_posts_search"> Auto config and scan at searching posts(WILL BE REPLACED)<br>';
 
           },
           deleted_posts_detection: function(mode){
@@ -2635,12 +2667,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                 ['thumbnail:Thumbnail','entire:Entire thread card'])+ '<br>'+
               '2,'+ html_funcs.rollup_radio('catalog.popup2',' :Pop up', 3, '',
                 ['no:No','sr:Search result','srpv:Search result or preview','pv:Preview','chart:Post rate chart (statistics must be activated)','dp:Deleted posts'])+ '<br>'+
-              '2,'+ html_funcs.rollup_radio('catalog.t2h_sel',' :Num of posts to store for search/preview', 3,
-                '3,Posts are stored after the thread was shown at once,<br>'+
-                '3,and you can utilize them to search or get preview.<br>'+
-                '3,The last option is for incremental search for posts.<br>',
-                ['no:No (Need a scan for every search)','N:Last <ITB3"catalog.t2h_num_of_posts"> posts (N posts)',
-                 'N_unread:N + all unread posts', 'unread:All unread posts', 'ALL:All posts', 'ALL_agg:All posts from all scanned threads']) +'<br>'+
+              '2,'+ html_funcs.rollup_radio('catalog.t2h_sel',' :Num of posts to store for preview', 3, '',
+                ['no:No','N:Last <ITB3"catalog.t2h_num_of_posts"> posts (N posts)',
+                 'N_unread:N + all unread posts', 'unread:All unread posts', 'ALL:All posts' //, ALL_agg:All posts from all scanned threads'
+                ]) +'<br>'+
+              html_funcs.posts_for_search('catalog')+
               html_funcs.op_in_search_result('catalog')+
               html_funcs.deleted_posts_detection('catalog')+'<br>'+
               '<br>'+
@@ -2662,7 +2693,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     //          '&emsp;&emsp;<input type="checkbox" name="page.scan_tag"> Scan tags at initial<br>'+
     //          '&emsp;&emsp;<input type="checkbox" name="page.format.show.posts"> Show posts<br>'+
               '2,<ICBX"page.use_expander_always"> Use CatChan\'s expander always<br>'+
-              '2,' + html_funcs.rollup_radio('page.t2h_sel', ' :Num of posts to show or search', 3, '',
+              '2,' + html_funcs.rollup_radio('page.t2h_sel', ' :Num of posts to show', 3, '',
                 ['page:Inherit from index page',
                  'L: <ITB3"page.t2h_L"> posts(L posts)',
                  'M: <ITB3"page.t2h_M"> posts(M posts)',
@@ -2670,7 +2701,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                  'N_unread:N + all unread posts',
                  'unread:All unread posts',
                  'ALL:All posts',
-                 'ALL_agg:All posts (for incremental posts search)']) +'<br>'+
+//                 'ALL_agg:All posts (for incremental posts search)',
+                ]) +'<br>'+
+              html_funcs.posts_for_search('page')+
               html_funcs.op_in_search_result('page')+
               html_funcs.updates('page')+
               '&emsp;&emsp;<input type="checkbox" name="page.scroll_lock"> Don\'t scroll at update<br>'+
@@ -3230,7 +3263,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.05.27.1<br>'+
+          'Version 2018.06.10.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3991,6 +4024,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'page.merge': function(e){site2['DEFAULT'].update_posts_merge_bases.onchange_merge(e);},
           'page.merge_list': 'page.merge',
           'proto.merge_list_str': 'page.merge',
+          'scanBoard': function(e){if (cataLog.event_func) cataLog.event_func(e);},
+          'scanBoardIf': 'scanBoard',
+          'scanSite': 'scanBoard',
+          'scanSiteIf': 'scanBoard',
+          'tighten_loosed_limits': function(e){pref4.search_posts_active_once = false;},
         }
       },
       bind_myself: function(obj, args){for (var i of args) obj[i] = obj[i].bind(obj);},
@@ -5554,34 +5592,45 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       function clear_down_timer(info){clearTimeout(info.timer); info.timer=null;}
       var up_e = null;
       var up_force = null;
-      function over(e, force){
+      var up_func = null;
+      var up_pf = null;
+      function over(e, force){ // image_hover can be merged to this, and popup2 also. e.path can be created easily, mouseenter can be replaced to mouseover.
         out(e);
         var et = e.target;
-        if (et.tagName==='A' && site2['DEFAULT'].popups_link_regex.test(et.textContent)) {
+        var pf_mode = pref[cataLog.embed_mode];
+        if (pf_mode.popup && et.tagName==='A' && site2['DEFAULT'].popups_link_regex.test(et.textContent)) {
           if (pref.proto.popup_hlt && post_highlight_if_visible(e)) return;
-          if (pref.proto.popdown==='imm') pop_up(e, force);
-          else {
-            if (pref.proto.popup_mMove) e.target.addEventListener('mousemove', over_1, false);
-            up_e = e;
-            up_force = force
-            over_1();
-          }
+          up_force = force
+          over_0(pref.proto, e, pop_up);
+        } else if (pref.test_mode['103'] && pf_mode.image_hover) {
+          var geh = site2[site.nickname].general_event_handler[site.whereami];
+          if (geh.image_hover) if (geh.image_hover(e)) over_0(pf_mode.thumbnail.hover, e, cataLog.image_hover_add);
+        }
+      }
+      function over_0(pf, e, func){
+        if (pf.popdown==='imm') func(e);
+        else {
+          if (pf.popup_mMove) e.target.addEventListener('mousemove', over_1, false);
+          up_e = e;
+          up_func = func;
+          up_pf = pf;
+          over_1();
         }
       }
       function over_1(){
         if (up_timer) clearTimeout(up_timer);
-        up_timer = setTimeout(pop_up_timer_end, pref.proto.popup_delay);
+        up_timer = setTimeout(pop_up_timer_end, up_pf.popup_delay);
+      }
+      function leave(e){
+        if (up_timer) pop_up_timer_end(true);
       }
       function out(e){
         var erT = e.relatedTarget;
         if (erT===erT_done) erT_done = null;
+        else if (up_timer) pop_up_timer_end(true);
         else if (erT && erT.tagName==='A') {
           var info = pns.get(erT);
           if (info) out_1(info);
-          else if (up_timer) {
-            clearTimeout(up_timer);
-            pop_up_timer_end(true);
-          }
         }
       }
       function out_1(info){
@@ -5590,15 +5639,17 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         else info.timer = setTimeout(pop_down.bind(null,pn), pref.proto.popdown_delay);
       }
       function pop_up_timer_end(stop){
+        if (stop) clearTimeout(up_timer);
         up_timer = null;
-        if (pref.proto.popup_mMove) up_e.target.removeEventListener('mousemove', over_1, false);
-        if (!stop) pop_up(up_e, up_force);
+        if (up_pf.popup_mMove) up_e.target.removeEventListener('mousemove', over_1, false);
+        if (!stop) up_func(up_e);
       }
       function href2domain(href){
         if (href[0]==='/') return site.nickname;
         else for (var d in liveTag.mems) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname;
       }
-      function pop_up(e,force){
+      function pop_up(e){
+        var force = up_force;
         var et = e.target;
         if (pns.has(et)) {clear_down_timer(pns.get(et)); return;}
         var domain = href2domain(et.getAttribute('href'));
@@ -5750,6 +5801,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
       return {
         over: over,
+        leave: leave,
         pop_load: pop_load,
         pop_load_req: pop_load_req,
         blacklist: blacklist,
@@ -5796,7 +5848,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           }
         }
       }
-      if (pref.test_mode['103']) if (thqp===undefined || Array.isArray(thqp)) {
+      if (thqp===undefined || Array.isArray(thqp)) {
         site2['DEFAULT'].popups_try_fetch_from_lth_ta(liveTag.mems[th.domain][dbt[1]][dbt[2]], parseInt(dbt[3],10), th); // may change thqp, th for domain_html(mimic)
         thqp = th_q[0][th_q[1]];
       }
@@ -5845,7 +5897,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return key? {pn:pn, key:key} : {pn:pn};
     },
     popups_post_pnode: function(pnode){
-      while ((pnode.getAttribute('class') || '').indexOf('post')==-1 && pnode.parentNode) pnode = pnode.parentNode;
+      var attr;
+      while (attr = pnode.getAttribute('class'), (!attr || (attr.indexOf('post')==-1 && attr.indexOf('thread')==-1)) && pnode.parentNode) pnode = pnode.parentNode;
       return pnode;
     },
     
@@ -6386,6 +6439,12 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 ////          }
 ////        }
         posts: function(th, start, proto_options){
+          if (th.type_data===undefined) {
+            var arr = [];
+            if (th.posts) for (var i=0;i<th.posts.length;i++) if (!th.posts[i].domain && th.posts.pn) arr[arr.length] = th.posts[i];
+            if (arr.length!=0) this.posts({type_data:'html', posts:arr, __proto__:th}, 0, common_func.shallow_copy_1(proto_options));
+            th = {type_data:'json', __proto__:th};
+          }
           var proto_obj = prep_pfunc(th.domain, th.board, 'post_'+th.type_data);
           if (proto_options) {
             proto_options.__proto__ = proto_obj;
@@ -10570,6 +10629,13 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
           if (et_tagName==='IMG')
             if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
         },
+        image_hover: function(e){
+          var et = e.target;
+          return et.tagName==='IMG' && et.parentNode.tagName==='A';
+        },
+        image_hover_check_mode: function(img){
+          return img.parentNode.classList.contains('fileThumb')? 'page' : 'catalog';
+        },
         __proto__:obj.thread
       };
       if (!pref.test_mode['98']) obj.page.mouseover = obj.catalog.mouseover;
@@ -11537,7 +11603,6 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
             '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
             ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
             this.post_json2html_nameblock(post, name, true)+
-            ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
             '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
             '<span class="postNum desktop">'+
               '<a href="thread/' + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
@@ -11557,6 +11622,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       var color;
       return '<span class="nameBlock">'+
         '<span class="name">' + name + '</span> '+
+        ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
         ((post.capcode)? '<strong class="capcode hand id_mod" title="Highlight posts by Moderators">##' + post.capcode + '</strong>' : '')+
 //        '<img src="//s.4cdn.org/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"></span>
         ((post.id)? '<span class="posteruid id_'+post.id+'">(ID: '+
@@ -14948,7 +15014,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         var state = options.maximize_state;
         var now = state[0];
   //      if (options.before_maximize) options.before_maximize(state_str, now);
-        common_func.overwrite_prop(state[5].style,{display:'inline'});
+        state[5].style.display = null;
         var cns = (options.maximize_tgt || cn).style; 
         if (now==='float') state = [req, pn.style.left, pn.style.top, cns.width, cns.height, button_pressed, pn.style.right, pn.style.bottom];
         else {state[0] = req; state[5] = button_pressed;}
@@ -14971,7 +15037,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
             ref.parentNode.insertBefore(pn,ref);
           }
         }
-        common_func.overwrite_prop(button_pressed.style,{display:'none'});
+        button_pressed.style.display = 'none';
         options.maximize_state = state;
         if (options.maximize) options.maximize.call(options.this_obj, req, now);
       },
@@ -15234,16 +15300,12 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
           var arg = funcs[i++];
           if (arg=='tb') {
             pn.setAttribute('class', pref.script_prefix+'_titleBar');
-//            pn.style.background = '#b5ccf9';
-            pn.innerHTML = '<div style="height:auto;overflow:hidden">' +
-                '<div style="float: left"><button type="button" name="roll_toggle">-</button><button type="button" name="op_m"><</button><button type="button" name="op_p">></button><span style="width:16px;display:inline-block"></span></div>' +
-//                '<div style="float: right"><button type="button">[]</button><button type="button">X</button></div>' +
-                '<div style="float: right"><button style="display:inline" name="top">^</button><button style="display:inline" name="bottom">_</button><button style="display:none" name="float">o</button><button style="display:inline" name="max">[]</button><button name="exit">X</button></div>' +
+            pn.innerHTML = pref_func.format_html_str('<div style="height:auto;overflow:hidden">' +
+                '<div style="float: left"><BTN"roll_toggle,-"><BTN"op_m,&lt;"><BTN"op_p,&gt;"><span style="width:16px;display:inline-block"></span></div>' +
+                '<div style="float: right"><BTN"top,^"><BTN"bottom,_"><BTN"float,o" style="display:none"><BTN"max,[]"><BTN"exit,X"></div>' +
                 '<div></div>' +
               '</div>' +
-              '<div class="' + pref.script_prefix + '_window" style="margin: 0px 3px 3px 3px;clear:both"></div>';
-//              '<div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>';
-//            pn.innerHTML = '<div><div style="float: left"><button type="button">-</button><button type="button"><</button><button type="button">></button></div><div style="float: right"><button type="button">X</button></div><div></div></div><div style="background: #e5ecf9; margin: 0px 3px 3px 3px"></div>'
+              '<div class="' + pref.script_prefix + '_window" style="margin: 0px 3px 3px 3px;clear:both"></div>');
             var tb = pn.childNodes[0];
             var cn = pn.childNodes[1];
 //            tb.childNodes[2].style.height = tb.childNodes[0].offsetHeight + 'px';
@@ -16653,7 +16715,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
         rescan_dp:{get: function(){return (this[2][0]&0x01000000) >> 24;},
                    set: function(v){this[2][0] = this[2][0] & 0xfeffffff | ((v&0x01)<<24);}},
         nrtm:     {get: function(){return (this[2][1]) >> 16;}},
-        nr:       {get: function(){return  this[2][1]&0x0000ffff;}},
+        nr:       {get: function(){return  this[2][1]&0x0000ffff;}}, // set directly in check_reply.check_1 and thread_reader.favicon_obj_trim
         nof_posts:{get: function(){return  this[2][0]&0x0000ffff ;},
                    set: function(v){this[2][0] = (this[2][0] & 0xffff0000) + v;}},
 
@@ -16988,6 +17050,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       var btags = lth.btags;
       if (pref3.stats.use) stats.thread_removed(dbt);
       if (lth.q) lth.q = null; // cut cyclic reference, lth.q.__proto__  = lth
+      if (lth.nr && (pref.notify.favicon || pref.notify.title.notify)) notifier.favicon.set();
       delete this.mems[dbt[0]][dbt[1]][dbt[2]];
       if (btags) for (var i=0;i<btags.length;i++) {
         this.key_dirty[(pref.liveTag.ci)? btags[i].toLowerCase() : btags[i]] = null;
@@ -19403,8 +19466,8 @@ if (!pref.test_mode['79']) {
 ////          }
         }
       },
-      store_th_to_mem: function(value, th,lth, editing_finished){
-        if (pref[cataLog.embed_mode].deleted_posts.detect!=='no') {
+      store_th_to_mem: function(value, th,lth, pf_store, editing_finished){ // for deleted posts detection, search, page mode (, archive).
+        if (pf_store!=='no') {
           if (editing_finished && lth.ta.posts) {
             var ta_posts = lth.ta.posts;
             var j=ta_posts.length-1;
@@ -19414,11 +19477,12 @@ if (!pref.test_mode['79']) {
               else j=ta_posts.length-1;
             }
           }
-          var posts = (th.posts && th.posts.length>1 && th.nof_posts>th.posts.length && lth.ta && pref[cataLog.embed_mode].deleted_posts.detect!=='passive')?
-                      site2[th.domain].update_posts_replace_prep(th.posts, lth.ta.posts, -1) :
-                      (th.parse_funcs.has_posts)? th.posts : lth.ta && lth.ta.posts || th.posts;
-          if (!pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB')) {
-            if (!lth.ta && pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB') IDB.req(th.domain, th.board, th.no, 'posts', this.restore_posts_from_IDB.bind(this, value, {posts:th.posts, __proto__:th}), 'get_all');
+          var pf_d = pref[cataLog.embed_mode].deleted_posts.detect;
+          var posts = (th.posts && th.posts.length>1 && th.nof_posts>th.posts.length && lth.ta && pf_d!=='passive')?
+              site2[th.domain].update_posts_replace_prep(th.posts, lth.ta.posts, typeof(pf_store)==='number'? pf_store : -1) :
+              (th.parse_funcs.has_posts)? th.posts : lth.ta && lth.ta.posts || th.posts;
+          if (!pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pf_d==='full_IDB')) {
+            if (!lth.ta && pf_d==='full_IDB') IDB.req(th.domain, th.board, th.no, 'posts', this.restore_posts_from_IDB.bind(this, value, {posts:th.posts, __proto__:th}), 'get_all');
             var time_checked;
             if (lth.ta) time_checked = lth.ta.posts[lth.ta.posts.length-1].time;
             else {
@@ -19449,7 +19513,7 @@ if (!pref.test_mode['79']) {
         } else if (lth.ta) delete lth.ta;
       },
       check_deleted_posts: function(value, th, lth, th_old, fill_IDB){
-        if ((lth.archived || pref[cataLog.embed_mode].deleted_posts.detect!=='no') && th_old && th_old.posts.length>1) {
+        if (pref[cataLog.embed_mode].deleted_posts.detect!=='no' && th_old && th_old.posts.length>1) {
           var thp = th.posts;
           var othp = th_old.posts;
           var flag = th.nof_posts === th.posts.length || th.type_source==='thread'; // 'thread' is for safe if inconsistent data is returned.
@@ -19505,8 +19569,9 @@ if (!pref.test_mode['79']) {
                 else delete storage[ls_key];
               }
             }
-            if (!pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB'))
-              IDB.req(th.domain, th.board, th.no, 'posts_deleted', JSON.stringify(othpd, store_json_func), (othpd.length>0)? 'put' : 'delete');
+            if (!pref.test_mode['65'] && pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB') this.store_deleted_posts_to_IDB(th, othpd);
+//            if (!pref.test_mode['65'] && (lth.archived && pref.archive.live.post_idb || pref[cataLog.embed_mode].deleted_posts.detect==='full_IDB'))
+//              IDB.req(th.domain, th.board, th.no, 'posts_deleted', JSON.stringify(othpd, store_json_func), (othpd.length>0)? 'put' : 'delete');
           }
           if (posts_offline && posts_offline.length>0) {
             if (th.domain!==site.nickname) posts_offline = JSON.parse(JSON.stringify(posts_offline, store_json_func)); // for structual clone, remove pn.
@@ -19519,10 +19584,13 @@ if (!pref.test_mode['79']) {
         }
         return (post_deleted)? othpd : null; // return only if it's changed.
       },
+      store_deleted_posts_to_IDB: function(th, othpd){
+        IDB.req(th.domain, th.board, th.no, 'posts_deleted', JSON.stringify(othpd, store_json_func), (othpd.length>0)? 'put' : 'delete');
+      },
       store_json_func: store_json_func, 
-      store: function(value, th, lth, posts_new, time_check_old, editing_finished){
+      store: function(value, th, lth, posts_new, time_check_old, pf_store, editing_finished){
         var deletedPosts = this.check_deleted_posts(value, th, lth, lth.ta);
-        this.store_th_to_mem(value, th,lth, editing_finished); // MUST BE AFTER 'check_deleted_posts', because it uses lth.ta for old version of posts and this revises them.
+        this.store_th_to_mem(value, th,lth, pf_store, editing_finished); // MUST BE AFTER 'check_deleted_posts', because it uses lth.ta for old version of posts and this revises them.
         if (lth.archived) {
           var time_unit = th.parse_funcs.time_unit;
           var time_checked = this.check_archived_time(th.key, th.domain, th.board, th.no, time_unit) || 0;
@@ -19538,8 +19606,13 @@ if (!pref.test_mode['79']) {
           var live_active    = lth.archived&0x02;
           var oneshot_active = lth.archived&0x01;
           var post = live_active && pref.archive.live.post || oneshot_active && pref.archive.oneshot.post;
+          var post_idb = live_active && pref.archive.live.post_idb || oneshot_active && pref.archive.oneshot.post_idb;
           var suffix_dbt = th.key.replace(/\//g,'-');
-          if (deletedPosts && post) store_posts(JSON.stringify(site2[th.domain].parse_funcs.thread_json.prep_to_archive(deletedPosts)), 'text/plain', lth, suffix_dbt+'_'+'deleted.json');
+          if (deletedPosts) {
+            if (post) store_posts(JSON.stringify(site2[th.domain].parse_funcs.thread_json.prep_to_archive(deletedPosts)), 'text/plain', lth, suffix_dbt+'_'+'deleted.json');
+            if (post_idb && pref[cataLog.embed_mode].deleted_posts.detect!=='full_IDB') this.store_deleted_posts_to_IDB(th, deletedPosts);
+          }
+//          if (deletedPosts && post) store_posts(JSON.stringify(site2[th.domain].parse_funcs.thread_json.prep_to_archive(deletedPosts)), 'text/plain', lth, suffix_dbt+'_'+'deleted.json');
           var type = (th.type_data==='html')? 'text/html' : 'text/plain';
           var posts_all = (th.type_source==='thread' || th.posts.length===th.nof_posts)? th.posts : (lth.ta && lth.ta.posts.length===th.nof_posts)? lth.ta.posts : null;
           if (post) {
@@ -19557,7 +19630,6 @@ if (!pref.test_mode['79']) {
             var img_idb  = live_active && pref.archive.live.img_idb  || oneshot_active && pref.archive.oneshot.img_idb;
             var webm     = live_active && pref.archive.live.webm     || oneshot_active && pref.archive.oneshot.webm;
             var webm_idb = live_active && pref.archive.live.webm_idb || oneshot_active && pref.archive.oneshot.webm_idb;
-            var post_idb = live_active && pref.archive.live.post_idb || oneshot_active && pref.archive.oneshot.post_idb;
             if (tn || tn_idb || img || img_idb || webm || webm_idb || post_idb) {
               if (lth.archived&0x05) {
                 if (!posts_all && (oneshot_active || (!th.posts[1] || th.posts[1].time>time_checked) && (!lth.ta.posts[1] || lth.ta.posts[1].time>time_checked))) {this.store_rescan(lth); return;}
@@ -19879,10 +19951,11 @@ if (!pref.test_mode['79']) {
       },
 //      add_domain: function(domain){liveTag.mems[domain].u = 1;},
       add_domain: function(domain, force_thread, boards){
+        var max_boards = pref4.scan.max; // invoke getter
         if (!liveTag.active.pk){
           if (!boards) {
             for (var b in liveTag.mems[domain])
-              if (liveTag.mems[domain][b].o!==null && liveTag.mems[domain][b].o < pref.scan.max) this.add_board(domain+b, null, force_thread);
+              if (liveTag.mems[domain][b].o!==null && liveTag.mems[domain][b].o < max_boards) this.add_board(domain+b, null, force_thread);
           } else for (var i=0;i<boards.length;i++) this.add_board(domain+boards[i], null, force_thread);
         } else {
           if (boards) {
@@ -19895,7 +19968,7 @@ if (!pref.test_mode['79']) {
               }
             }
           } else {
-            for (var i=0;i<pref.scan.max;i++) if (liveTag.tags_array_old[i]) {
+            for (var i=0;i<max_boards;i++) if (liveTag.tags_array_old[i]) {
               for (var bt of liveTag.tags[liveTag.tags_array_old[i].key].mems.keys())
                 if (!bt.no) this.add_board(bt, null, force_thread);
                 else this.add(bt, null, force_thread);
@@ -19905,8 +19978,12 @@ if (!pref.test_mode['79']) {
       },
       add_board: function(bd, priority, force_thread, use_boards_json, force_json){
         if (typeof(bd)==='string') bd = this.get_th(bd);
-        var upper_bits = ((priority || 0) <<4) | ((force_json)? 8 : 0) | ((force_thread)? 4 : 0);
+        if (force_thread===2) { // preparation read for search posts
+          for (var t in bd) if (!bd[t].ta || bd[t].nof_posts!==bd[t].ta.posts.length) this.add(bd[t], priority, true);
+          return;
+        }
         if (!use_boards_json || bd.read_max<bd.max) {
+          var upper_bits = ((priority || 0) <<4) | ((force_json)? 8 : 0) | ((force_thread)? 4 : 0);
           if (bd.u===0) bd.u = upper_bits | 3;
           else if (bd.u>0 && bd.u<priority) bd.u = upper_bits | (bd.u&0x0f);
         }
@@ -19962,11 +20039,12 @@ if (!pref.test_mode['79']) {
 //      },
       scan_boards_enumerate: function(domain, func, ex_list){
         var thread_or_domain = pref.virtualBoard.scan_domains[domain]==='thread' || ex_list.has(liveTag.mems[domain]);
+        var max_boards = pref4.scan.max; // invoke getter
         for (var b in liveTag.mems[domain])
           if (thread_or_domain || Object.keys(liveTag.mems[domain][b]).length!=0)
 //            if (ex_list[liveTag.mems[domain][b].key]===undefined) // prevent multiple scan.
             if (!ex_list.has(liveTag.mems[domain][b])) // prevent multiple scan.
-              if (liveTag.mems[domain][b].o!==null && liveTag.mems[domain][b].o < pref.scan.max)
+              if (liveTag.mems[domain][b].o!==null && liveTag.mems[domain][b].o < max_boards)
                 if (!func || func(liveTag.mems[domain][b])) return true;
       },
     };
@@ -20150,7 +20228,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //          if (domain===site.nickname || pref.virtualBoard.scan_domains[domain]==='thread') {
 //          if (pref.virtualBoard.scan_domains[domain]!=='none' || force) {
         if (pref.virtualBoard.scan_domains[domain]==='thread' || force) {
-          scan.list_nup.add_domain(domain, force && pref.catalog.filter.kwd.post, boards);
+          scan.list_nup.add_domain(domain, pref.catalog.filter.kwd.post && force, boards);
           scan.scan('b',domain);
         }
       },
@@ -20862,7 +20940,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         'catalog.filter.tag_search.str': function(){liveTag.filter_onchange(pref.catalog.filter.tag_search);},
         __proto__: pref_func.settings.oninput_funcs.__proto__
       };
-      cataLog.oninput_funcs = oninput_funcs;
       var onchange_funcs = {
 //        'catalog.filter.show' : function(){cnst.show_hide(pn_filter,pn12_1);},
 //        'catalog_show_setting': function(){cnst.show_hide(pn_setting,pn12_1);},
@@ -20880,10 +20957,10 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           threads_delayed_pruning = Object.create(null);
           if (pref.catalog.auto_load_filter) onchange_funcs.load();
           if (!init) catalog_refresh(pref.catalog.refresh.at_switch,null,false, true);
-          if (pref[embed_mode].auto_config_posts_search) {
-            pref.catalog.filter.kwd.post = false;
-            pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.kwd.post'],true);
-          }
+//          if (pref[embed_mode].auto_config_posts_search) {
+//            pref.catalog.filter.kwd.post = false;
+//            pref_func.apply_prep(pn12_0_4.getElementsByTagName('input')['catalog.filter.kwd.post'],true);
+//          }
           catalog_board_list_sel_old = pref.catalog_board_list_sel;
         },
         'catalog_size_width'  : catalog_resized,
@@ -20955,18 +21032,22 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         'catalog.filter.kwd.meta'  : filter_kwd_active,
         'catalog.filter.kwd.post'  : function(e){
           filter_kwd_active(e);
-          if (pref[embed_mode].auto_config_posts_search) {
-            if (e.target.checked) {
-              pref[embed_mode].t2h_sel = 'ALL_agg';
-              if (embed_mode==='catalog') pref[embed_mode].popup2 = 'sr';
-              onchange_funcs.scanBoard();
-            } else {
-              var pref_def = pref_default();
-              pref[embed_mode].t2h_sel = pref_def[embed_mode].t2h_sel;
-              if (embed_mode==='catalog') pref[embed_mode].popup2 = pref_def[embed_mode].popup2;
-            }
-            pref_func.apply_prep(pref_func.mirror_targets.pn13_1,false);
+          if (e.target.checked) {
+            if (pref[cataLog.embed_mode].searchAs) onchange_funcs.scanBoard(e, true, true);
+            if (pref[cataLog.embed_mode].searchAsA) onchange_funcs.scanSite(e, true, true);
           }
+//          if (pref[embed_mode].auto_config_posts_search) {
+//            if (e.target.checked) {
+//              pref[embed_mode].t2h_sel = 'ALL_agg';
+//              if (embed_mode==='catalog') pref[embed_mode].popup2 = 'sr';
+//              onchange_funcs.scanBoard();
+//            } else {
+//              var pref_def = pref_default();
+//              pref[embed_mode].t2h_sel = pref_def[embed_mode].t2h_sel;
+//              if (embed_mode==='catalog') pref[embed_mode].popup2 = pref_def[embed_mode].popup2;
+//            }
+//            pref_func.apply_prep(pref_func.mirror_targets.pn13_1,false);
+//          }
         },
         'catalog.filter.tag'       : catalog_filter_changed,
 //        'catalog.filter.tag_list'  : catalog_filter_changed,
@@ -20981,8 +21062,11 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //        'catalog.filter.attr_list_str' : show_catalog, //catalog_attr_changed
         'catalog.filter.attr_list' : catalog_attr_changed,
 //        'scan'                     : scan_tags,
-        'scanBoard' : function(){if (pref.common.clear_at_manual_scan) onchange_funcs.clear_threads();scan.keyword_load_1(site.nickname,true,[site.board], health_indicator);},
-        'scanSite' : function(){if (pref.common.clear_at_manual_scan) onchange_funcs.clear_threads();scan.keyword_load(true, health_indicator);},
+        'scanBoardIf': function(e){onchange_funcs.scanBoard(e,false,true);},
+        'scanSiteIf': function(e){onchange_funcs.scanSite(e,false,true);},
+        'scanBoard' : function(e, from_auto, required_only){if (!from_auto && pref.common.clear_at_manual_scan) onchange_funcs.clear_threads();scan.keyword_load_1(site.nickname,required_only? 2:true,[site.board], health_indicator);},
+
+        'scanSite' : function(e, from_auto, required_only){if (!from_auto && pref.common.clear_at_manual_scan) onchange_funcs.clear_threads();scan.keyword_load(required_only? 2:true, health_indicator);},
         'catalog.order.reply_to_me' : re_sort_thread,
         'catalog.order.reply'       : re_sort_thread,
         'catalog.order.watch'       : re_sort_thread,
@@ -21143,7 +21227,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 //                max: (obj.length>pref.scan.max)? pref.scan.max : obj.length,
                 max: obj.length,
 //                max_threads: (obj.length>pref.scan.max)? obj.length : pref.scan.max,
-                max_threads: pref.scan.max_threads,
+                max_threads: pref4.scan.max_threads,
                 found_threads: 0,
                 found_boards: 0,
                 scanned: 0,
@@ -21457,7 +21541,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////          }
 ////        }
 
-        cataLog.scan_boards_keyword_callback2_default_args = {refresh:true, found_threads:0, max_threads:pref.scan.max_threads, found_board:0, scanned:0};
+        cataLog.scan_boards_keyword_callback2_default_args = {refresh:true, found_threads:0, get max_threads(){return pref4.scan.max_threads;}, found_board:0, scanned:0};
         var threads_meguca = {};
         function scan_boards_keyword_callback2(key,value,args, insert_thread_from_native){ // requires snoop and on demand rendering for merge.
 ////////  if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
@@ -21517,8 +21601,9 @@ if (pref.test_mode['22']) {
               }
             }
             var post_updated_static = pref.liveTag.from==='post' || pref.stats.use || pref[embed_mode].deleted_posts.detect.indexOf('full')===0 ||
-                pref[embed_mode].t2h_sel==='ALL_agg' || site2[dbt[0]].parse_funcs[dbt[3]].has_editing && (embed_mode==='page' || embed_mode==='thread');
+                pref[embed_mode].storePosts==='ALL_agg' || site2[dbt[0]].parse_funcs[dbt[3]].has_editing && (embed_mode==='page' || embed_mode==='thread');
 //            var post_updated_static = pref.liveTag.from==='post' || pref.stats.use || pref[embed_mode].deleted_posts.detect==='full';
+            var pf_store = (pref[embed_mode].storePosts==='ALL_agg' || pref[embed_mode].storePosts==='auto' && pref4.search_posts_active_once)? 'ALL' : pref[embed_mode].deleted_posts.detect;
             for (var i=0;i<ths.length;i++) {
               var th = ths[i];
               if (!th.no) continue; // PATCH for a bug in 4chan, 4chan returns invalid data.
@@ -21574,13 +21659,17 @@ if (pref.test_mode['22']) {
 //              if (liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].f) scan.list_nup.add(th.key, sb.priority); // use dbt[0] instead of th.domain for /popular/
               if (lth.q && lth.q.waiting && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th, lth);
               var updated = null;
+              var archive_store = (lth.archived || pf_store!=='no') && (!pref.test_mode['67'] && !sb.localArchive);
+              var pf_store_th = tgt_th && tgt_th[16].get_t2h_num_of_posts() || 'no';
+              var pf_store_1 = (pf_store==='ALL' || pref[embed_mode].storePosts==='ALL' && tgt_th)? -1
+                  : (pf_store==='no' || pf_store==='passive' && pf_store_th!=='no')? pf_store_th : pf_store;
               if (post_updated!==null && (lth.nof_posts<th.nof_posts || (watch[0]&0x00060000))) { // watch req || retag req
 //              if (post_updated!==null && (lth.nof_posts<th.nof_posts || watch[3]<0)) { // watch[3]<0 is a patch for retag.
 //if (th.parse_funcs.has_posts && th.last_replies) console.log(th.key+', '+th.last_replies.length+', '+th.nof_posts+', '+lth.nof_posts);
 //                if (pref.debug_mode.unread_count===th.key) console.log('uc: watch[0]='+lth.nof_posts+', nof_posts='+th.nof_posts);
                 if (th.type_source==='thread' || 
 //                    (th.parse_funcs.has_posts && th.last_replies && th.last_replies.length>=th.nof_posts-lth.nof_posts) ||
-                    (th.parse_funcs.has_posts && th.posts.length>th.nof_posts-lth.nof_posts && (lth.ta || pref[cataLog.embed_mode].deleted_posts.detect.indexOf('full')!==0)) ||
+                    (th.parse_funcs.has_posts && th.posts.length>th.nof_posts-lth.nof_posts && (lth.ta || pref[embed_mode].deleted_posts.detect.indexOf('full')!==0)) ||
                     (th.nof_posts===1 && th.posts[0].time>=0 && !th.parse_funcs.dont_have_com)) {
                   post_updated = true;
                   updated = site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'.
@@ -21590,11 +21679,11 @@ if (pref.test_mode['22']) {
                                              // However, 8chan doesn't return 404, but fails at send(null), so system like watchdog is required.
 //                  if (pref.debug_mode['3']) console.log('Check tags: '+th.key+', '+lth.nof_posts);
                   if (pref.threadStats.use && site2[th.domain].stats_ID && (refresh || tgt_th)) if (site2[th.domain].stats_ID(th, updated.posts, lth)) scan.list_nup.add(th.key, 0);
-                  if (lth.archived || pref[embed_mode].deleted_posts.detect!=='no') if (!pref.test_mode['67'] && !sb.localArchive) archiver.store(value, th, lth, updated.posts, updated.time_check_old, ed_f);
+                  if (archive_store) archiver.store(value, th, lth, updated.posts, updated.time_check_old, pf_store_1, ed_f);
                 } else { // if (!(th.parse_funcs.has_posts && !th.last_replies))
                   scan.list_nup.add(th.key, sb.priority);
 //                  if (pref.debug_mode['3']) console.log('Schedule to check tags: '+th.key+', '+lth.nof_posts);
-                  if (ed_f && lth.archived) if (!pref.test_mode['67'] && !sb.localArchive) archiver.store(value, th, lth, undefined, undefined, ed_f);
+                  if (ed_f && archive_store) archiver.store(value, th, lth, undefined, undefined, pf_store_1, ed_f);
                 }
               } else {
                 if (!sb.localArchive) scan.list_nup.got_200(th);
@@ -21605,8 +21694,8 @@ if (pref.test_mode['22']) {
 //                    ((tgt_th)? !tgt_th[23] || th.type_source==='thread' : !th.parse_funcs.missing_info)) scan.list_nup.got_200(th); // for threads which doesn't have posts.
 //                  else th.parse_funcs.missing_info_fetch(th);
 ////                if (th.parse_funcs.has_editing) updated = {posts:th.posts.slice(lth.nof_posts || 0)}; // BUG, REDUNDANT.
-                if (lth.rescan_dp || lth.force_ar || (ed_f && lth.archived) ||
-                    (lth.nof_posts!=th.nof_posts && th.parse_funcs.has_posts && (lth.archived || pref[embed_mode].deleted_posts.detect!=='no'))) if (!pref.test_mode['67'] && !sb.localArchive) archiver.store(value, th, lth, undefined, undefined, ed_f); // for initial if watched already // BUG!!! THIS DOESN'T WORK IF 304 IS RETURNED. // changed from 'lth.nof_posts<th.nof_posts'.
+                if ((lth.rescan_dp || lth.force_ar || ed_f || lth.nof_posts!=th.nof_posts && th.parse_funcs.has_posts) && archive_store)
+                  archiver.store(value, th, lth, undefined, undefined, pf_store_1, ed_f); // for initial if watched already // BUG!!! THIS DOESN'T WORK IF 304 IS RETURNED. // changed from 'lth.nof_posts<th.nof_posts'.
 ////                if (lth.nof_posts!=th.nof_posts)
 ////                  if(!th.parse_funcs.has_editing || th.parse_funcs.has_posts || embed_mode==='catalog') lth.nof_posts = th.nof_posts; // to get updated in next loop. // BUG, REDUNDANT.
                 if (lth.nof_posts!=th.nof_posts) lth.nof_posts = th.nof_posts;
@@ -21669,7 +21758,7 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
 ////                }
 ////              }
               
-              var pick_up_for_search = th.type_source==='thread' && pref[embed_mode].t2h_sel==='ALL_agg';
+              var pick_up_for_search = th.type_source==='thread' && pref[embed_mode].storePosts==='ALL_agg';
               var picked_up_by_kwd_filter = filter_active_kwd && catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, th.posts, th.domain, th);
               var picked_up_by_tag_filter = filter_active_tag && liveTag.search_by_tags(th.tags);
               var picked_up_by_filter = picked_up_by_kwd_filter || picked_up_by_tag_filter;
@@ -21689,6 +21778,11 @@ if (pref.test_mode['32'] && dbt[0]==='meguca1' && dbt[3]==='thread_json') contin
                                    tgt_th8[2]==th.nof_posts && tgt_th8[3]==th.nof_files) || th.type_source==='thread'; // pass thread to revise all of tgt_th[8]
                 }
                 if (post_updated || picked_up_by_filter || tgt_th_status===undefined || force_update) {
+                  if (!tgt_th) { // PATCH, WILL BE REMOVED BY CONSOLIDATING.
+                    var pf_store_th_2 = tgt_th16_proto.get_t2h_num_of_posts.call({lth:lth}) || 'no';
+                    if (pf_store!=='ALL' && (pf_store==='no' || pf_store==='passive' && pf_store_th_2!=='no'))
+                      if (pf_store_1!==pf_store_th_2) archiver.store_th_to_mem(value, th,lth, pf_store_th_2, null);
+                  }
                   if (pref[embed_mode].scroll_lock) show_catalog_scroll_lock.set();
                   insert_thread(th, value.date, picked_up_by_kwd_filter, insert_thread_from_native && ths[i].pn); // '&& ths[i].pn' for reentry.
                   tgts[th.key] = true;
@@ -22732,9 +22826,10 @@ if (!pref.test_mode['13']) {
 ////        get com(){return threads[this.key][4].com;}, // this.posts && this.posts[0].com;}, // for reentry in meguca
 ////        get txt(){return threads[this.key][4].txt;}, // this.posts && this.posts[0].txt;}, // for reentry in meguca
         get tags(){return liveTag.mems.getFromName(this.key);},
-        recent_posts: function(num, posts_in){
+        recent_posts: function(num, posts_in, remake){
+          if (num===undefined || num===null) num = this.get_t2h_num_of_posts();
           var posts = posts_in;
-          if (num!==false) {
+          if (num!==false && !remake) {
             if (this.th && this.th.posts) posts = site2[this.lth.domain].update_posts_replace_prep(posts || this.th.posts, this.th.posts, num); // merge, posts===this.th.posts occurs also.
 //            var posts = this.th && this.th.posts;
             if (this.posts) posts = site2[this.lth.domain].update_posts_replace_prep(posts || this.posts, this.posts, num); // merge // MUST CHANGE ADDRESS OF th.posts, 'th.posts===th_old.posts' is used 'insert_thread_format_html'
@@ -22742,9 +22837,20 @@ if (!pref.test_mode['13']) {
           if (!posts_in) {
             if (posts && this.lth.pd) posts = posts.filter(function(v){return !v.deleted_after;}); // posts may contain >num deleted posts.
             if ((!posts || num<0 || posts.length<=num) && this.lth.ta) posts = site2[this.lth.domain].update_posts_replace_prep(posts || this.lth.ta.posts, this.lth.ta.posts, num);
+            if (!posts) posts = [this.op];
           }
 //          var posts = this.th && this.th.posts || this.lth.ta && this.lth.ta.posts && site2[this.lth.domain].update_posts_replace_prep(this.posts || this.lth.ta.posts, this.lth.ta.posts, num) || this.posts;
           return (!pref.test_mode['64'] && pref[embed_mode].deleted_posts.merge && this.lth.pd)? merge_deleted_posts(this.lth, posts, num, pref[embed_mode].t2h_sel) : posts;
+        },
+        get_t2h_num_of_posts: function(){
+          var t2h_sel = this.t2h_sel || pref[embed_mode].t2h_sel;
+          return (t2h_sel==='page')? this.t2h_page || pref[embed_mode].t2h_num_of_posts
+            : (t2h_sel==='L')? pref[embed_mode].t2h_L
+            : (t2h_sel==='M')? pref[embed_mode].t2h_M
+            : (t2h_sel==='N')? pref[embed_mode].t2h_num_of_posts
+            : (t2h_sel==='N_unread')? pref[embed_mode].t2h_num_of_posts + this.lth.nr
+            : (t2h_sel==='unread')? (this.lth.watched? this.lth.nr : this.t2h_page || pref[embed_mode].t2h_num_of_posts)
+            : (t2h_sel==='no')? 0 : -1; // 'ALL' // and 'ALL_agg'
         },
       };
       function insert_thread(th, date_load, picked_up_by_kwd_filter, insert_thread_from_native){
@@ -22784,7 +22890,7 @@ if (pref.test_mode['19']) { // stability test.
                            insert_thread_from_native, (embed_mode==='page')? [triage.thread_in, null] : [func_in, func_pop_up],
                            null,
 //                           [html_org || th.pn.innerHTML, nickname], // PATCHED. THIS WILL BE REMOVED.
-                           th.posts && th.posts.slice(0,1), // 4 // required in catalog_filter_query_1 to produce search source if no posts are stored in catalog mode. 'th.posts &&' must be redundant, but I haven't checked consistency yet. // {sub:th.sub, com:th.com, name:th.name, trip:th.trip, filename:th.filename}
+                           null, // not used // th.posts && th.posts.slice(0,1), // 4 // {sub:th.sub, com:th.com, name:th.name, trip:th.trip, filename:th.filename}
 //                           click_thread, // 5, click function.
                            [], // 5, click source
                            null,
@@ -22810,6 +22916,7 @@ if (pref.test_mode['19']) { // stability test.
                              th: th,
 //                             popups: null, posts:null,
                              lth: th.lth,
+                             op: th.posts && th.posts[0], // required in recent_posts to produce search source if no posts are stored in catalog mode. 'th.posts &&' must be redundant, but I haven't checked consistency yet. 
                              __proto__: tgt_th16_proto
                            }, // 16, others
 //                           ch[brwsr.innerText].match(tags_scan_regex), // 17, tag
@@ -22881,25 +22988,23 @@ if (pref.test_mode['19']) { // stability test.
 ////          format_html.prepare_html_prep_posts(th);
 ////        }
         
-        var flag_posts_stored = embed_mode==='catalog' && pref[embed_mode].t2h_sel==='no' && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && 
-          th.posts && // patch for 4chan catalog.
-          (pref[embed_mode].popup2==='sr' || (pref[embed_mode].popup2==='srpv' && catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, th.posts, th.domain, th))); // for simple search with scan.
-        if (flag_posts_stored) {
-          th.posts = catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th);
-          if (th.posts) {
-            th.posts[0].__proto__.search_result = th.posts[0].search_result; // patch. see 'catalog_filter_query_keyword.kwd_make_result'
-            th.posts[0] = th.posts[0].__proto__;
-          }
-        }
+//        var flag_posts_stored = embed_mode==='catalog' && pref[embed_mode].t2h_sel==='no' && th.parse_funcs.has_posts && pref.catalog.filter.kwd.posts_active && 
+//          th.posts && // patch for 4chan catalog.
+//          (pref[embed_mode].popup2==='sr' || (pref[embed_mode].popup2==='srpv' && catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, th.posts, th.domain, th))); // for simple search with scan.
+//        if (flag_posts_stored) {
+//          th.posts = catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th);
+//          if (th.posts) {
+//            th.posts[0].__proto__.search_result = th.posts[0].search_result; // patch. see 'catalog_filter_query_keyword.kwd_make_result'
+//            th.posts[0] = th.posts[0].__proto__;
+//          }
+//        }
+
 //        tgt_th[9] = (picked_up_by_kwd_filter)? [true] : catalog_filter_query(name); // moved to later to apply t2h_num_of_posts
 //        if (insert_thread_from_native) threads[name][16].posts = th.posts; // for reentry // BUG, html update exist in embed_thread.
         if (init_new && tgt_th[0]) threads[name][16].posts = th.posts;
         if (th.type_source==='page' || th.domain==='4chan' && th.type_parse==='catalog_json') threads[name][16].t2h_page = th.posts.length-1;
 
-//        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) {
-////        if (embed_mode==='page' || embed_mode==='thread' || !pref.test_mode['49']) {
-////          if (!th.posts) th.posts = th.parse_funcs.posts(th); // patch for 4chan catalog.
-        var t2h_num_of_posts = format_html.get_t2h_num_of_posts(tgt_th, th.type_source);
+        var t2h_num_of_posts = (th.type_source!=='page' || (tgt_th[16].t2h_sel || pref[embed_mode].t2h_sel)!=='page')? tgt_th[16].get_t2h_num_of_posts() : false;
         if (t2h_num_of_posts!==false) {
           if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts && embed_mode==='page') { // load to add
 //          if (init_new && (t2h_num_of_posts<0 || t2h_num_of_posts+1>th.posts.length) && th.posts.length<th.nof_posts) { // doesn't work for short links(last 50 posts)
@@ -22909,7 +23014,8 @@ if (pref.test_mode['19']) { // stability test.
           }
         }
         var lth = th.lth;
-        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) th.posts = tgt_th[16].recent_posts(t2h_num_of_posts, th.posts);
+        if (th.parse_funcs.has_posts) th.posts = tgt_th[16].recent_posts(t2h_num_of_posts, th.posts);
+//        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) th.posts = tgt_th[16].recent_posts(t2h_num_of_posts, th.posts);
 ////        if (th.parse_funcs.has_posts && (pref.test_mode['49'] || !flag_posts_stored)) { // working code
 ////          if (t2h_num_of_posts!==false) {
 ////            if (tgt_th[16].th) th.posts = site2[th.domain].update_posts_replace_prep(th.posts, tgt_th[16].th.posts, t2h_num_of_posts); // merge
@@ -23256,18 +23362,18 @@ if (pref.test_mode['19']) { // stability test.
                  (t2h_sel==='N_unread')? 4 :
                  (t2h_sel==='unread')? 5 : 6;
         },
-        get_t2h_num_of_posts: function(tgt_th, type_source){
-          var t2h_sel = tgt_th[16] && tgt_th[16].t2h_sel || pref[embed_mode].t2h_sel; 
-          if (t2h_sel!=='page' || type_source!=='page' || tgt_th[16].expand_posts) {
-            return (t2h_sel==='page')? tgt_th[16].t2h_page || pref[embed_mode].t2h_num_of_posts :
-                   (t2h_sel==='L')? pref[embed_mode].t2h_L :
-                   (t2h_sel==='M')? pref[embed_mode].t2h_M :
-                   (t2h_sel==='N')? pref[embed_mode].t2h_num_of_posts :
-                   (t2h_sel==='N_unread')? pref[embed_mode].t2h_num_of_posts + ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : 0) :
-                   (t2h_sel==='unread')? ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : tgt_th[16].t2h_page) :
-                   (t2h_sel==='no')? 0 : -1; // 'ALL' and 'ALL_agg'
-          } else return false;
-        },
+//        get_t2h_num_of_posts: function(tgt_th, type_source){ // moved to tgt_th[16].prototype
+//          var t2h_sel = tgt_th[16] && tgt_th[16].t2h_sel || pref[embed_mode].t2h_sel; 
+//          if (t2h_sel!=='page' || type_source!=='page' || tgt_th[16].expand_posts) {
+//            return (t2h_sel==='page')? tgt_th[16].t2h_page || pref[embed_mode].t2h_num_of_posts :
+//                   (t2h_sel==='L')? pref[embed_mode].t2h_L :
+//                   (t2h_sel==='M')? pref[embed_mode].t2h_M :
+//                   (t2h_sel==='N')? pref[embed_mode].t2h_num_of_posts :
+//                   (t2h_sel==='N_unread')? pref[embed_mode].t2h_num_of_posts + ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : 0) :
+//                   (t2h_sel==='unread')? ((tgt_th[19][0]&0x000c0000)? (tgt_th[19][1]&0x0000ffff) : tgt_th[16].t2h_page) :
+//                   (t2h_sel==='no')? 0 : -1; // 'ALL' and 'ALL_agg'
+//          } else return false;
+//        },
         update_posts_in_page: function(th,name, init_new){
 //        update_posts_in_page: function(th,name, force_prep_html, remove){
 //          if (!th.parse_funcs.has_posts && !remove) return;
@@ -23311,7 +23417,8 @@ if (pref.test_mode['19']) { // stability test.
           if (pref.catalog.filter.kwd.posts_active) {
             if (tgt_th[10]!=pref.catalog.filter.kwd.timestamp || tgt_th[16].th) { // existence of tgt_th[16].th means thread is updated.
               tgt_th[10] = pref.catalog.filter.kwd.timestamp;
-              var th_new = catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th);
+              var th_new = catalog_filter_query_keyword.kwd_make_result(tgt_th[16].recent_posts(pref[embed_mode].sourceOfSP==='auto'? -1 : null), th.domain, th);
+//              var th_new = catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th);
               if (!th_new) {
                 tgt_th[9][0] = false;
                 tgt_th[16].th = null;
@@ -23335,7 +23442,8 @@ if (pref.test_mode['19']) { // stability test.
               }
             }
           } else if (tgt_th[10] || tgt_th[16].th){ // rollback
-            if (!tgt_th[16].th) tgt_th[16].th = scopy_th(th);
+            if (!tgt_th[16].th) tgt_th[16].th = {posts:tgt_th[16].recent_posts(null,null,true), __proto__:th};
+//            if (!tgt_th[16].th) tgt_th[16].th = scopy_th(th);
             tgt_th[10] = false;
           }
           if (tgt_th[16].th && tgt_th[7]) // updated by this or updater.
@@ -23651,7 +23759,7 @@ if (pref.test_mode['19']) { // stability test.
 //          } else if (footer[3]) Footer.remove_nullfy(footer,3);
   
           if (pf.flag && pref[this.mode].t2h_num_of_posts>=0 && pf.use) {
-            if (flags || !footer[6]) flags = tgt_th[16].recent_posts(format_html.get_t2h_num_of_posts(tgt_th)) || tgt_th[4]; // .slice(); // EMBED_MODE IS USED IN THIS, MUST BE CHANGED.
+            if (flags || !footer[6]) flags = tgt_th[16].recent_posts(); // .slice(); // EMBED_MODE IS USED IN THIS, MUST BE CHANGED.
             if (!footer[6]) {
               footer[6] = footer[0].appendChild(document.createElement('span'));
 //              if (!flags) flags = footer[1];
@@ -23679,7 +23787,7 @@ if (pref.test_mode['19']) { // stability test.
 //            if (flags) footer[1] = flags;
           }
           if (pref.debug_mode['32'] && footer[6]) {
-            var flags_debug = tgt_th[16].recent_posts(format_html.get_t2h_num_of_posts(tgt_th)) || []; // .slice();
+            var flags_debug = tgt_th[16].recent_posts(); // .slice();
             var pn = document.createElement('span');
             for (var i=0;i<flags_debug.length;i++) if (flags_debug[i]) {
               var flag = Footer.prep_flag_dom(flags_debug[i]);
@@ -23995,7 +24103,7 @@ if (pref.test_mode['19']) { // stability test.
         }
         function image_hover_add(e,src){
           var mode = get_mode(e);
-          var img_tn = this; // e.currentTarget;
+          var img_tn = (pref.test_mode['103'])? e.target : this; // e.currentTarget;
           if (pref[embed_mode].image_hover) {
             var divert = hover_pf && hover_pf[1]===img_tn;
             var img_ex;
@@ -24169,6 +24277,7 @@ if (pref.test_mode['19']) { // stability test.
   //        return ((tgt_th16.type_html==='catalog')? // working code
   //          site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src && site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src(img) :
   //          site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img)) || img.src;
+          if (pref.test_mode['103']) mode = site2[tgt_domain_html].general_event_handler[site.whereami].image_hover_check_mode(img);
           if (mode!=='catalog') return site2[tgt_domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
   //        if (embed_mode!=='catalog') return site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
           else {
@@ -25177,6 +25286,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
         var basic_active = kwd.use && kwd.rexps && (kwd.sub || kwd.name || kwd.com || kwd.file || kwd.meta);
         kwd.active       = basic_active && (kwd.op || kwd.post);
         kwd.posts_active = basic_active &&            kwd.post;
+        pref4.search_posts_active_once |= kwd.posts_active;
         if (!init && !kwd.posts_active && val_old) format_html.posts_search_inactivated();
         kwd.timestamp = filter_kwd_count++; // not saved because pref.default() don't geenrate this. // use single entity for multi catalog or switching pref.*.filter object.
 if (!pref.test_mode['59']) {
@@ -25403,7 +25513,7 @@ if (!pref.test_mode['59']) {
         }
 //        else if (pref.catalog.filter.list_mark_time) [true, get_mark_time(name)];
         if (pref.catalog.filter.kwd.active) { // use [2],[3]
-          var tgt_posts = tgt_th[16].recent_posts((pref.catalog.filter.kwd.post)? format_html.get_t2h_num_of_posts(tgt_th) : 0) || tgt_th[4];
+          var tgt_posts = tgt_th[16].recent_posts((pref.catalog.filter.kwd.post)? (pref[embed_mode].sourceOfSP==='auto'? -1 : null) : 0);
 if (pref.test_mode['59']) { // BUG. THIS DOESN'T WORK WITH OTHER FILTERS, NEEDS TO BE SPLITTED. 
           if (!catalog_filter_query_keyword.kwd(pref.catalog.filter.kwd, tgt_posts, common_func.fullname2dbt(name)[0])) return false;
 } else {
@@ -25493,11 +25603,14 @@ if (pref.test_mode['60']) {
           ch.removeEventListener('mouseout'  , threads[name][6]);
           delete pop_up_delay_id[name];
         }
-        var th = {posts: threads[name][16].recent_posts(format_html.get_t2h_num_of_posts(threads[name])) || threads[name][4], __proto__:threads[name][7] || threads[name][16]};
+        var flag_search = pref[embed_mode].popup2==='sr' || pref[embed_mode].popup2==='srpv';
+        var th = {posts: threads[name][16].recent_posts(flag_search && pref.catalog.filter.kwd.posts_active && pref[embed_mode].sourceOfSP==='auto'? -1 : null),
+//          type_data: 'json', // BUG, lth.ta.posts may contain different type of data, see archiver.store_th_to_mem and archiver.check_deleted_posts. // NEED TO BE MODIFIED
+          __proto__:threads[name][7] || threads[name][16]};
 //        var th = threads[name][7] || threads[name][16];
 //        var th = threads[name][7];
 if (!pref.test_mode['49'] && pref.catalog.filter.kwd.posts_active && th) {
-        var search_result = (pref[embed_mode].popup2==='sr' || pref[embed_mode].popup2==='srpv')? catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th) : null; // lazy
+        var search_result = (flag_search)? catalog_filter_query_keyword.kwd_make_result(th.posts, th.domain, th) : null; // lazy
 }
         if (pref[embed_mode].popup2==='sr' && !search_result) return;
         var pn = cnst.init('pop:border:1px solid blue');
@@ -25541,7 +25654,7 @@ if (!pref.test_mode['49']) {
         pop_up_status[name] = [null, function(){pop_down_event(name);}, function(){pop_keep_event(name);}, ch, pn];
         if (pref[embed_mode].popup2==='chart') {
           if (chart_obj && pref3.stats.use) {
-            pop_up_status[name][5] = new chart_obj.PostChart(pn,[name]); // must be after appendChild to draw.
+            pop_up_status[name][5] = new chart_obj.PostChart(pn,[name]); // must be after appendChild to draw. (just to call destroy?)
           } else pn.innerHTML = 'Statistics needs to be activated.';
         }
         if (pref.catalog_popdown=='imm') {
@@ -25873,7 +25986,7 @@ if (pref.test_mode['95'] && site.nickname==='dist') site2[site.nickname].testPos
         if (tgts.length===0) return (refresh)? scan.scan_refresh(health_indicator, tgts, priority, tgts_all.tgt_domains) : tgts;
         if (refresh) {
           catalog_clear_threads_candidates_of_deletion();
-          if (pref.catalog_refresh_clear && !embed_init) catalog_clear_threads(pref.catalog.max_threads_at_refresh, true);
+          if (pref.catalog_refresh_clear && !embed_init) catalog_clear_threads(pref4.scan.max_threads_at_refresh, true);
         }
 ////////        load_on_demand.release(); // prevent from hanging up.
         if (scan_name) scan_boards.scan_init(scan_name, tgts,
@@ -26649,11 +26762,11 @@ if (pref.test_mode['0']) {
         init: function(){
           var dynamic_image_hover = site2[site.nickname].parse_funcs[site.whereami+'_html'].dynamic_image_hover;
           var geh = site2[site.nickname].general_event_handler[site.whereami];
-          if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
+          if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) if (!pref.test_mode['103']) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
           common_func.dom_addEventListener(this.subscribers, this.parent, 'change', this.change);
           if (pref.test_mode['87'] || pref.test_mode['93']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
           this.setup();
-          if (!pref.test_mode['98']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
+          if (!pref.test_mode['98']) if (!pref.test_mode['103']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
           this.parent.addEventListener('dragstart', this.dragstart, false);
           this.parent.addEventListener('dragend', this.dragend, false);
           site.popup_body.addEventListener('dragstart', this.dragstart, false);
@@ -26699,7 +26812,8 @@ if (pref.test_mode['0']) {
 
       var GEH_mouseover_force = (function(func){return function(e){func(e,true);};})(GEH.prototype.mouseover);
       if (!pref.test_mode['98']) site.popup_body.addEventListener('mouseover',GEH_mouseover_force,false);
-      if (pref[embed_mode].popup) triage_parent.addEventListener('mouseover', (embed_mode==='float')? GEH_mouseover_force : GEH.prototype.mouseover, false);
+      triage_parent.addEventListener('mouseover', (embed_mode==='float')? GEH_mouseover_force : GEH.prototype.mouseover, false);
+      triage_parent.addEventListener('mouseleave', site2['DEFAULT'].popups_posts.leave, false);
       if (site.components.boardlist) {
         site.components.boardlist.addEventListener('mouseover',GEH.prototype.mouseover,false);
         site.components.boardlist.addEventListener('mouseleave',GEH.prototype.mouseleave_bl,false);
