@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.06.10.0
+// @version 2018.06.17.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -349,7 +349,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       merge: false, lazyDraw_merge: true, lazyDraw_merge_step: 16, merge_list: true, merge_list_str: '', merge_list_obj6: null, merge_first: true,
       scroll_lock: false,
       use_expander_always: false,
-      popup2:'no',
+      popup2:'sr',
       popup2_sel:'auto', popup2_sel_tolerance:10, popup2_resize:false, popup2_resize_bw:8, popup2_resize_cw:20,
       posts_search_op: 'opaque',
       posts_search_op_opacity: 40,
@@ -2341,32 +2341,34 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '4,zIndex: <ITB3"'+pfz+'"><br>';
           },
           expand_thumbnail_inline: function(mode){
-            return '2,<ICBX"' +mode+ '.expand_thumbnail_inline"> Image expansion at click'+ this.rollup(
-              '3,<ICBX"' +mode+ '.expand_thumbnail_initial"> Expand all images at initial<br>'+
-              '3,<ICBX"' +mode+ '.expand_thumbnail_inline_all_after"> Expand all images after clicked one<br>'+
-              '4,<ICBX"' +mode+ '.thumbnail.inline.ondemand"> On demand loading: '+
-              '<ITB3"' +mode+ '.thumbnail.inline.ref_height"> % of browser<br>'+
-              this.expand_thumbnail_1(mode,'inline'))+ '<br>';
+            var pf = mode+'.thumbnail.inline.';
+            return '2,<IC"' +mode+ '.expand_thumbnail_inline">Image expansion at click'+ this.rollup(
+              this.limit_webm(pf)+
+              '3,<IC"' +mode+ '.expand_thumbnail_initial">Expand all images at initial<br>'+
+              '3,<IC"' +mode+ '.expand_thumbnail_inline_all_after">Expand all images after clicked one<br>'+
+              '4,<IC"' +pf+ 'ondemand">On demand loading: '+
+              '<ITB3"' +pf+ 'ref_height"> % of browser')+ '<br>';
           },
           expand_thumbnail_hover: function(mode){
             var pf = mode+'.thumbnail.hover.';
             return '2,<IC"' +mode+ '.image_hover">Image hover'+ this.rollup(
-              (pref.test_mode['103']? this.popup_delay(pf, mode+'.image_hover_zIndex', false):'')+
+              (!pref.test_mode['103']? this.popup_delay(pf, mode+'.image_hover_zIndex', false):'')+
+              this.limit_webm(pf)+
               '3,<IC"' +mode+ '.image_prefetch">Prefetch next image<br>'+
-              this.expand_thumbnail_1(mode,'hover')+'<br>'+
-              '3,<IC"' +pf+ 'dragfloat">Drag tnumbnail to make it window<br>'+
+              '3,<IC"' +pf+ 'dragfloat">Drag thumbnail to make it window<br>'+
               '4,<IC"' +pf+ 'df_dblC">Double click to close<br>'+
               '4,<IC"' +pf+ 'df_mW">Wheel to scroll<br>'+
               '4,<IC"' +pf+ 'df_cV">Continue playing video<br>'+
               '3,<IC"' +pf+ 'zoom">Click to zoom mode if limited')+'<br>';
           },
-          expand_thumbnail_1: function(mode,inline_or_hover){
-            var pref = mode+'.thumbnail.'+inline_or_hover+'.';
-            return '3,<ICBX"' +pref+ 'webm"> Play webm<br>'+
-              '4,<ICBX"' +pref+ 'webm_loop"> Loop<br>'+
-              '4,<ICBX"' +pref+ 'webm_mute"> Mute<br>'+
-              '3,<ICBX"' +pref+ 'limit_width"> Limit to browser\'s width - <ITB3"' +pref+ 'margin_width"> px<br>'+
-              '3,<ICBX"' +pref+ 'limit_height"> Limit to browser\'s height - <ITB3"' +pref+ 'margin_height"> px';
+          limit_webm: function(pf){
+            return '4,<IC"' +pf+ 'limit_width">Limit to browser\'s width - <ITB3"' +pf+ 'margin_width"> px<br>'+
+              '4,<IC"' +pf+ 'limit_height">Limit to browser\'s height - <ITB3"' +pf+ 'margin_height"> px<br>'+
+              '4,<IC"' +pf+ 'webm">Play webm<br>'+
+              '5,<IC"' +pf+ 'webm_loop">Loop<br>'+
+              '5,<IC"' +pf+ 'webm_mute">Mute<br>';
+//              '3,<ICBX"' +pref+ 'limit_width"> Limit to browser\'s width - <ITB3"' +pref+ 'margin_width"> px<br>'+
+//              '3,<ICBX"' +pref+ 'limit_height"> Limit to browser\'s height - <ITB3"' +pref+ 'margin_height"> px';
           },
           env: function(mode, str_inner){
             return '1,Environment values:(advanced option)'+ this.rollup(
@@ -3263,7 +3265,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.06.10.0<br>'+
+          'Version 2018.06.17.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4796,6 +4798,10 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             while (i+1<len && pns[i+1].offsetTop<now_height) i++;
             return pns[i];
           },
+          image_hover: function(e){
+            var et = e.target;
+            return et.tagName==='IMG' && et.parentNode.tagName==='A';
+          },
         },
       };
       obj.thread = Object.create(obj.common);
@@ -5602,7 +5608,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           if (pref.proto.popup_hlt && post_highlight_if_visible(e)) return;
           up_force = force
           over_0(pref.proto, e, pop_up);
-        } else if (pref.test_mode['103'] && pf_mode.image_hover) {
+        } else if (!pref.test_mode['103'] && pf_mode.image_hover) {
           var geh = site2[site.nickname].general_event_handler[site.whereami];
           if (geh.image_hover) if (geh.image_hover(e)) over_0(pf_mode.thumbnail.hover, e, cataLog.image_hover_add);
         }
@@ -8042,6 +8048,9 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
           get_mark_from_height: function(now_height){
             return this.__proto__.get_mark_from_height(now_height, document.getElementsByClassName('post'));
           },
+          image_hover_check_mode: function(img){
+            return img.parentNode.parentNode.classList.contains('file')? 'page' : 'catalog';
+          },
           __proto__: site2['DEFAULT'].general_event_handler.common,
         },
       };
@@ -8055,15 +8064,16 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
         },
         __proto__:obj.thread
       },
-      obj.catalog = {
-        mouseover: function(e){
-          var et = e.target;
-          var et_tagName = et.tagName;
-          if (et_tagName==='IMG')
-            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
-        },
-        __proto__:obj.thread
-      };
+      obj.catalog = Object.create(obj.thread);
+//      obj.catalog = { // working code
+//        mouseover: function(e){
+//          var et = e.target;
+//          var et_tagName = et.tagName;
+//          if (et_tagName==='IMG')
+//            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
+//        },
+//        __proto__:obj.thread
+//      };
       return obj;
     })(),
     boards_sel_from_tags : function(){
@@ -10618,27 +10628,23 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
           get_mark_from_height: function(now_height){
             return this.__proto__.get_mark_from_height(now_height, document.getElementsByClassName('post'));
           },
+          image_hover_check_mode: function(img){
+            return img.parentNode.classList.contains('fileThumb')? 'page' : 'catalog';
+          },
           __proto__: site2['DEFAULT'].general_event_handler.common,
         },
       };
+//      obj.catalog = { // working code
+//        mouseover: function(e){
+//          var et = e.target;
+//          var et_tagName = et.tagName;
+//          if (et_tagName==='IMG')
+//            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
+//        },
+//        __proto__:obj.thread
+//      };
+      obj.catalog = Object.create(obj.thread);
       obj.page = Object.create(obj.thread);
-      obj.catalog = {
-        mouseover: function(e){
-          var et = e.target;
-          var et_tagName = et.tagName;
-          if (et_tagName==='IMG')
-            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
-        },
-        image_hover: function(e){
-          var et = e.target;
-          return et.tagName==='IMG' && et.parentNode.tagName==='A';
-        },
-        image_hover_check_mode: function(img){
-          return img.parentNode.classList.contains('fileThumb')? 'page' : 'catalog';
-        },
-        __proto__:obj.thread
-      };
-      if (!pref.test_mode['98']) obj.page.mouseover = obj.catalog.mouseover;
       return obj;
     })(),
     domain_url: 'boards.4chan.org',
@@ -12190,11 +12196,14 @@ if (pref.features.domains['meguca']) {
         mouseover: function(e){}, // patch for test_mode['98']
       },
       catalog:{
-        mouseover: function(e){
-          var et = e.target;
-          var et_tagName = et.tagName;
-          if (et_tagName==='IMG')
-            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
+//        mouseover: function(e){ // working code
+//          var et = e.target;
+//          var et_tagName = et.tagName;
+//          if (et_tagName==='IMG')
+//            if (pref[cataLog.embed_mode].image_hover && et.parentNode.tagName==='A') cataLog.image_hover_add.call(et, e);
+//        },
+        image_hover_check_mode: function(img){
+          return img.parentNode.parentNode.parentNode.parentNode.id==='catalog'? 'catalog' : 'page';
         },
         __proto__: site2['DEFAULT'].general_event_handler.catalog
       },
@@ -23249,7 +23258,7 @@ if (pref.test_mode['19']) { // stability test.
               }
             }
         }
-        if (posts_used && ((embed_mode==='catalog' && init_new) || (embed_mode==='page' || embed_mode==='thread'))) 
+        if (pref.test_mode['103']) if (posts_used && ((embed_mode==='catalog' && init_new) || (embed_mode==='page' || embed_mode==='thread'))) 
           if (pref[embed_mode].image_prefetch || (pref[embed_mode].image_hover && (!pref[embed_mode].env.image_hover_native || !insert_thread_from_native)))
             if (th.parse_funcs.has_posts && (embed_mode==='page' || embed_mode==='thread')) {
               for (var j=0;j<posts_used.length;j++) {
@@ -24103,7 +24112,7 @@ if (pref.test_mode['19']) { // stability test.
         }
         function image_hover_add(e,src){
           var mode = get_mode(e);
-          var img_tn = (pref.test_mode['103'])? e.target : this; // e.currentTarget;
+          var img_tn = (!pref.test_mode['103'])? e.target : this; // e.currentTarget;
           if (pref[embed_mode].image_hover) {
             var divert = hover_pf && hover_pf[1]===img_tn;
             var img_ex;
@@ -24277,7 +24286,7 @@ if (pref.test_mode['19']) { // stability test.
   //        return ((tgt_th16.type_html==='catalog')? // working code
   //          site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src && site2[tgt_th16.domain_html].parse_funcs.catalog_html.img2src(img) :
   //          site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img)) || img.src;
-          if (pref.test_mode['103']) mode = site2[tgt_domain_html].general_event_handler[site.whereami].image_hover_check_mode(img);
+          if (!pref.test_mode['103']) mode = site2[tgt_domain_html].general_event_handler[site.whereami].image_hover_check_mode(img);
           if (mode!=='catalog') return site2[tgt_domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
   //        if (embed_mode!=='catalog') return site2[tgt_th16.domain_html].parse_funcs.post_html.img2src(img) || img.src; // working code, but cause an error at merging when the base is lost.
           else {
@@ -25579,7 +25588,7 @@ if (pref.test_mode['60']) {
 
       var pop_up_delay_id = {};
       function pop_up_delay(e,name){
-        if (pref[embed_mode].popup2==='no') return; 
+        if (pref[embed_mode].popup2==='no' || pref[embed_mode].popup2==='sr' && !pref.catalog.filter.kwd.active) return; 
 //        if (threads[name][0].style.width=='' && threads[name][0].style.height=='' && pref.catalog_no_popup_at_expanded) return;
         if (pref.catalog_popdown=='imm' || pop_up_status[name]) pop_up_op(e,name); // patch
         else {
@@ -26762,11 +26771,11 @@ if (pref.test_mode['0']) {
         init: function(){
           var dynamic_image_hover = site2[site.nickname].parse_funcs[site.whereami+'_html'].dynamic_image_hover;
           var geh = site2[site.nickname].general_event_handler[site.whereami];
-          if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) if (!pref.test_mode['103']) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
+          if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) if (pref.test_mode['103']) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
           common_func.dom_addEventListener(this.subscribers, this.parent, 'change', this.change);
           if (pref.test_mode['87'] || pref.test_mode['93']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
           this.setup();
-          if (!pref.test_mode['98']) if (!pref.test_mode['103']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
+          if (!pref.test_mode['98']) if (pref.test_mode['103']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
           this.parent.addEventListener('dragstart', this.dragstart, false);
           this.parent.addEventListener('dragend', this.dragend, false);
           site.popup_body.addEventListener('dragstart', this.dragstart, false);
