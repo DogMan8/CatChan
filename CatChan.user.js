@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.06.17.0
+// @version 2018.06.24.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3265,7 +3265,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.06.17.0<br>'+
+          'Version 2018.06.24.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4798,10 +4798,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             while (i+1<len && pns[i+1].offsetTop<now_height) i++;
             return pns[i];
           },
-          image_hover: function(e){
+          isThumbnail: function(e){
             var et = e.target;
-            return et.tagName==='IMG' && et.parentNode.tagName==='A';
+            return et.tagName==='IMG' && et.parentNode && et.parentNode.tagName==='A'; // et.parentNode for shrink_thumbnails, expanded image was removed already.
           },
+          tn_href2domain: function(href){
+            if (href[0]==='/') return site.nickname;
+            else for (var d in liveTag.mems) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname;
+            for (var d in site2) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname_href2domain || site2[d].nickname;
+          }
         },
       };
       obj.thread = Object.create(obj.common);
@@ -5600,6 +5605,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var up_force = null;
       var up_func = null;
       var up_pf = null;
+      var geh;
       function over(e, force){ // image_hover can be merged to this, and popup2 also. e.path can be created easily, mouseenter can be replaced to mouseover.
         out(e);
         var et = e.target;
@@ -5609,8 +5615,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           up_force = force
           over_0(pref.proto, e, pop_up);
         } else if (!pref.test_mode['103'] && pf_mode.image_hover) {
-          var geh = site2[site.nickname].general_event_handler[site.whereami];
-          if (geh.image_hover) if (geh.image_hover(e)) over_0(pf_mode.thumbnail.hover, e, cataLog.image_hover_add);
+          if (!geh) geh = site2[site.nickname].general_event_handler[site.whereami];
+          if (geh.isThumbnail(e)) over_0(pf_mode.thumbnail.hover, e, cataLog.image_hover_add);
         }
       }
       function over_0(pf, e, func){
@@ -5650,15 +5656,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         if (up_pf.popup_mMove) up_e.target.removeEventListener('mousemove', over_1, false);
         if (!stop) up_func(up_e);
       }
-      function href2domain(href){
-        if (href[0]==='/') return site.nickname;
-        else for (var d in liveTag.mems) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname;
-      }
       function pop_up(e){
         var force = up_force;
         var et = e.target;
         if (pns.has(et)) {clear_down_timer(pns.get(et)); return;}
-        var domain = href2domain(et.getAttribute('href'));
+        var domain = geh.tn_href2domain(et.getAttribute('href'));
         if (!force && pref[cataLog.embed_mode].env.popup_native) {
           if (pref[cataLog.embed_mode].env.event_dynamic && !pref.test_mode['100']) {
             if (site.nickname===domain) return; // 4chan
@@ -5778,7 +5780,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
       function post_highlight_if_visible(e){
         var href = e.target.getAttribute('href'); // keep as it is, et.href may be %xx%yy.
-        var domain = href2domain(href);
+        var domain = geh.tn_href2domain(href);
         var th_q = site2[domain].popups_href2th_q(href);
         var no = th_q[1];
         var tgt_th = cataLog.threads[th_q[0].key];
@@ -5790,7 +5792,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             var oT = pn.offsetTop;
             var sT = brwsr.document_body.scrollTop;
             if (oT>sT && oT+pn.offsetHeight<sT+document.documentElement.clientHeight) { // temporal, embed only. see 'get_ref_height'.
-              pn.classList.add('highlighted');
+              pn.classList.add(site2[site.nickname].popups_posts_class_hlt);
               e.target.addEventListener('mouseout',post_highlight_end, false);
               pns.set(e.target, pn);
               return true;
@@ -5802,7 +5804,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       function post_highlight_end(e){
         var et = e.target;
         et.removeEventListener('mouseout',post_highlight_end, false);
-        pns.get(et).classList.remove('highlighted');
+        pns.get(et).classList.remove(site2[site.nickname].popups_posts_class_hlt);
         pns.delete(et);
       }
       return {
@@ -5815,6 +5817,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         adjust_pos: adjust_pos,
       };
     })(),
+    popups_posts_class_hlt: 'highlighted',
     popups_op_func_set: function(){return 1;}, // vichan
     popups_op_func_use: function(pn,thq,no){ // vichan
       pn.setAttribute('class',pn.getAttribute('class')+' reply');
@@ -5870,7 +5873,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        if (site2['DEFAULT'].popup_info) site2['DEFAULT'].popup_info.func_out();
 //        if (site2['DEFAULT'].popup_info) et.onmouseout(); // BUG at editing, sometimes out is never issued because of being replaced.
 //        if (!thqp.pn || thqp.isOP || thqp.type_data==='html') {
-        if (!thqp.pn || thqp.isOP || pref.proto.popdown!=='imm') { // test
+        if (!thqp.pn || thqp.isOP || pref.test_mode['105']) { // test
+//        if (!thqp.pn || thqp.isOP || pref.proto.popdown!=='imm') { // BUG, this requires exact extraction of country, country_name or data for images even from html.
           if (!thqp.domain) { // PATCH, use prototype of liveTag.mems.
             var tgt = thqp;
             tgt.domain = th.domain;
@@ -10547,6 +10551,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
   site2['4chan_i'] = {
     home:undefined,
     nickname:'4chan_i',
+    nickname_href2domain:'4chan',
     domain_url: 'i.4cdn.org',
     check_func: site2['DEFAULT'].check_func,
     proto:'4chan'
@@ -11270,7 +11275,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         },
         sub: 'DEFAULT.post_html',
         name: function(post){return post.pn.getElementsByClassName('name')[0][brwsr.innerText];}, // same as 8chan
-        com:  function(post){return post.pn.getElementsByClassName('postMessage')[0][brwsr.innerText];},
+        com:  function(post){return post.pn.getElementsByClassName('postMessage')[0].innerHTML;},
         footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('postInfo desktop')[0]);},
         sticky: function(th){return (th.pn.getElementsByClassName('stickyIcon').length!=0);},
         flag: 'post_html',
@@ -11412,6 +11417,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 ////        if (href && href[0]==='#') as[i].setAttribute('href',th.board + 'thread/' + th.no + href);
 ////      }
 ////    },
+    popups_posts_class_hlt: 'highlight',
     popups_href2dbtp: function(href){ //, src, th){
 //      if (href[0]==='#' && th) {
 //        href = this.link_dbtp2href([th.domain, th.board, th.no, href.substr(2)]);
@@ -11639,7 +11645,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       ((desktop)? '</span> ' : '<br></span>');
     },
     post_flag2html: function(post){
-      return post.country? '<span '+(post.country_name? 'title="'+post.country_name+'" ':'')+'class="flag flag-'+post.country.toLowerCase()+'"></span>' : '';
+      return post.country? '<span '+(post.country_name? 'title="'+post.country_name+'" ':'')+'class="flag flag-'+post.country.toLowerCase()+'"></span>' : ''; // post.flag? post.flag.outerHTML : '';
     },
     post_json2html_colorID: function(post){
       var rgb = 0;
@@ -23243,11 +23249,12 @@ if (pref.test_mode['19']) { // stability test.
           var add_event = !pref[embed_mode].env.expand_thumbnail_inline_native || !insert_thread_from_native || (pref[embed_mode].expand_thumbnail_inline_all_after && pref[embed_mode].env.event_dynamic);
           var expand_now = pref[embed_mode].expand_thumbnail_initial;
           var expand_on_demand = pref[embed_mode].thumbnail.inline.ondemand;
-          if (add_event || expand_now)
+          if (add_event || expand_now || pref.test_mode['104'])
             for (var j=0;j<posts_used.length;j++) {
               var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
               if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) {
-                tn_imgs[i].onclick = DIH.expand_thumbnail_inline;
+                if (!pref.test_mode['104']) tn_imgs[i].onclick = DIH.expand_thumbnail_inline;
+                else if (!add_event && !(pref[embed_mode].env.event_dynamic && th.domain===site.nickname)) GEH.prototype.blacklist_click.add(tn_imgs[i]);
 //                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set; // REDUNDANT???
                 if (expand_now) {
                   if (expand_on_demand) {
@@ -26716,9 +26723,15 @@ if (pref.test_mode['0']) {
             }
           };
         })(),
+        blacklist_click: new WeakSet(),
+        geh: site2[site.nickname].general_event_handler[site.whereami],
         click: function(e){
           var et = e.target;
-          if (et.tagName==='A') {
+          if (pref.test_mode['104'] && GEH.prototype.geh.isThumbnail(e)) {
+            var domain = GEH.prototype.geh.tn_href2domain(et.getAttribute('src'));
+            if (!GEH.prototype.blacklist_click.has(et) && (!pref[embed_mode].env.expand_thumbnail_inline_native || !(pref[embed_mode].env.event_dynamic && domain===site.nickname)))
+              DIH.expand_thumbnail_inline.call(e.target, e);
+          } else if (et.tagName==='A') {
             if (pref.test_mode['93']) {
               var filename = et.getAttribute('download');
               if (filename) {
@@ -26773,7 +26786,8 @@ if (pref.test_mode['0']) {
           var geh = site2[site.nickname].general_event_handler[site.whereami];
           if (geh && geh.mouseover && (geh.add_mouseover || dynamic_image_hover)) if (pref.test_mode['103']) common_func.dom_addEventListener(this.subscribers, this.parent, 'mouseover', geh.mouseover);
           common_func.dom_addEventListener(this.subscribers, this.parent, 'change', this.change);
-          if (pref.test_mode['87'] || pref.test_mode['93']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
+          if (pref.test_mode['87'] || pref.test_mode['93'] || pref.test_mode['104']) common_func.dom_addEventListener(this.subscribers, this.parent, 'click', this.click);
+          if (pref.test_mode['104']) site.popup_body.addEventListener('click', this.click, false);
           this.setup();
           if (!pref.test_mode['98']) if (pref.test_mode['103']) site.popup_body.addEventListener('mouseover', site2[site.nickname].general_event_handler['page'].mouseover, false);
           this.parent.addEventListener('dragstart', this.dragstart, false);
