@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.06.24.0
+// @version 2018.07.08.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3265,7 +3265,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.06.24.0<br>'+
+          'Version 2018.07.08.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4803,7 +4803,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             return et.tagName==='IMG' && et.parentNode && et.parentNode.tagName==='A'; // et.parentNode for shrink_thumbnails, expanded image was removed already.
           },
           tn_href2domain: function(href){
-            if (href[0]==='/') return site.nickname;
+            if (href[0]==='/' || href[0]==='#') return site.nickname;
             else for (var d in liveTag.mems) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname;
             for (var d in site2) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname_href2domain || site2[d].nickname;
           }
@@ -5907,6 +5907,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return key? {pn:pn, key:key} : {pn:pn};
     },
     popups_post_pnode: function(pnode){
+      if (pref.test_mode['107']) return site.popup_body;
+      if (pref.test_mode['106']) {
+        var p = pnode.parentNode;
+        while (p) if (p===cataLog.parent) return site.popup_body; else p = p.parentNode;
+      }
       var attr;
       while (attr = pnode.getAttribute('class'), (!attr || (attr.indexOf('post')==-1 && attr.indexOf('thread')==-1)) && pnode.parentNode) pnode = pnode.parentNode;
       return pnode;
@@ -11425,7 +11430,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 //      }
       var hrefs = href.split(/[\/#]/);
       var p = hrefs[hrefs.length-1].substr(1);
-      var t = hrefs[hrefs.length-2];
+      var t = (hrefs.length>=2)? hrefs[hrefs.length-2] : site.no;
       var b = (hrefs.length>=4)? '/'+hrefs[hrefs.length-4]+'/' : site.board;
       return ['4chan',b,t,p]
     },
@@ -15923,7 +15928,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     var last_updated = [0,1,1]; //no,posts,uips
     var posts_old = {};
     var waste_count = 0;
-    var interval = 0;
+    var interval = (pref.uip_tracker.interval>10)? pref.uip_tracker.interval : 10; // 0; // prevent from causing inifinite loop when !uip_first in annotate_from_catalog.
     var uip_tracker_id;
     uip_check();
 //    function uip_check(){http_req.get('uip',key,url,uip_show,false,false);}
@@ -24286,7 +24291,7 @@ if (pref.test_mode['19']) { // stability test.
           if (!from_initial && pref[embed_mode].env.event_dynamic && inline_or_hover!==undefined &&
             ((inline_or_hover==='inline')? pref[embed_mode].env.expand_thumbnail_inline_native : pref[embed_mode].env.image_hover_native)) return;
   //        &&  common_func.fullname2dbt(name)[0]===site.nickname) return;
-          if (!name) return img.src; // patch for expand all at initial in 4chan, BUT I DON'T KNOW WHY...
+          if (!name && !pref.test_mode['106'] && pref.test_mode['107']) return img.src; // patch for expand all at initial in 4chan, BUT I DON'T KNOW WHY...
           var tgt_domain_html = (pref.catalog.mimic_base_site)? site.nickname : threads[name][16].domain_html;
   //        var tgt_th16 = threads[name][16];
   ////      var src = ((tgt_th16.type_html==='catalog')? tgt_th16.op_img_src_url : img.parentNode.href) || pn.src;
