@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.07.08.0
+// @version 2018.07.08.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3265,7 +3265,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'Sites:<br>'+
           html_funcs.features_domains();},
           'CatChan<br>'+
-          'Version 2018.07.08.0<br>'+
+          'Version 2018.07.08.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5615,7 +5615,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           up_force = force
           over_0(pref.proto, e, pop_up);
         } else if (!pref.test_mode['103'] && pf_mode.image_hover) {
-          if (!geh) geh = site2[site.nickname].general_event_handler[site.whereami];
           if (geh.isThumbnail(e)) over_0(pf_mode.thumbnail.hover, e, cataLog.image_hover_add);
         }
       }
@@ -5815,6 +5814,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         blacklist: blacklist,
         set_pos: set_pos,
         adjust_pos: adjust_pos,
+        init: function(){
+          geh = site2[site.nickname].general_event_handler[site.whereami];
+        },
       };
     })(),
     popups_posts_class_hlt: 'highlighted',
@@ -26840,6 +26842,7 @@ if (pref.test_mode['0']) {
 
       var GEH_mouseover_force = (function(func){return function(e){func(e,true);};})(GEH.prototype.mouseover);
       if (!pref.test_mode['98']) site.popup_body.addEventListener('mouseover',GEH_mouseover_force,false);
+      site2['DEFAULT'].popups_posts.init();
       triage_parent.addEventListener('mouseover', (embed_mode==='float')? GEH_mouseover_force : GEH.prototype.mouseover, false);
       triage_parent.addEventListener('mouseleave', site2['DEFAULT'].popups_posts.leave, false);
       if (site.components.boardlist) {
