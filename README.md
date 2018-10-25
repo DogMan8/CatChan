@@ -3,6 +3,7 @@
 
 Cross Domain Catalog for Imageboards<br>
 Functions:<br>
+1. Cross domain catalog<br>
 2. [Virtual board](https://github.com/DogMan8/CatChan/wiki/VirtualBoard) system<br>
 3. [Statistics](https://github.com/DogMan8/CatChan/wiki/Statistics)<br>
 4. [Archiver](https://github.com/DogMan8/CatChan/wiki/Archiver)<br>
