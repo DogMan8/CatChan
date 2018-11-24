@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.12.09.0
+// @version 2018.12.09.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
+// @include http*://boards.4channel.org/*
 // @include http*://i.4cdn.org/*
 // @include http*://8chan.co/*
 // @include http*://8ch.net/*
@@ -175,7 +176,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         tooltips:{zIndex:302},
       };
       pref_default2 = true;
-    } else if (href.search(/(4chan|4cdn).org/)!=-1) {
+    } else if (href.search(/(4chan(nel)*|4cdn).org/)!=-1) {
       domain = '4chan';
       pref_default = {
         catalog_expand_with_hr: true,
@@ -3465,7 +3466,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2018.12.09.0<br>'+
+          'Version 2018.12.09.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -10999,14 +11000,14 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
     })(),
     domain_url: 'boards.4chan.org',
     check_func : function(){
-      if (window.location.href.search(/4chan.org/)!=-1) { // 4chan
+      if (window.location.href.search(this.domain_url)!=-1) { // 4chan
         site.whereami = (document.getElementsByTagName('head')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
                       : (window.location.href.search(/catalog/)!=-1)? 'catalog'
                       : (window.location.href.search(/thread\/[0-9]+/)!=-1)? 'thread'
                       : (window.location.href.search(/archive/)!=-1)? 'archive'
                       : (window.location.href.search(/\/$|(index|[0-9]+)(\.html)*|\/#all$/)!=-1)? 'page'
                       : 'other';
-        site.config('4chan.org','4chan');
+        site.config(this.domain_url,'4chan');
         this.postform_prep();
         site.max_page = site2['4chan'].max_page(site.board);
         site.header_height = function(){
@@ -12181,6 +12182,12 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
 //      return posts_new && posts_new.length>0 && pref.threadStats.full && (!th.id && !th.unique_ips || th.unique_ips>sID.nid); // for thread moving, but this can't make an initial kick.(BUG)
       return posts_new && posts_new.length>0 && pref.threadStats.full && !th.id && !th.unique_ips; // TEMPORAL PATCH, !th.id SHOULD BE REPLAED BY INFO IN boards.json
     },
+  };
+  site2['4channel'] = {
+//    nickname:'4channel',
+    domain_url: 'boards.4channel.org',
+    check_func: site2['4chan'].check_func,
+    proto:'4chan'
   };
 }
 if (pref.features.domains['meguca']) {
