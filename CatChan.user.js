@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.11.25.0
+// @version 2018.12.09.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -558,7 +558,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           watch_list_obj2 : {},
 //          watch_list_mark_time : true,
 //          tag_scansite : true,
-          tag_search: {str:'', re:false,    get ci(){return pref.liveTag.ci;}, sentence:false, rexps:null},
+          tag_search: {str:'', re:false, show_nof_boards:false,   get ci(){return pref.liveTag.ci;}, sentence:false, rexps:null},
           tag2bList: {label:'', by:'tag'},
         },
         bookmark_list_rm404 : true,
@@ -676,7 +676,23 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         copy:{titleBar_str:'body', window_str:'body', popUp_str:''},
         post_editing: 'background:#cec952 !important',
         post_new: 'border:2px solid red',
-        userCSS: {use:false, str:''},
+        userCSS: {use:false, str:'',
+          sample:'.CatChan_titleBar button[name^="op"]{display:none} /* remove transparency buttons in titleBar */\n'+
+            '.CatChan_merge1::before{float:left;content:">";} /* levelized merge */\n'+
+            '.CatChan_merge2::before{float:left;content:">>";}\n'+
+            '.CatChan_merge3::before{float:left;content:">>>";}\n'+
+            '.CatChan_merge4::before{float:left;content:">>>>";}\n'+
+            '.CatChan_merge5::before{float:left;content:">>>>>";}\n'+
+            '.CatChan_merge1{border-left:10px solid red;} /* colored merge */\n'+
+            '.CatChan_merge2{border-left:10px solid orange;}\n'+
+            '.CatChan_merge2{border-left:10px solid yellow;}\n'+
+            '.CatChan_merge2{border-left:10px solid green;}\n'+
+            '.CatChan_merge3{border-left:10px solid blue;}\n'+
+            '.CatChan_titleBar button[name="roll_toggle"]{display:none} /* remove toggle button in titleBar */\n'+
+            '.CatChan_titleBar button[name="max"]{display:none} /* remove maximize button in titleBar */\n'+
+            '.CatChan_titleBar button[name="top"]{display:none} /* remove embed to top button in titleBar */\n'+
+            '.CatChan_titleBar button[name="bottom"]{display:none} /* remove embed to bottom button in titleBar */\n'
+        },
       },
       recovery:{comment:true, interval:10, auto_clean:true},
       healthIndicator: {show:true, max:10, expand_running:false, dont_retire_running:true, cancel:true},
@@ -749,6 +765,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     if (site0.pref_default ) pref_func.pref_overwrite(pref_new,site0.pref_default);
 //    if (site) if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref_new,site2[site.nickname].pref_default);
     if (for_save) pref_func.delete_null(pref_new);
+    common_func.Object_modifyDescriptor(pref_new.style.userCSS,'sample',{writable:false});
     return pref_new;
   }
 
@@ -2613,10 +2630,23 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                 '2,<IC"' +mode+ '.merge_list">Merge listed threads<br>'+
                 '3,<TA"proto.merge_list_str,40,1" placeholder="4chan/c/2887897 + 4chan/c/2880944 + 4chan/c/2888255,"><br>'+
                 '2,<IC"' +mode+ '.merge_lv">Merge with level (use user CSS to style)<br>'+
-                '3,<TA"proto.merge_lv_str,40,1">'+this.rollup(
-                '2,<IC"style.userCSS.use">User CSS<br>'+
-                '3,<TA"style.userCSS.str,50,1">'))+'<br>';
+                '3,<TA"proto.merge_lv_str,40,1">'+
+                this.rollup(this.userCSS(2)))+'<br>';
           },
+          userCSS: function(indent){
+            return indent+',<IC"style.userCSS.use">User CSS<br>'+
+              (indent+1)+',<TA"style.userCSS.str,50,1"><br>'+
+              (indent+1)+',Sample user CSS:<br>'+
+              (indent+1)+',<TA"style.userCSS.sample,50,1" disabled>';},
+//            '<div>'+
+//              '<div style="float:left">&emsp;&emsp;</div>'+
+//              '<div style="float:left">'+
+//                '<TA"style.userCSS.str,50,1">'+
+//                '<div style="overflow:scroll;resize:both;">'+this.userCSS_samples.replace(/\n/g,'<br>')+'</div>'+
+//              '</div>'+
+//            '</div>';},
+//          userCSS_samples: 'Samples:\n'+
+//            '.CatChan_titleBar button[name^="op"]{display:none} /* remove transparency buttons in titleBar */\n',
           vb_domains: function(){
 //            var str = '<span name="virtualBoard.scan_domains">'+
             var str = '2,Scan targets:<br>'+
@@ -2642,6 +2672,12 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           features_domains: function(){
             var str = ''
             for (var i=0;i<site0.domains.length;i++) str += '1,<ICBX"features.domains.'+site0.domains[i]+'"> '+ site0.domains[i] +'<br>';
+            return str;
+          },
+          cb_block: function(pf,start){
+            var str = '';
+            var i=start-1;
+            while (pref[pf][++i]!==undefined) str += '<ICBX"'+pf+'.'+i+'">' + ((i%10===4)? '&emsp;' : (i%50===49)? '<br><br>' : (i%10===9)? '<br>' : '');
             return str;
           },
         },
@@ -2832,7 +2868,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '&emsp;&emsp;<input type="checkbox" name="catalog.save_board_list_sel"> Save board group index<br>'+
               '2,'+ html_funcs.rollup_radio('catalog.click_area', ' :Click to open the thread', 3, '',
                 ['thumbnail:Thumbnail','entire:Entire thread card'])+ '<br>'+
-              '2,'+ html_funcs.rollup_radio(pref.test_mode['110']? 'catalog.popup3.ww':'catalog.popup2',' :Pop up', 3,
+              '2,'+ html_funcs.rollup_radio(!pref.test_mode['110']? 'catalog.popup3.ww':'catalog.popup2',' :Pop up', 3,
                 '3,WW/WN/NW/NN (Wider/Narrower) side:'+html_funcs.rollup(html_funcs.popup_delay('proto.popup3.'))+'<br>',
                 ['no:No','sr:Search result','srpv:Search result or preview','pv:Preview','chart:Post rate chart (statistics must be activated)','dp:Deleted posts'], '',['catalog.popup3.wn','catalog.popup3.nw','catalog.popup3.nn'])+ '<br>'+
               '2,'+ html_funcs.rollup_radio('catalog.t2h_sel',' :Num of posts to store for preview', 3, '',
@@ -2998,7 +3034,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '&emsp;&emsp;<textarea rows="1" cols="60" name="catalog_board_list_str"></textarea><br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.board.recommendation"> Read owner\'s recommendation '+
           '&emsp;&emsp;<button name="tag.recommendation_add">Add to list</button><br>'+
-          '&emsp;&emsp;<input type="checkbox" name="catalog.board.all_boards"> Generate all boards group<br>'+
+          '2,<IC"catalog.board.all_boards">Add all boards group to the last<br>'+
 //          '&emsp;&emsp;<input type="button" value="Scan"> Scan board tags<br>'+
 //          '&emsp;&emsp;<input type="button" value="Generate" name="tag.generate"> Generate board groups from tags <br>'+
           '&emsp;&emsp;<input type="checkbox" name="catalog.board.board_tags"> Generate board groups from tags '+
@@ -3392,7 +3428,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '<input type="text" name="patch.delayed_invoke.sec" size="2" style="text-align: right;">sec.<br>'+
 //          '<input type="checkbox" name="pref2.meguca.remove_history_class"> Remove history class in meguca'+
           '',
-          'Styles:<br>'+
+      function(html_funcs){
+        return 'Styles:<br>'+
           '1,Windows and popups:<br>'+
           '2,Z-Index: <ITB4"style.zIndex"><br>'+
           '2,<IR"style.sel,fix"> Fixed <BTN"style.reset.fix,reset"><br>'+
@@ -3406,8 +3443,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '1,Others:<br>'+
           '2,New post:<ITBL30"style.post_new"><br>'+
           '2,Editing post:<ITBL30"style.post_editing"><br>'+
-          '1,<IC"style.userCSS.use">User CSS<br>'+
-          '2,<TA"style.userCSS.str,50,1"><br>',
+          html_funcs.userCSS(1);},
       function(html_funcs){
         return 'Features:<br>'+
           '1,<ICBX"features.page"> Page<br>'+
@@ -3427,8 +3463,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '1,<ICBX"features.notify.favicon"> Favicon<br>'+
           'Sites:<br>'+
           html_funcs.features_domains();},
-          'CatChan<br>'+
-          'Version 2018.11.25.0<br>'+
+      function(html_funcs){
+        return 'CatChan<br>'+
+          'Version 2018.12.09.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3456,26 +3493,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '<button name="debug_pfunc_all">find_parse_funcs</button>'+
           '<input type="checkbox" name="debug_mode.pfunc_all_expand">func<br>'+
           '<input type="checkbox" name="debug_mode.9"><br>'+
-          (function(){
-            var str = '';
-            var i=9;
-            while (pref.debug_mode[++i]!==undefined) str += '<ICBX"debug_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%10===9)? '<br>' : '');
-            return str;
-          })() +
-          'Test mode<br>'+
-          (function(){
-            var str = '';
-            var i=-1;
-            while (pref.test_mode[++i]!==undefined) str += '<ICBX"test_mode.'+i+'">' + ((i%10===4)? '&emsp;' : (i%50===49)? '<br><br>' : (i%10===9)? '<br>' : '');
-            return str;
-          })() +
-          '<input type="checkbox" name="test_mode.tips">'+
-          '<input type="text" name="test_mode.num" size="6" style="text-align: right;">'+
-          '<input type="text" name="test_mode.test_str" size="30" style="text-align: right;">'+
-          '<input type="text" name="test_mode.num_f" size="6" style="text-align: right;">'+
+          html_funcs.cb_block('debug_mode',10)+
+          'Test mode'+html_funcs.rollup(html_funcs.cb_block('test_mode',0)+'<br>'+
+          '<IC"test_mode.tips">'+
+          '<ITB6"test_mode.num">'+
+          '<ITBL30"test_mode.test_str">'+
+          '<ITB6"test_mode.num_f">'+
           '&emsp;<button name="button_test">test</button><br>'+
           '&emsp;<button name="load_samples">setting_samples</button><br>'+
-          '<IF"test_mode.js_file" accept=".js,text/*"><BTN"test_mode.js_load,JS_load"><br>',
+          '<IF"test_mode.js_file" accept=".js,text/*"><BTN"test_mode.js_load,JS_load">')+'<br>';}
         ],
         html_common:
           '<span name="reload_recommended" style="display:none;background:yellow">&emsp;&emsp;RELOAD IS REQUIRED TO GET LIGHT FEELING&emsp;&emsp;<br></span>'+
@@ -3616,14 +3642,18 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'tag.scan' : function(){
             pref.catalog.board.board_tags = true;
             pref_func.settings.onchange_funcs['tag.generate_caller']('tag.scan');
+            liveTag.popup_filter.popup();
           },
           'tag.same_tag_refresh' : function(){
             pref.catalog.board.board_tags_same = true;
             pref_func.settings.onchange_funcs['tag.generate_caller']('tag.same_tag_refresh');
           },
           'tag.generate_caller' : function(src){
-            http_req.get('tag','8chan','https://'+site2['8chan'].domain_url+'/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
-            if (pref_func.settings.pn13) pref_func.settings.apply_pn13_1();
+            site2[site.nickname].get_boards_json('manual_refresh_boards_json', null, null, true); // ,pref_func.settings.onchange_funcs['tag.generate_callback']);
+            if (pref.test_mode['112']) {
+              http_req.get('tag','8chan','https://'+site2['8chan'].domain_url+'/boards.json',pref_func.settings.onchange_funcs['tag.generate_callback'],false,false,src);
+              if (pref_func.settings.pn13) pref_func.settings.apply_pn13_1();
+            }
           },
           'tag.generate_callback' : function(key,value,arg){
             site3['8chan'].boards = ('response' in value)? value.response : JSON.parse(value.responseText);
@@ -4204,7 +4234,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         html = html.replace(/<TA"([\w.]+),(\d+),(\d+)"([^>]*)>/g,'<textarea style="height:1em" rows="$3" cols="$2" name="$1"$4></textarea>');
         html = html.replace(/<IC"([\w.]+)"([^>]*)>(\w)?/g,function(m,p1,p2,p3){return '<input type="checkbox" name="'+p1+'"'+p2+'>'+(p3?' '+p3:'');}); // with single space
         html = html.replace(/<ITB(L)?(\d+)"([\w.]+)"([^>]*)>(\w)?/g,function(m,p1,p2,p3,p4,p5){return '<input type="text"'+(p1?'':' style="text-align: right;"')+' size="'+p2+'" name="'+p3+'"'+p4+'>'+(p5?' '+p5:'');}); // with single space
-        html = html.replace(/<ICBX"/g,'<input type="checkbox" name="');
+        html = html.replace(/<ICBX"/g,'<input type="checkbox" name="'); // used for catalog.filter.kwd
 //        html = html.replace(/<ITBL(\d+)"/g,'<input type="text" size="$1" name="');
 //        html = html.replace(/<ITB(\d+)"/g,'<input type="text" style="text-align: right;" size="$1" name="');
 //        html = html.replace(/<IR("[\w\.]+):([^:]+):([^"]+)">/g,'<input type="radio" name=$1" value="$2">$3');
@@ -4910,10 +4940,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return {boards:arr};
     },
     url_boards_json: function(){return '';}, // returns url of boards.json.
-    get_boards_json: function(key,callback,callback_always){
+    get_boards_json: function(key,callback,callback_always,  dummy_indicator){
       var key = 'boards_json_'+this.nickname;
       if (this.boards_json) this.get_boards_json_callback(this.nickname,{status:200, response:this.boards_json},[callback,callback_always]);
       else httpd.req({initiator:key,
+                      INDICATOR: dummy_indicator? {shift:function(){}, report:function(){}} : null, IDX:0, FINISHED:0, SUC:0, max:1, // patch for 8chan, see tag.generate_caller
                       tgts:[{domain:this.nickname, url:this.url_boards_json()[0], responseType:'json', data_type:'json'}],
                       callback_1:function(req,val){this.get_boards_json_callback(key,val,[callback,callback_always,true])}.bind(this)},6);
     },
@@ -5709,7 +5740,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         if (pn && pn.parentNode) {
           if (!snatch) pn.parentNode.removeChild(pn);
           var info = pns.get(pn);
-          if (info.key) pop_load_req_delete(info.key, pn);
+          if (info.key) posts.pop_load_req_delete(info.key, pn);
           if (info.chart && !snatch) info.chart.destroy();
           if (info.scroll) pn.removeEventListener(brwsr.mousewheel, cnst.div_scroll, false);
           var src = info.src;
@@ -5796,16 +5827,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         var et = e.target;
         var pf_mode = pref[cataLog.embed_mode];
         if (pf_mode.popup && et.tagName==='A' && site2['DEFAULT'].popups_link_regex.test(et.textContent)) {
-          if (pref.proto.popup_hlt && post_highlight_if_visible(e)) return;
-          up0.force = force
-          up0.over(pref.proto, e, pop_up);
-          var domain = href2domain(et.getAttribute('href'));
-          if (domain!==site.nickname) e.stopPropagation(); // prevent striking(----) because of being taken as a deleted post in 4chan.
+          posts.over(e, force);
         } else if (pf_mode.image_hover) {
           if (geh.isThumbnail(e)) up0.over(pf_mode.thumbnail.hover, e, cataLog.DIH.image_hover_add);
         }
       }
       function out(e){
+        cataLog.DIH.image_hover_remove();
         if (up0.out(e)) return;
         var erT = e.relatedTarget;
         if (erT && erT.tagName==='A') out_1_if_exists(erT);
@@ -5815,119 +5843,206 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          var info = pns.get(erT);
 //          if (info) out_1(info);
 //        }
-        cataLog.DIH.image_hover_remove();
       }
-      function pop_up(e){
-        var force = up0.force;
-        var et = e.target;
-        if (pns.has(et)) {clear_down_timer(pns.get(pns.get(et))); return;}
-        var domain = href2domain(et.getAttribute('href'));
-        if (!force && pref[cataLog.embed_mode].env.popup_native) {
-          if (pref[cataLog.embed_mode].env.event_dynamic && !pref.test_mode['100']) {
-            if (site.nickname===domain) return; // 4chan
-          } else if (blacklist.has(et)) return // { // working code, but can't surpress dual popup.
-//            if (pref[cataLog.embed_mode].env.popup_native_kill) {
-//              var pn = blacklist.get(et);
-//              if (pn===null) {
-//                pn = et.cloneNode(true);
-//                pn.setAttribute('style','position:relative;left:-'+et.offsetWidth+'px;'); // to cause mouseout to popdown native popup.
-//                et.parentNode.insertBefore(pn,et.nextSibling);
-//                blacklist.set(pn,et);
-//              } else {
-//                et.parentNode.removeChild(et.previousSibling);
-//                et.removeAttribute('style');
-//                blacklist.delete(et);
-//              }
-//            } else return;
-//          }
+      var posts = (function(){
+        function over(e, force){
+          if (pref.proto.popup_hlt && post_highlight_if_visible(e)) return;
+          up0.force = force
+          up0.over(pref.proto, e, pop_up);
+          var domain = href2domain(e.target.getAttribute('href'));
+          if (domain!==site.nickname) e.stopPropagation(); // prevent striking(----) because of being taken as a deleted post in 4chan.
         }
-        pop_make(e, domain);
-      }
-      function pop_make(e, domain){
-        var obj = site2['DEFAULT'].popups_post_entry(e, domain);
-        if (obj) pop_setup(e.target, obj.pn, obj.key? {src:e.target, key:obj.key} : null);
-        return obj.pn;
-      }
-
-      var keys_loading = new Map();
-      function pop_load(key, domain){
-        var tgts = keys_loading.get(key);
-        if (tgts) {
-          for (var i=tgts.length-1;i>=0;i--) { // must be backward, tgts[i] will be removed in pop_down
-            var tgt = tgts[i]; // backup is needed, pop_down removes tgts[i] itself.
-            var pn = pns.get(tgt.target);
-            if (pn) {
-              pop_down(pn); // removes tgts[i]
-              var pn2 = pop_make(tgt,domain);
-              if (pn.style.left) pn2.style.left = pn.style.left; else pn2.style.right = pn.style.right;
-              if (pn.style.top) pn2.style.top = pn.style.top; else pn2.style.bottom = pn.style.bottom;
-            }
+        function pop_up(e){
+          var force = up0.force;
+          var et = e.target;
+          if (pns.has(et)) {clear_down_timer(pns.get(pns.get(et))); return;}
+          var domain = href2domain(et.getAttribute('href'));
+          if (!force && pref[cataLog.embed_mode].env.popup_native) {
+            if (pref[cataLog.embed_mode].env.event_dynamic && !pref.test_mode['100']) {
+              if (site.nickname===domain) return; // 4chan
+            } else if (blacklist.has(et)) return // { // working code, but can't surpress dual popup.
+  //            if (pref[cataLog.embed_mode].env.popup_native_kill) {
+  //              var pn = blacklist.get(et);
+  //              if (pn===null) {
+  //                pn = et.cloneNode(true);
+  //                pn.setAttribute('style','position:relative;left:-'+et.offsetWidth+'px;'); // to cause mouseout to popdown native popup.
+  //                et.parentNode.insertBefore(pn,et.nextSibling);
+  //                blacklist.set(pn,et);
+  //              } else {
+  //                et.parentNode.removeChild(et.previousSibling);
+  //                et.removeAttribute('style');
+  //                blacklist.delete(et);
+  //              }
+  //            } else return;
+  //          }
           }
-          keys_loading.delete(key);
+          pop_make(e, domain);
         }
-      }
-      function pop_load_req(e, key, pn){
-        var val = {target:e.target, clientX:e.clientX, clientY:e.clientY, pn:pn};
-        var tgts = keys_loading.get(key);
-        if (tgts) tgts.unshift(val); // reverse ordering.
-        else keys_loading.set(key,[val]);
-      }
-      function pop_load_req_delete(key, pn){
-        var tgts = keys_loading.get(key);
-        if (tgts) {
-          for (var i=tgts.length-1;i>=0;i--) if (tgts[i].pn===pn) tgts.splice(i,1);
-          if (tgts.length===0) keys_loading.delete(key);
+        function pop_make(e, domain){
+          var obj = popups_post_entry(e, domain);
+          if (obj) pop_setup(e.target, obj.pn, obj.key? {src:e.target, key:obj.key} : null);
+          return obj.pn;
         }
-      }
-
-      function post_highlight_if_visible(e){
-        var href = e.target.getAttribute('href'); // keep as it is, et.href may be %xx%yy.
-        var domain = href2domain(href);
-        var th_q = site2[domain].popups_href2th_q(href);
-        var no = th_q[1];
-        var tgt_th = cataLog.threads[th_q[0].key];
-        var posts = tgt_th && tgt_th[16] && tgt_th[16].posts;
-        if (posts) {
-          for (var i=posts.length-1;i>=0;i--) if (posts[i].no===no) break;
-          var pn = (i>=0)? posts[i].pn : undefined;
-          if (pn && window.getComputedStyle(pn).display!=='none') {
-            var oT = pn.offsetTop;
-            var sT = brwsr.document_body.scrollTop;
-            if (oT>sT && oT+pn.offsetHeight<sT+document.documentElement.clientHeight) { // temporal, embed only. see 'get_ref_height'.
-              pn.classList.add(site2[site.nickname].popups_posts_class_hlt);
-              e.target.addEventListener('mouseout',post_highlight_end, false);
-              pns.set(e.target, pn);
-              post_dotted_if_multi_anchors(pn, e, {domain_html:pref.catalog.mimic_base_site? site.nickname : domain});
-              return true;
+  
+        var keys_loading = new Map();
+        function pop_load(key, domain){
+          var tgts = keys_loading.get(key);
+          if (tgts) {
+            for (var i=tgts.length-1;i>=0;i--) { // must be backward, tgts[i] will be removed in pop_down
+              var tgt = tgts[i]; // backup is needed, pop_down removes tgts[i] itself.
+              var pn = pns.get(tgt.target);
+              if (pn) {
+                pop_down(pn); // removes tgts[i]
+                var pn2 = pop_make(tgt,domain);
+                if (pn.style.left) pn2.style.left = pn.style.left; else pn2.style.right = pn.style.right;
+                if (pn.style.top) pn2.style.top = pn.style.top; else pn2.style.bottom = pn.style.bottom;
+              }
             }
+            keys_loading.delete(key);
           }
         }
-        return false;
-      }
-      var an_dotted = null;
-      function post_highlight_end(e){
-        var et = e.target;
-        et.removeEventListener('mouseout',post_highlight_end, false);
-        pns.get(et).classList.remove(site2[site.nickname].popups_posts_class_hlt);
-        pns.delete(et);
-        if (an_dotted) {
-          an_dotted.classList.remove('dotted');
-          an_dotted = null;
+        function pop_load_req(e, key, pn){
+          var val = {target:e.target, clientX:e.clientX, clientY:e.clientY, pn:pn};
+          var tgts = keys_loading.get(key);
+          if (tgts) tgts.unshift(val); // reverse ordering.
+          else keys_loading.set(key,[val]);
         }
-      }
-      function post_dotted_if_multi_anchors(pn, e, th){
-        if (!pref.test_mode['108']) {
-          var as = site2[th.domain_html].post_pn2ce(pn).getElementsByTagName('a');
-          if (as.length>1) {
-            var pn_post = site2[th.domain_html].post_an2pn(e.target);
-            if (pn_post) {
-              var pn_no = site2[th.domain_html].parse_funcs['post_html'].no({pn:pn_post});
-              for (var i=0;i<as.length;i++) if (site2[th.domain_html].popups_href2dbtp(as[i].getAttribute('href'))[3]==pn_no) break;
-              if (i!=as.length) {
-                as[i].classList.add('dotted');
-                an_dotted = as[i];
-              }}}}
-      }
+        function pop_load_req_delete(key, pn){
+          var tgts = keys_loading.get(key);
+          if (tgts) {
+            for (var i=tgts.length-1;i>=0;i--) if (tgts[i].pn===pn) tgts.splice(i,1);
+            if (tgts.length===0) keys_loading.delete(key);
+          }
+        }
+  
+        function post_highlight_if_visible(e){
+          var href = e.target.getAttribute('href'); // keep as it is, et.href may be %xx%yy.
+          var domain = href2domain(href);
+          var th_q = site2[domain].popups_href2th_q(href);
+          var no = th_q[1];
+          var tgt_th = cataLog.threads[th_q[0].key];
+          var posts = tgt_th && tgt_th[16] && tgt_th[16].posts;
+          if (posts) {
+            for (var i=posts.length-1;i>=0;i--) if (posts[i].no===no) break;
+            var pn = (i>=0)? posts[i].pn : undefined;
+            if (pn && window.getComputedStyle(pn).display!=='none') {
+              var oT = pn.offsetTop;
+              var sT = brwsr.document_body.scrollTop;
+              if (oT>sT && oT+pn.offsetHeight<sT+document.documentElement.clientHeight) { // temporal, embed only. see 'get_ref_height'.
+                pn.classList.add(site2[site.nickname].popups_posts_class_hlt);
+                e.target.addEventListener('mouseout',post_highlight_end, false);
+                pns.set(e.target, pn);
+                post_dotted_if_multi_anchors(pn, e, {domain_html:pref.catalog.mimic_base_site? site.nickname : domain});
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+        var an_dotted = null;
+        function post_highlight_end(e){
+          var et = e.target;
+          et.removeEventListener('mouseout',post_highlight_end, false);
+          pns.get(et).classList.remove(site2[site.nickname].popups_posts_class_hlt);
+          pns.delete(et);
+          if (an_dotted) {
+            an_dotted.classList.remove('dotted');
+            an_dotted = null;
+          }
+        }
+        function post_dotted_if_multi_anchors(pn, e, th){
+          if (!pref.test_mode['108']) {
+            var as = site2[th.domain_html].post_pn2ce(pn).getElementsByTagName('a');
+            if (as.length>1) {
+              var pn_post = site2[th.domain_html].post_an2pn(e.target);
+              if (pn_post) {
+                var pn_no = site2[th.domain_html].parse_funcs['post_html'].no({pn:pn_post});
+                for (var i=0;i<as.length;i++) if (site2[th.domain_html].popups_href2dbtp(as[i].getAttribute('href'))[3]==pn_no) break;
+                if (i!=as.length) {
+                  as[i].classList.add('dotted');
+                  an_dotted = as[i];
+                }}}}
+        }
+        function popups_post_entry(e, domain){
+          var et = e.target;
+          var th = {domain:domain, domain_html: pref.catalog.mimic_base_site? site.nickname : domain};
+          var th_q = site2[th.domain].popups_href2th_q(et.getAttribute('href'));
+          if (!th_q) return;
+          var dbt = th_q[2];
+  //        if (pref[cataLog.embed_mode].env.event_dynamic && pref[cataLog.embed_mode].env.popup_native && site.nickname===th.domain && pref.test_mode['98']) return;
+          var pn;
+          var thqp = th_q[0][th_q[1]];
+          var isOP = dbt[3] == dbt[2]; // thqp.no == dbt[2]; // == must be used, typeof(dbt[2]) is string.
+          if (thqp===undefined && pref.test_mode['80']) { // patch
+            th.no = th_q[2][2];
+            var boards = ['_IDB/', '_File/'];
+            for (var i=0;i<2;i++) {
+              th.board = th_q[2][1].slice(0,-1)+boards[i];
+              var th_q0 = liveTag.mems[th.domain][th.board] && liveTag.mems[th.domain][th.board][th.no] && liveTag.mems[th.domain][th.board][th.no].q;
+              if (th_q0) {
+                th_q[0] = th_q0;
+                break;
+              }
+            }
+          }
+          if (thqp===undefined || Array.isArray(thqp)) {
+            site2['DEFAULT'].popups_try_fetch_from_lth_ta(liveTag.mems[th.domain][dbt[1]][dbt[2]], parseInt(dbt[3],10), th); // may change thqp, th for domain_html(mimic)
+            thqp = th_q[0][th_q[1]];
+          }
+          if (thqp===undefined || Array.isArray(thqp)) { // 'thqp===undefined' for multilevel popups.
+            site2[th.domain].popups_post_fetch(th, dbt);
+  //          cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
+            pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
+            var key = dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3];
+            pop_load_req(e, key, pn);
+  //          site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:site2['DEFAULT'].popups_posts.pop_down.bind(null,pn)}; //out};
+            site2['DEFAULT'].popups_set_waiting(th_q[0],th_q[1]);
+          } else {
+  //          if (site2['DEFAULT'].popup_info) site2['DEFAULT'].popup_info.func_out();
+  //          if (site2['DEFAULT'].popup_info) et.onmouseout(); // BUG at editing, sometimes out is never issued because of being replaced.
+  //          if (!thqp.pn || thqp.isOP || thqp.type_data==='html') {
+  //          if (!thqp.pn || isOP && site.nickname!='4chan') {
+            if (!thqp.pn || isOP || pref.test_mode['105']) { // test
+  //          if (!thqp.pn || thqp.isOP || pref.proto.popdown!=='imm') { // BUG, this requires exact extraction of country, country_name or data for images even from html.
+              if (!thqp.domain) { // PATCH, use prototype of liveTag.mems.
+                var tgt = thqp;
+                tgt.domain = th.domain;
+                if (tgt.extra_files) for (var i=0;i<tgt.extra_files.length;i++) tgt.extra_files[i].domain = th.domain;
+              }
+              pn = site2[th.domain_html].post_json2html(thqp, dbt[1]);
+            } else pn = thqp.pn.cloneNode(true);
+            cataLog.format_html.prep_anchor_links(pn, th_q[0]);
+            site2[th.domain_html].format_pn(pn, thqp, null, null, th_q[0]);
+            post_dotted_if_multi_anchors(pn, e, th);
+          }
+          pn.style = {};
+          pn.style.position = 'fixed';
+          set_pos(pn,e, true);
+  //        pn.style.left = e.clientX + 10 + 'px';
+  //        if (!pref.test_mode['25']) pn.style.top  = e.clientY -15 + 'px';
+  //        else pn.style.bottom  = window.innerHeight - e.clientY + 20 + 'px';
+          pn.style.zIndex = pref[cataLog.embed_mode].popup_zIndex;
+          if (site.nickname!=='KC') pn.style.borderStyle = 'solid';
+          pn.style.boxShadow = 'rgb(153, 153, 153) 1px 1px 1px';
+          if (site.nickname==='4chan') {
+            pn.classList.add('preview');
+            pn.style.display = 'block';
+          }
+  //        if (thqp.isOP) site2[th.domain_html].popups_op_func_use(pn,th_q[0], th_q[1]);
+          site2[site.nickname].popups_post_pnode(et).appendChild(pn);
+  //        site2['DEFAULT'].popups_posts.set(et,pn);
+  //        site2['DEFAULT'].popup_info = null;
+          if (pref.debug_mode['10']) console.log('popup: '+th_q[1]+': '+site2[th.domain].popups_debug(th_q[0]));
+  //        }
+          adjust_pos(pn,e);
+          return key? {pn:pn, key:key} : {pn:pn};
+        }
+        return {
+          over: over,
+          pop_load: pop_load,
+          pop_load_req_delete, pop_load_req_delete,
+        };
+      })();
 
       var preview = (function(){
         var up_th = up_timer_factory();
@@ -5956,7 +6071,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           var name = up_th.src.name;
           var pf = pref[cataLog.embed_mode].popup3;
           var pna = pns.get(up_th.src) || [];
-          if (pref.test_mode['110']) pop_up_th_1(pf.ww, e, name, pna, 0, false, false);
+          if (!pref.test_mode['110']) pop_up_th_1(pf.ww, e, name, pna, 0, false, false);
           pop_up_th_1(pf.wn, e, name, pna, 1, false, true);
           pop_up_th_1(pf.nw, e, name, pna, 2, true, false);
           pop_up_th_1(pf.nn, e, name, pna, 3, true, true);
@@ -6000,7 +6115,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             var chart = pop_down(pn,true).chart;
             if (chart) {
               var tn = document.createElement('div');
-              if (site.nickname==='4chan') tn.appendChild(cataLog.threads[name][0].getElementsByTagName('img')[0].cloneNode());
+              var tn_imgs = site2[common_func.name2dbt(name)[0]].parse_funcs['catalog_html'].tn_imgs({pn:cataLog.threads[name][0]});
+              if (tn_imgs[0]) tn.appendChild(tn_imgs[0].cloneNode());
+//              if (site.nickname==='4chan') tn.appendChild(cataLog.threads[name][0].getElementsByTagName('img')[0].cloneNode());
               else tn.innerHTML = name;
               common_func.overwrite_prop(tn.style, {position:'absolute', bottom:'0px', left:'0px', opacity:0.4});
               pn.replaceChild(tn,btn);
@@ -6032,16 +6149,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return {
         over: over,
         leave: up0.stop,
-        pop_load: pop_load,
-        pop_load_req: pop_load_req,
+        pop_load: posts.pop_load,
         blacklist: blacklist,
-        set_pos: set_pos,
-        adjust_pos: adjust_pos,
-        post_dotted_if_multi_anchors: post_dotted_if_multi_anchors,
+        set_pos: set_pos, // to be removed.
         href2domain: href2domain,
         init: function(pn){
           geh = site2[site.nickname].general_event_handler[site.whereami];
-          if (pref.test_mode['110'] && cataLog.embed_mode==='catalog') preview.init(pn);
+          if (!pref.test_mode['110'] && cataLog.embed_mode==='catalog') preview.init(pn);
         },
       };
     })(),
@@ -6056,90 +6170,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     },
 //    popup_info:null,
 //    popups_posts: new WeakMap(),
-    popups_post_entry: function(e, domain){
-      var et = e.target;
-      var th = {domain:domain, domain_html: pref.catalog.mimic_base_site? site.nickname : domain};
-      var th_q = site2[th.domain].popups_href2th_q(et.getAttribute('href'));
-      if (!th_q) return;
-      var dbt = th_q[2];
-      if (pref[cataLog.embed_mode].env.event_dynamic && pref[cataLog.embed_mode].env.popup_native && site.nickname===th.domain && pref.test_mode['98']) return;
-      var pn;
-      var thqp = th_q[0][th_q[1]];
-      var isOP = th_q[0].no == dbt[2]; // == must be used, typeof(dbt[2]) is string.
-//      function out(e){
-//        var et = e.target;
-//        et.onmouseout=null;
-//        var pn = site2['DEFAULT'].popups_posts.get(e.currentTarget);
-//        pn.parentNode.removeChild(pn); // BUG. pn might be changed, and cause error
-//        site2['DEFAULT'].popup_info = null;
-//        site2['DEFAULT'].popups_posts.delete(et);
-//      }
-      if (thqp===undefined && pref.test_mode['80']) { // patch
-        th.no = th_q[2][2];
-        var boards = ['_IDB/', '_File/'];
-        for (var i=0;i<2;i++) {
-          th.board = th_q[2][1].slice(0,-1)+boards[i];
-          var th_q0 = liveTag.mems[th.domain][th.board] && liveTag.mems[th.domain][th.board][th.no] && liveTag.mems[th.domain][th.board][th.no].q;
-          if (th_q0) {
-            th_q[0] = th_q0;
-            break;
-          }
-        }
-      }
-      if (thqp===undefined || Array.isArray(thqp)) {
-        site2['DEFAULT'].popups_try_fetch_from_lth_ta(liveTag.mems[th.domain][dbt[1]][dbt[2]], parseInt(dbt[3],10), th); // may change thqp, th for domain_html(mimic)
-        thqp = th_q[0][th_q[1]];
-      }
-      if (thqp===undefined || Array.isArray(thqp)) { // 'thqp===undefined' for multilevel popups.
-        site2[th.domain].popups_post_fetch(th, dbt);
-//        cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
-        pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
-        var key = dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3];
-        site2['DEFAULT'].popups_posts.pop_load_req(e, key, pn);
-//        site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:site2['DEFAULT'].popups_posts.pop_down.bind(null,pn)}; //out};
-        site2['DEFAULT'].popups_set_waiting(th_q[0],th_q[1]);
-      } else {
-//        if (site2['DEFAULT'].popup_info) site2['DEFAULT'].popup_info.func_out();
-//        if (site2['DEFAULT'].popup_info) et.onmouseout(); // BUG at editing, sometimes out is never issued because of being replaced.
-//        if (!thqp.pn || thqp.isOP || thqp.type_data==='html') {
-//        if (!thqp.pn || isOP && site.nickname!='4chan') {
-        if (!thqp.pn || isOP || pref.test_mode['105']) { // test
-//        if (!thqp.pn || thqp.isOP || pref.proto.popdown!=='imm') { // BUG, this requires exact extraction of country, country_name or data for images even from html.
-          if (!thqp.domain) { // PATCH, use prototype of liveTag.mems.
-            var tgt = thqp;
-            tgt.domain = th.domain;
-            if (tgt.extra_files) for (var i=0;i<tgt.extra_files.length;i++) tgt.extra_files[i].domain = th.domain;
-          }
-          pn = site2[th.domain_html].post_json2html(thqp, dbt[1]);
-        } else pn = thqp.pn.cloneNode(true);
-        cataLog.format_html.prep_anchor_links(pn, th_q[0]);
-        site2[th.domain_html].format_pn(pn, thqp, null, null, th_q[0]);
-        site2[domain].popups_posts.post_dotted_if_multi_anchors(pn, e, th);
-      }
-      pn.style = {};
-      pn.style.position = 'fixed';
-      site2['DEFAULT'].popups_posts.set_pos(pn,e, true);
-//      pn.style.left = e.clientX + 10 + 'px';
-//      if (!pref.test_mode['25']) pn.style.top  = e.clientY -15 + 'px';
-//      else pn.style.bottom  = window.innerHeight - e.clientY + 20 + 'px';
-      pn.style.zIndex = pref[cataLog.embed_mode].popup_zIndex;
-      if (site.nickname!=='KC') pn.style.borderStyle = 'solid';
-      pn.style.boxShadow = 'rgb(153, 153, 153) 1px 1px 1px';
-      if (site.nickname==='4chan') {
-        pn.classList.add('preview');
-        pn.style.display = 'block';
-      }
-//      if (thqp.isOP) site2[th.domain_html].popups_op_func_use(pn,th_q[0], th_q[1]);
-//      et.onmouseout = out;
-//      pn.onmouseover = out;
-      site2[site.nickname].popups_post_pnode(et).appendChild(pn);
-//      site2['DEFAULT'].popups_posts.set(et,pn);
-//      site2['DEFAULT'].popup_info = null;
-      if (pref.debug_mode['10']) console.log('popup: '+th_q[1]+': '+site2[th.domain].popups_debug(th_q[0]));
-//      }
-      site2['DEFAULT'].popups_posts.adjust_pos(pn,e);
-      return key? {pn:pn, key:key} : {pn:pn};
-    },
     popups_post_pnode: function(pnode){
       if (pref.test_mode['107']) return site.popup_body;
       if (!pref.test_mode['106']) {
@@ -6311,7 +6341,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //            if (activate) as[j].onmouseover = this.popups_post_entry;
             var th_q = site2[th.domain].popups_href2th_q(as[j].getAttribute('href')); // ,as[j],th); // this may change href, so this must be here. <- FIXED.
             if (pref[cataLog.embed_mode].link_show_op && as_txt.search(op_regexp)===0 && as_txt.indexOf('(OP)')==-1) as[j].textContent += ' (OP)';
-            if (pref[cataLog.embed_mode].link_show_cross && th_q[0]!=thq) as[j].textContent += ' \u2192';
+            if (pref[cataLog.embed_mode].link_show_cross && th_q && th_q[0]!=thq) as[j].textContent += ' \u2192';
   //          var a_class = as[j].parentNode.getAttribute('class');
   //          if (!a_class || a_class.indexOf(site2[th.domain_html].backlink_class)==-1) { // skip backlinks
               if (th_q) {
@@ -7205,7 +7235,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             if (!force && !pref.proto.merge_lv) return null;
             var lv = pref_func.merge_obj5a_sc(key,old? pref3.proto.merge_lv_obj2_old : pref3.proto.merge_lv_obj2, null);
 //            var lv = (key===site.nickname+site.board+site.no)? 0 : 1; // test
-            return pref.script_prefix+'_merge'+lv;
+            return (lv===null)? null : pref.script_prefix+'_merge'+lv;
           },
         };
         return function(th, isShown){
@@ -7225,6 +7255,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         for (var i=0;i<posts.length;i++) if (posts[i].pn && posts[i].pn.parentNode) posts[i].pn.parentNode.classList.add(merge_class);
       },
       class_remove_all: function(posts, merge_class){
+        if (!merge_class) return;
         for (var i=0;i<posts.length;i++) if (posts[i].pn && posts[i].pn.parentNode) posts[i].pn.parentNode.classList.remove(merge_class);
       },
       lazy_draw: null,
@@ -7373,7 +7404,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
                 while (j<merge.lazy.length && merge.lazy[j]) j++;
                 site2[th_domain_html].update_posts_insert(merge.posts,merge.posts,i,j,merge.pn);
                 merge.lazy[i] = false;
-                merge.posts[i].pn.parentNode.classList.add(merge.get_class(merge.posts[i].key_op));
+                var merge_class = merge.get_class(merge.posts[i].key_op);
+                if (merge_class) merge.posts[i].pn.parentNode.classList.add(merge_class);
               }
               if (!pref.test_mode['111']) if (++cataLog.catalog_obj2.post_count%step==0 && merge.posts[i].pn.offsetTop>ref_height) break; // slow.
               i++;
@@ -7568,7 +7600,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       if (merge.lazy) merge.lazy_draw(k);
       if (!merge.lazy || (!pref.test_mode['89'] && i==0)) {
         this.update_posts_insert(th.posts,merge.posts,i,merge.lazy? merge.draw_1_pos(k)-1:k, merge.pn); // th_old.posts.length is live count, always add to end if !merge.lazy.
-        th.posts[i].pn.parentNode.classList.add(merge.get_class(th.key));
+        var merge_class = merge.get_class(th.key);
+        if (merge_class) th.posts[i].pn.parentNode.classList.add(merge_class);
       }
 //      if (i==0) th.posts[0].isOP = true;
 //      if (merge.lazy) merge.lazy_draw(k);
@@ -7590,7 +7623,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (k==-1) k = merge.posts.indexOf(post); // 4chan sometimes returns out-of-order posts.
         var exist = (k!=-1)? merge.remove(k) : false;
         if (merge.isShown) if (pref[cataLog.embed_mode].scroll_lock) cataLog.show_catalog_scroll_lock.modified(post);
-        if (post.pn.parentNode) post.pn.parentNode.classList.remove(merge_class);
+        if (merge_class && post.pn.parentNode) post.pn.parentNode.classList.remove(merge_class);
         if (pn_sep) this.update_posts_insert(th.posts,[],i,i,pn_sep);
         else if (exist) this.update_posts_remove(th,i,merge.pn);
       }
@@ -11429,7 +11462,10 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         sticky: function(th){return th.pn.getElementsByClassName('stickyIcon')[0]!==undefined;},
 //        format: function(th){th.pn.getElementsByTagName('a')[0].removeAttribute('href');return null;},
         tn_as: function(th){return th.pn.getElementsByTagName('a');},
-        tn_imgs: function(th){return (th.tn_as[0])? [th.tn_as[0].getElementsByTagName('img')[0]] : [];},
+        tn_imgs: function(th){
+          var a0 = th.pn.getElementsByTagName('a')[0];
+          return (a0)? [a0.getElementsByTagName('img')[0]] : [];}, // for chart popup, not using tn_as
+//        tn_imgs: function(th){return (th.tn_as[0])? [th.tn_as[0].getElementsByTagName('img')[0]] : [];},
         class_thread: 'thread',
         class_thumbnail: 'thumb',
 //        op_img_url: function(th){ // working code.
@@ -13417,7 +13453,7 @@ if (pref.features.domains['meguca']) {
     catalog_json2html3 : function(obj,board,thumb_url) {
       var th = document.createElement('article');
       th.id = 'p'+obj.no;
-      th.setAttribute('class','glass media' + ((obj.deleted)? ' deleted' : ''));
+      th.setAttribute('class','glass media op' + ((obj.deleted)? ' deleted' : ''));
       th.setAttribute('data-id',obj.no);
       var th_url = site2[obj.domain].make_url4([obj.domain,obj.board,obj.no,'thread_html'])[0];
       if (thumb_url) {
@@ -15710,6 +15746,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
             tb.classList.add(pref.script_prefix+'_autoTp');
             var pf = pref[cataLog.embed_mode].thumbnail.hover;
             if (pf.df_dblC) cn.ondblclick = ev_to_close;
+            tb.ondblclick = ev_to_close;
             if (pf.df_mW) pn['on'+brwsr.mousewheel] = div_scroll;
           } else if (arg=='tb_press') {
             var btn = funcs[i++];
@@ -17728,7 +17765,7 @@ if (!pref.test_mode['24']) {
         if (this.pn) {
           this.pn.style.height = '16px';
           this.pn.style.width = '250px';
-          this.pn_summary = this.pn.previousSibling.childNodes[4];
+          this.pn_summary = this.pn.previousSibling.childNodes[0];
           this.pn.onchange = this.cbx_onchange_entry;
           this.filter_onchange(pref.catalog.filter.tag_search, true);
         } else {
@@ -17875,6 +17912,7 @@ if (!pref.test_mode['24']) {
       if (historical_filter_active || dirty_count_deleted) {
         var docfrag = (rexps && this.pn.firstChild)? null : document.createDocumentFragment();
         var pos_insert = (from_initial)? 0 : this.update_pn_pos[0];
+        var pf_boards = pref.catalog.filter.tag_search.show_nof_boards;
         for (var i=(from_initial)? 0 : this.update_pn_pos[1];i<tags_array.length;i++) {
           var key = tags_array[i].key;
           var key_ci = (pref.liveTag.ci)? key.toLowerCase() : key;
@@ -17903,7 +17941,8 @@ if (!pref.test_mode['24']) {
                     pn.innerHTML = 
                       '<input type="checkbox" name="' + key_ci + '.pk" ' + ((tag_obj['pk'])? 'checked' : '') + '>' + 
                       '<input type="checkbox" name="' + key_ci + '.in" ' + ((tag_obj['in'])? 'checked' : '') + '>' + 
-                      '<input type="checkbox" name="' + key_ci + '.ex" ' + ((tag_obj['ex'])? 'checked' : '') + '>' + tag_obj.num + ': ' + key;
+                      '<input type="checkbox" name="' + key_ci + '.ex" ' + ((tag_obj['ex'])? 'checked' : '') + '>' +
+                        tag_obj.num +(pf_boards? '/'+Object.keys(this.tags[key].mems_boards()).length:'')+': ' + key; // same in popup_filter
                     tag_obj.pn = pn;
                     if (docfrag) docfrag.appendChild(pn);
                     else this.pn.insertBefore(pn, this.pn.childNodes[pos_insert] || null);
@@ -18091,6 +18130,69 @@ if (!pref.test_mode['24']) {
       if (pref.virtualBoard.show && !from_filter) this.update_boardlist();
       this.update_pn_last_filter_active = rexps;
     },
+    popup_filter: (function(){
+      var oninput_funcs = {
+        'catalog.filter.tag_search.str': function(){liveTag.filter_onchange(pref.catalog.filter.tag_search);},
+        __proto__: pref_func.settings.oninput_funcs.__proto__
+      };
+      var onchange_funcs = {
+        'catalog.filter.tag_search.re': oninput_funcs['catalog.filter.tag_search.str'],
+        'catalog.filter.tag_search.show_nof_boards': function(){
+          var pf_boards = pref.catalog.filter.tag_search.show_nof_boards;
+          for (var i=0;i<liveTag.tags_array_old.length;i++) {
+            var key = liveTag.tags_array_old[i].key;
+            var tag_obj = liveTag.tags[key];
+            if (tag_obj && tag_obj.pn) tag_obj.pn.childNodes[3].textContent = tag_obj.num +(pf_boards? '/'+Object.keys(liveTag.tags[key].mems_boards()).length:'')+': ' + key; // same in update_pn_1
+          }
+        },
+        __proto__: oninput_funcs
+      };
+      return {
+        html:
+          '<div style="float:left">'+
+            '<input type="checkbox" name="catalog.filter.tag"> Tag :'+
+          '</div>'+
+          '<div style="float:left">'+
+            '<div>'+
+              ' Fetcn / In / Out / Threads / Tag '+
+              '<ITBL25"catalog.filter.tag_search.str" placeholder="Search tags...">'+
+  //            ' <ICBX"catalog.filter.tag_search.ci">CI'+
+              ' <ICBX"catalog.filter.tag_search.re">RE'+
+            '</div>'+
+            '<div><span></span>'+pref_func.settings.html_funcs.rollup(
+              '<IC"catalog.filter.tag_search.show_nof_boards">Show number of boards<br>'+
+              '<BTN"tagB.shown_t_pk,T"><BTN"tagB.shown_t_in,T"><BTN"tagB.shown_t_ex,T"> Toggle checkboxes of shown tags<br>'+ // span for not being wrapped by label.
+              '<BTN"tagB.shown_c_pk,C"><BTN"tagB.shown_c_in,C"><BTN"tagB.shown_c_ex,C"> Clear checkboxes of shown tags<br>'+
+              '<BTN"tagB.all_c_pk,C"><BTN"tagB.all_c_in,C"><BTN"tagB.all_c_ex,C"> Clear checkboxes of all tags')+'<br></div>'+
+            '<div style="overflow:auto;resize:both;float:left" name="catalog.filter.tag_list"></div>'+
+            pref_func.settings.html_funcs.rollup('<div style="clear:both">'+
+              '<BTN"tag2bList,Add"> selected tags to the last of board group<br>'+
+              '1,Label: <ITBL20"catalog.filter.tag2bList.label" placeholder="default: topmost tag"><br>'+
+              '1,<IR"catalog.filter.tag2bList.by,tag">By tag<br>'+
+              '1,<IR"catalog.filter.tag2bList.by,board">By board<br>'+
+            '</div>')+
+  //          '<a name="SHOW" style="cursor:pointer" data-str="[\u25b2]">[\u25bc]</a>'+
+  //          '<div name="SUB" style="clear:both;display:none">TEST</div>'+
+          '</div>'+
+          '<div style="clear:both"></div>', // for floating
+        oninput_funcs: oninput_funcs,
+        onchange_funcs: onchange_funcs,
+        popup: function(){
+          if (liveTag.pn) return;
+          var exit_func = function(){
+            pref_func.tooltips.remove_root(popup.pn);
+            liveTag.pn = null;
+            cnst.div_destroy(popup.pn, true);
+          };
+          var popup = cnst.init3({func_str:'top:0px:left:0px:Show:tb', exit:exit_func});
+          popup.cn.innerHTML = pref_func.format_html_str(liveTag.popup_filter.html);
+          pref_func.add_onchange(popup.cn,onchange_funcs, oninput_funcs);
+          pref_func.apply_prep(popup.pn, false);
+          pref_func.tooltips.add_root(popup.pn);
+          liveTag.update_pn(true);
+        },
+      };
+    })(),
     cbx_all_onchange: function(e){
       var et = e.target;
       var clear = et.name.substr(-4,1)==='c';
@@ -18172,12 +18274,23 @@ if (!pref.test_mode['24']) {
     },
     add_tags_to_boardlist: function(){
       var tags = liveTag.tags_array_old;
-      var str = [
-        pref.catalog.filter.tag2bList.label || (tags.filter(function(v){return v.in;})[0] || tags.filter(function(v){return v.pk;})[0] || tags.filter(function(v){return v.ex;})[0]).key,
+      var label = pref.catalog.filter.tag2bList.label || (tags.filter(function(v){return v.in;})[0] || tags.filter(function(v){return v.pk;})[0] || tags.filter(function(v){return v.ex;})[0]).key;
+      var str_ary;
+      if (pref.catalog.filter.tag2bList.by==='tag') str_ary = [
         tags.filter(function(v){return v.in;}).map(function(v){return v.key;}).join(','),
         tags.filter(function(v){return v.pk;}).map(function(v){return '#'+v.key;}).join(','),
-        tags.filter(function(v){return v.ex;}).map(function(v){return '!'+v.key;}).join(',')].filter(function(v){return v;}).join(',');
-      pref_func.settings.onchange_funcs['tag.add_to_list'](str);
+        tags.filter(function(v){return v.ex;}).map(function(v){return '!'+v.key;}).join(',')];
+      else {
+        var obj_in = tags.filter(function(v){return v.in;}).map(function(v){return v.mems_boards();});
+        var obj_pk = tags.filter(function(v){return v.pk;}).map(function(v){return v.mems_boards();});
+        var obj_ex = tags.filter(function(v){return v.ex;}).map(function(v){return v.mems_boards();});
+        var obj = {};
+        for (var i=0;i<obj_in.length;i++) for (var j in obj_in[i]) obj[j] = null;
+        for (var i=0;i<obj_pk.length;i++) for (var j in obj_pk[i]) obj[j] = null;
+        for (var i=0;i<obj_ex.length;i++) for (var j in obj_ex[i]) delete obj[j];
+        str_ary = Object.keys(obj);
+      }
+      pref_func.settings.onchange_funcs['tag.add_to_list'](label +' ,'+ str_ary.filter(function(v){return v;}).join(','));
     },
     search_by_tags : function(lth){
       var retval = !this.active.in;
@@ -21171,31 +21284,33 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           '<div style="clear:both;display:none" data-show3="tag">'+
             '<a name="HIDE3" style="cursor:pointer;float:left">[-]</a>'+
             '<span class="PLACEHOLDER" style="float:right"></span>'+ // tack
-            '<div style="float:left">'+
-              '<input type="checkbox" name="catalog.filter.tag"> Tag :'+
-            '</div>'+
-            '<div style="float:left">'+
-              '<div>'+
-                ' Fetcn / In / Out / Threads / Tag '+
-                '<ITBL25"catalog.filter.tag_search.str" placeholder="Search tags...">'+
-//                ' <ICBX"catalog.filter.tag_search.ci">CI'+
-                ' <ICBX"catalog.filter.tag_search.re">RE'+
-              '</div>'+
-              '<div><BTN"tagB.shown_t_pk,T"><BTN"tagB.shown_t_in,T"><BTN"tagB.shown_t_ex,T"><span> all </span><span></span> '+ // span for not being wrapped by label.
-                pref_func.settings.html_funcs.rollup(
-                  '<BTN"tagB.shown_c_pk,C"><BTN"tagB.shown_c_in,C"><BTN"tagB.shown_c_ex,C"> Clear checkboxes of shown tags<br>'+
-                  '<BTN"tagB.all_c_pk,C"><BTN"tagB.all_c_in,C"><BTN"tagB.all_c_ex,C"> Clear checkboxes of all tags', ' Toggle checkboxes of shown tags')+'<br></div>'+
-              '<div style="overflow:auto;resize:both;float:left" name="catalog.filter.tag_list"></div>'+
-              pref_func.settings.html_funcs.rollup('<div style="clear:both">'+
-                '<BTN"tag2bList,Add"> selected tags to the last of board group<br>'+
-                '1,Label: <ITBL20"catalog.filter.tag2bList.label" placeholder="default: topmost tag"><br>'+
-                '1,<IR"catalog.filter.tag2bList.by,tag">By tag<br>'+
-                '1,<IR"catalog.filter.tag2bList.by,board">By board<br>'+
-                '</div>')+
-//              '<a name="SHOW" style="cursor:pointer" data-str="[\u25b2]">[\u25bc]</a>'+
-//              '<div name="SUB" style="clear:both;display:none">TEST</div>'+
-            '</div>'+
-            '<div style="clear:both"></div>'+ // for floating
+            liveTag.popup_filter.html+
+////            '<div style="float:left">'+
+////              '<input type="checkbox" name="catalog.filter.tag"> Tag :'+
+////            '</div>'+
+////            '<div style="float:left">'+
+////              '<div>'+
+////                ' Fetcn / In / Out / Threads / Tag '+
+////                '<ITBL25"catalog.filter.tag_search.str" placeholder="Search tags...">'+
+//////                ' <ICBX"catalog.filter.tag_search.ci">CI'+
+////                ' <ICBX"catalog.filter.tag_search.re">RE'+
+////              '</div>'+
+////              '<div><span></span>'+pref_func.settings.html_funcs.rollup(
+////                '<IC"catalog.filter.tag_search.show_nof_boards">Show number of boards<br>'+
+////                '<BTN"tagB.shown_t_pk,T"><BTN"tagB.shown_t_in,T"><BTN"tagB.shown_t_ex,T"> Toggle checkboxes of shown tags<br>'+ // span for not being wrapped by label.
+////                '<BTN"tagB.shown_c_pk,C"><BTN"tagB.shown_c_in,C"><BTN"tagB.shown_c_ex,C"> Clear checkboxes of shown tags<br>'+
+////                '<BTN"tagB.all_c_pk,C"><BTN"tagB.all_c_in,C"><BTN"tagB.all_c_ex,C"> Clear checkboxes of all tags')+'<br></div>'+
+////              '<div style="overflow:auto;resize:both;float:left" name="catalog.filter.tag_list"></div>'+
+////              pref_func.settings.html_funcs.rollup('<div style="clear:both">'+
+////                '<BTN"tag2bList,Add"> selected tags to the last of board group<br>'+
+////                '1,Label: <ITBL20"catalog.filter.tag2bList.label" placeholder="default: topmost tag"><br>'+
+////                '1,<IR"catalog.filter.tag2bList.by,tag">By tag<br>'+
+////                '1,<IR"catalog.filter.tag2bList.by,board">By board<br>'+
+////                '</div>')+
+//////              '<a name="SHOW" style="cursor:pointer" data-str="[\u25b2]">[\u25bc]</a>'+
+//////              '<div name="SUB" style="clear:both;display:none">TEST</div>'+
+////            '</div>'+
+////            '<div style="clear:both"></div>'+ // for floating
           '</div>'+
           '<div style="clear:both;display:none" data-show3="list">'+
             '<a name="HIDE3" style="cursor:pointer;float:left">[-]</a>'+
@@ -21297,7 +21412,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         })(),
         'catalog.filter.list_str'  : function(){catalog_filter_changed();if (pref[embed_mode].mark_new_posts) format_html.time_filter_changed();},
         'catalog.filter.attr_list_str': function(){if (pref.catalog.filter.attr_list) catalog_attr_changed();},
-        'catalog.filter.tag_search.str': function(){liveTag.filter_onchange(pref.catalog.filter.tag_search);},
+        'catalog.filter.tag_search.str': liveTag.popup_filter.oninput_funcs['catalog.filter.tag_search.str'],
         __proto__: pref_func.settings.oninput_funcs.__proto__
       };
       var onchange_funcs = {
@@ -21438,6 +21553,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           ago_clicked(null, time);
         },
         'catalog.filter.tag_search.re': 'catalog.filter.tag_search.str',
+        'catalog.filter.tag_search.show_nof_boards': liveTag.popup_filter.onchange_funcs['catalog.filter.tag_search.show_nof_boards'],
         'tagB.*': liveTag.cbx_all_onchange,
         'tag2bList': liveTag.add_tags_to_boardlist,
         __proto__: oninput_funcs,
@@ -23234,6 +23350,7 @@ if (!pref.test_mode['13']) {
             var th = {posts:posts, __proto__:threads[this.key][7]};
             site2[posts[0].domain_html].page_json2html3_add_omitted_info(th, this.posts, th.posts);
             insert_thread_prepare_html_lazy(threads[this.key], false, false, null, th);
+            cataLog.show_catalog();
           }
         },
       };
@@ -23270,7 +23387,7 @@ if (pref.test_mode['19']) { // stability test.
 }
           init_new = true;
           threads[name] = [(insert_thread_from_native)? th.pn : false, // lazy generation, null may be returned by DOM, so 'false' is used here.
-                           insert_thread_from_native, (embed_mode==='page' || pref.test_mode['110'])? [triage.thread_in, null] : [func_in, func_pop_up],
+                           insert_thread_from_native, (embed_mode==='page' || !pref.test_mode['110'])? [triage.thread_in, null] : [func_in, func_pop_up],
                            null,
 //                           [html_org || th.pn.innerHTML, nickname], // PATCHED. THIS WILL BE REMOVED.
                            null, // not used // th.posts && th.posts.slice(0,1), // 4 // {sub:th.sub, com:th.com, name:th.name, trip:th.trip, filename:th.filename}
@@ -25300,19 +25417,21 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
     };
       if (pref.test_mode['96'] && embed_mode==='catalog') { // test for faster execution, removes redundant queries of offsetTop
         catalog_obj2_proto = {
-          func_track_shown_org: catalog_obj2_proto.func_track_shown,
-          func_track_shown: function(name, update_drawn_y){
-            var y_old = this.drawn_y;
-            var check_y = this.od_count%this.od_width==0;
-            this.func_track_shown_org(name, update_drawn_y && check_y);
-            if (check_y && y_old==this.drawn_y) this.od_width++;
-            this.od_count++;
-          },
-          func_track_reset_org: catalog_obj2_proto.func_track_reset,
-          func_track_reset: function(){
-            this.func_track_reset_org();
-            this.od_count = 0;
-          },
+          func_track_shown: (function(func_org){
+            return function(name, update_drawn_y){
+             var y_old = this.drawn_y;
+              var check_y = this.od_count%this.od_width==0;
+              func_org.call(this, name, update_drawn_y && check_y);
+              if (check_y && y_old==this.drawn_y) this.od_width++;
+              this.od_count++;
+            }
+          })(catalog_obj2_proto.func_track_shown),
+          func_track_reset: (function(func_org){
+            return function(){
+              func_org.call(this);
+              this.od_count = 0;
+            };
+          })(catalog_obj2_proto.func_track_reset),
           func_od_reset: function(){
             this.od_width = 1;
             show_catalog_cont();
