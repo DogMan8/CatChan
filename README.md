@@ -46,7 +46,8 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
-v2018.12.09.0: Fixed bugs and cleaned up. Support of 4channel.org is not yet.<br>
+v2018.12.09.1: Patched for 4channel.org.(Alpha)<br>
+v2018.12.09.0: Fixed bugs and cleaned up.<br>
 v2018.11.25.0: Added levels to merge function and cleaned up.<br>
 v2018.11.04.0: Added user CSS.<br>
 v2018.07.08.1: Fixed a bug.<br>
