@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.12.09.1
+// @version 2018.12.16.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1250,6 +1250,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               if (!set && parent[tgt] && parent[tgt]!==fm) fm.parentNode.replaceChild(parent[tgt],fm);
               else parent[tgt] = fm; // set also when set===false, keep tracking the DomNode.
             } else if (set) {
+              if (parent[tgt+'_old']!==undefined) parent[tgt+'_old'] = parent[tgt];
               this.apply_prep_set(parent, tgt, fm, name);
               if (!mirror && fm.type!=='radio') this.apply_prep(fm,false,false,true); // !mirror for cutting infinite loop. // radio has multiple elements.
             } else this.apply_prep_load(fm, parent, tgt);
@@ -3466,7 +3467,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2018.12.09.1<br>'+
+          'Version 2018.12.16.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4768,8 +4769,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       site.isthread = window.location.href.search(site2[nickname].thread_keyword)!=-1;
 //      for (var i in site2[nickname]) site[i] = site2[nickname][i];
 //      site.features = site2[site.nickname].features;
-      site.myself = site2[site.nickname].get_ops(document)[0];
-      site.no = (site.whereami==='thread')? site.myself : '';
+      if (site.no===undefined) site.no = (site.whereami==='thread')? site2[site.nickname].get_ops(document)[0] : '';
+//      site.myself = site2[site.nickname].get_ops(document)[0];
+//      site.no = (site.whereami==='thread')? site.myself : '';
       if (reentry) return;
       if (!site0.isStep && site2[nickname].features) pref_func.pref_overwrite(site.features,site2[nickname].features);
       for (var i in site2[site.nickname].components) site.query_set_component(i);
@@ -5520,10 +5522,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //    get_op_image_url: function(th,type){}, // get op image's url.
     get_icon : function(){}, // get sticky icon.
     add_icon : function(){}, // add sticky icon.
-//    embed_to: {
-//      'page'  : {'top' : null, 'bottom' : null},
-//      'thread': {'top' : null, 'bottom' : null}
-//    },
     time_revised_check: function(nof_ths){return false;},
 
     format_thread_layout   : function(thread){}, // formats its layout   for catalog.
@@ -8043,8 +8041,7 @@ if (pref.features.domains['8chan']) {
       if (href.search(/8chan.co|8ch.net/)!=-1) { // 8chan
         site2['8chan'].domain_url = (href.search(/8ch.net/)!=-1)? '8ch.net' : '8chan.co';
         this.home = site.protocol + '//' + this.domain_url + this.home.substr(this.home.lastIndexOf('/')); // FF doesn't work on favicon.
-        var header = document.getElementsByTagName('header')[0];
-        site.whereami = (header && header.innerHTML.indexOf('404 Not Found')!=-1)? '404'
+        site.whereami = (document.title.indexOf('404 - Page Not Found')!=-1)? '404'
                       : (href.search(/8ch\.net\/?$/)!=-1)? 'frame'
                       : (href.search(/catalog\.html/)!=-1)? 'catalog'
                       : (href.search(/res\/[0-9\+]*\.html/)!=-1)? 'thread'
@@ -8055,22 +8052,20 @@ if (pref.features.domains['8chan']) {
         site.config(site2['8chan'].domain_url,'8chan');
         site.header_height = function(){
           var header = document.getElementsByClassName('boardlist')[0];
-          if (header) return header.offsetHeight;
-          else return 0;
+          return (header)? header.offsetHeight : 0;
         }
         site.postform = document.getElementsByTagName('form')[0];
 //        site.postform_comment = document.getElementById('body');
         if (site.postform) this.postform_prep();
         site.max_page = site2['8chan'].max_page(site.board);
         site.catalog = href.search(/catalog\.html/)!=-1;
-        if (site.whereami==='thread' || site.whereami==='page') {
-          site.embed_to['top']    = document.getElementsByName('postcontrols')[0];
-          site.embed_to['bottom'] = document.getElementsByClassName('boardlist bottom')[0];
-        } else if (site.whereami==='catalog') {
-          site.embed_to['top']    = document.getElementsByClassName('thumbnail')[0].nextSibling;
-//          site.embed_to['top']    = header.nextSibling;
-          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
-        }
+        site.embed_to = (site.whereami==='thread' || site.whereami==='page')? {
+          top: function(){return document.getElementsByName('postcontrols')[0];},
+          bottom: function(){return document.getElementsByClassName('boardlist bottom')[0];}
+        } : (site.whereami==='catalog')? {
+          top: function(){return document.getElementsByClassName('thumbnail')[0].nextSibling;},
+          bottom: function(){return document.getElementsByTagName('footer')[0];}
+        } : {};
         if (site.components.boardlist) site.components.boardlist.style.zIndex = 0;
         return true;
       } else {
@@ -9937,7 +9932,7 @@ if (pref.features.domains['KC']) {
       if (!site2['KC'].force_https) site2['KC'].protocol = site.protocol;
       var href = window.location.href;
       if (href.search(/krautchan.net/)!=-1) { // Krautchan
-        site.whereami = (document.getElementsByTagName('head')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
+        site.whereami = (document.head.innerHTML.indexOf('404 Not Found')!=-1)? '404'
                       : (href.search(/krautchan\.net\/?$/)!=-1)? 'frame'
                       : (href.search(/catalog/)!=-1)? 'catalog'
                       : (href.search(/thread/)!=-1)? 'thread'
@@ -9962,13 +9957,16 @@ if (pref.features.domains['KC']) {
             site.root_body.appendChild(site.root_body2);
           };
         }
-        if (site.whereami==='thread' || site.whereami==='page') {
-          site.embed_to['top']    = document.querySelector('form[action="/delete"]');
-          site.embed_to['bottom'] = document.querySelector('form[action="/delete"]').nextSibling;
-//        } else if (site.whereami==='catalog') {
-//          site.embed_to['top']    = document.getElementsByTagName('header')[0].nextSibling;
-//          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
-        }
+        site.embed_to = (site.whereami==='thread' || site.whereami==='page')? {
+          top: function(){return document.querySelector('form[action="/delete"]');},
+          bottom: function(){return document.querySelector('form[action="/delete"]').nextSibling;}} : {};
+//        if (site.whereami==='thread' || site.whereami==='page') {
+//          site.embed_to['top']    = document.querySelector('form[action="/delete"]');
+//          site.embed_to['bottom'] = document.querySelector('form[action="/delete"]').nextSibling;
+////        } else if (site.whereami==='catalog') {
+////          site.embed_to['top']    = document.getElementsByTagName('header')[0].nextSibling;
+////          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
+//        }
         site.postform = document.getElementById('postform');
         site.postform_rules = document.getElementById('rules_row');
 ////        this.pref_default(pref); // working code.
@@ -11000,36 +10998,36 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
     })(),
     domain_url: 'boards.4chan.org',
     check_func : function(){
-      if (window.location.href.search(this.domain_url)!=-1) { // 4chan
-        site.whereami = (document.getElementsByTagName('head')[0].innerHTML.indexOf('404 Not Found')!=-1)? '404'
-                      : (window.location.href.search(/catalog/)!=-1)? 'catalog'
-                      : (window.location.href.search(/thread\/[0-9]+/)!=-1)? 'thread'
-                      : (window.location.href.search(/archive/)!=-1)? 'archive'
-                      : (window.location.href.search(/\/$|(index|[0-9]+)(\.html)*|\/#all$/)!=-1)? 'page'
-                      : 'other';
-        site.config(this.domain_url,'4chan');
-        this.postform_prep();
-        site.max_page = site2['4chan'].max_page(site.board);
-        site.header_height = function(){
-          var header = document.getElementById('header');
-          if (header) return header.offsetHeight;
-          else return 0;
-        }
-        if (site.whereami==='thread') { // || site.whereami==='page') {
-          site.embed_to['top']    = document.getElementsByClassName('navLinks')[0];
-          site.embed_to['bottom'] = document.getElementsByClassName('bottomad')[0] || document.getElementById('boardNavDesktopFoot');
+      var href = window.location.href;
+      if (href.search(this.domain_url)===-1) return false;
+      site.whereami = (document.title.indexOf('404 Not Found')!=-1)? '404'
+                    : (href.search(/catalog/)!=-1)? 'catalog'
+                    : (href.search(/thread\/[0-9]+/)!=-1)? 'thread'
+                    : (href.search(/archive/)!=-1)? 'archive'
+                    : (href.search(/\/$|(index|[0-9]+)(\.html)*|\/#all$/)!=-1)? 'page'
+                    : 'other';
+      if (site.whereami==='thread') site.no = parseInt(href.replace(/.*thread\/([0-9]+)/,'$1'),10);
+      site.config(this.domain_url,'4chan');
+      this.postform_prep();
+      site.max_page = site2['4chan'].max_page(site.board);
+      site.header_height = function(){
+        var header = document.getElementById('header');
+        return (header)? header.offsetHeight : 0;
+      }
+      site.embed_to = (site.whereami==='thread')? {
+        top:function(){return document.getElementsByClassName('navLinks')[0];},
+        bottom:function(){return document.getElementsByClassName('bottomad')[0] || document.getElementById('boardNavDesktopFoot');}
 //          site.embed_to['bottom'] = document.getElementsByClassName('bottomad')[0];
-        } else if (site.whereami==='page') {
-          site.embed_to['top']    = document.getElementById('ctrl-top');
+      } : (site.whereami==='page')? {
+        top:function(){return document.getElementById('ctrl-top');},
 //          site.embed_to['bottom'] = document.getElementsByClassName('board')[0].nextSibling; // fail
-          site.embed_to['bottom'] = document.getElementsByClassName('pagelist')[0];
-        } else if (site.whereami==='catalog') {
-          site.embed_to['top']    = document.getElementById('content').previousSibling;
-          site.embed_to['bottom'] = document.getElementsByClassName('navLinksBottom')[0].nextSibling;
-        }
-        site.postform = document.getElementsByClassName('postForm')[0];
-        return true;
-      } else return false;
+        bottom:function(){return document.getElementsByClassName('pagelist')[0];}
+      } : (site.whereami==='catalog')? {
+        top:function(){return document.getElementById('content').previousSibling;},
+        bottom:function(){return document.getElementsByClassName('navLinksBottom')[0].nextSibling;}
+      } : {};
+      site.postform = document.getElementsByClassName('postForm')[0];
+      return true;
     },
 //    catalog_background : '#ffffee',
     //    catalog_bordercolor : '#f0e0d6',
@@ -13646,27 +13644,27 @@ if (pref.features.domains['lain'] || pref.features.domains['lainjp']) {
 //      if (href.indexOf(new RegExp(this.domain_url))!=-1) {
         site.whereami = (href.indexOf('/catalog')!=-1)? 'catalog'
                       : (href.indexOf('/res/')!=-1)? 'thread'
-                      : (document.getElementsByTagName('title')[0] && document.getElementsByTagName('title')[0].textContent==='404')? '404' 
+                      : (document.title==='404')? '404' 
 //                      : (site.board==='/all/' || site.board==='/popular/')? 'other'
 //                      : (!pref.test_mode['29'] && (site.board==='/all/' || site.board==='/popular/'))? 'other'
                       : 'page';
 //                      : (href.search(/\/$|(index|[0-9]+)\.html|\/all$|\/popular$/)!=-1)? 'page'
 //                      : 'other';
+        if (site.whereami==='thread') site.no = parseInt(href.replace(/.*res\//,'').replace(/\.html/,''),10);
         site.config(this.domain_url, this.nickname);
         site.max_page = 7;
         site.header_height = function(){
           var header = document.getElementsByClassName('boardlist')[0];
-          if (header) return header.offsetHeight;
-          else return 0;
+          return (header)? header.offsetHeight : 0;
         }
-        site.myself = (site.whereami==='thread')? parseInt(href.replace(/.*res\//,'').replace(/\.html/,''),10) : 0;
-        if (site.whereami==='thread' || site.whereami==='page') {
-          site.embed_to['top']    = document.getElementsByName('postcontrols')[0];
-          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
-        } else if (site.whereami==='catalog') {
-          site.embed_to['top']    = document.getElementsByTagName('header')[0].nextSibling;
-          site.embed_to['bottom'] = document.getElementsByTagName('footer')[0];
-        }
+        site.myself = site.no || 0;
+        site.embed_to = (site.whereami==='thread' || site.whereami==='page')? {
+          top: function(){return document.getElementsByName('postcontrols')[0];},
+          bottom: function(){return document.getElementsByTagName('footer')[0];}
+        } : (site.whereami==='catalog')? {
+          top: function(){return document.getElementsByTagName('header')[0].nextSibling;},
+          bottom: function(){return document.getElementsByTagName('footer')[0];}
+        } : {};
         if (site.whereami==='thread' || site.whereami==='page') {
 //          site.postform = document.getElementsByTagName('form')['post'].getElementsByTagName('tbody')[0];
           site.postform = document.getElementsByTagName('form')['post'];
@@ -14260,7 +14258,7 @@ if (pref.test_mode['94'] && i==='dist') continue;
   }
   if (!site.embed_to['top']) site.embed_to['top'] = site.root_body && site.root_body.firstChild;
   if (!site.embed_to['bottom']) site.embed_to['bottom'] = site.root_body && site.root_body.lastChild;
-  
+
   if (pref.pref2.KC.summer_time) site2['KC'].time_offset = 2;
   pref_func.site2_json(false,true,['site2','pref_func','site3']);
 
@@ -15432,6 +15430,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         } else {
           var ref = site.embed_to[req]; // 'top' or 'bottom'
           if (ref){
+            if (typeof(site.embed_to[req])=='function') ref = site.embed_to[req] = site.embed_to[req](); // lazy evaluation
             common_func.overwrite_prop(pn.style, {left:'auto', top:'auto', position:'relative', resize:'none', right:'auto', bottom:'auto', zIndex:null});
 //            common_func.overwrite_prop(pn.style, options.maximize_embed_style_pn || {left:'auto', top:'auto', position:'static', resize:'none'});
             common_func.overwrite_prop(cns, options.maximize_embed_style_pnch1 || {width:'auto', height:'auto', resize:'none'});
@@ -16300,7 +16299,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
   })();
 
   function make_uip_tracker (){
-    var base_thread = site2[site.nickname].wrap_to_parse.get(document, site.nickname, site.board, 'thread_html', {thread:site.myself})[0];
+    var base_thread = site2[site.nickname].wrap_to_parse.get(document, site.nickname, site.board, 'thread_html', {thread:site.no})[0];
 //    site.thread = site.get_ops(document)[0];
 //    var url = site.protocol + '//a.4cdn.org' + site.board +'thread/' + site.thread + '.json';
 //    var url2= site.protocol + '//a.4cdn.org' + site.board +'catalog.json';
@@ -16560,6 +16559,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
   }
 
   function make_thread_reader(){
+    site.myself = site2[site.nickname].get_ops(document)[0]; // patch, will be changed to site.no.
 //    var base_thread = site2[site.nickname].catalog_threads_in_page(document)[0];
     var name = site.nickname+site.board+site.myself;
 //    var dbt = common_func.name2domainboardthread(name);
@@ -16877,7 +16877,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
     }
 //    var th_link = document.getElementById('thread-links');
 //    th_link.parentNode.insertBefore(buttons,th_link);
-    var pn_ref = site.embed_to['bottom'];
+    var pn_ref = (typeof(site.embed_to['bottom'])==='function')? site.embed_to['bottom']() : site.embed_to['bottom'];
     pn_ref.parentNode.insertBefore(buttons,pn_ref);
     if (window.opener && pref.thread_reader.triage) {
 //      var triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:false});
@@ -25799,7 +25799,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
         if (!init && !kwd.posts_active && val_old) format_html.posts_search_inactivated();
         kwd.timestamp = filter_kwd_count++; // not saved because pref.default() don't geenrate this. // use single entity for multi catalog or switching pref.*.filter object.
 if (!pref.test_mode['59']) {
-        if (e && e.target.name==='catalog.filter.kwd.str' && kwd.match===0 && (!kwd.re || /^[\w\s]*$/.test(kwd.str))) {
+        if (e && e.target.name==='catalog.filter.kwd.str' && kwd.match===0 && (!kwd.re || /^[\w\s]*$/.test(kwd.str+kwd.str_old))) {
           for (var i in kwd.fail_list) {
             if (kwd.str.indexOf(kwd.fail_list[i])!==0) delete kwd.fail_list[i];
             else if (kwd.fail_list[i]===kwd.str) kwd.timestamp = i;
