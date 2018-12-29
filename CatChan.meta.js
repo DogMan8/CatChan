@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name CatChan
-// @version 2018.07.08.1
+// @version 2018.12.16.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
+// @include http*://boards.4channel.org/*
 // @include http*://i.4cdn.org/*
 // @include http*://8chan.co/*
 // @include http*://8ch.net/*
@@ -16,3 +17,4 @@
 // @grant unsafeWindow
 // @grant GM_xmlhttpRequest
 // ==/UserScript==
+
