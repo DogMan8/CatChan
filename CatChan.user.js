@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2019.02.10.0
+// @version 2019.03.10.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -155,6 +155,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     Object_modifyDescriptor: function(obj,prop,desc){
       desc.__proto__ = Object.getOwnPropertyDescriptor(obj,prop);
       Object.defineProperty(obj,prop,desc);
+    },
+    Object_defProps: function(dst,src){
+      for (var i in src) dst[i] = src[i];
     },
   };
 
@@ -313,8 +316,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                thumb: {resize: false},
       },
       footer: {use:true, nrtm:true, nr:true, rp:true, im:true, domain:false, board:true, no:false, flag:false, tag:true, page:true, design:'native',
-               custom_str: '(ar )(nm/)(nr/)(lp/)(rp)(+dp)(/im)(/pg) (ni/nf) (ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
-               ctime:false, btime:false, ptime:false, rctime:false, rbtime:false, rptime:false, br:true, prate:false, archived:true, nd:false, nl:false, nf:false, nid:false},
+               custom_str: '(ar )(nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf) (ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+               ctime:false, btime:false, ptime:false, rctime:false, rbtime:false, rptime:false, br:true, prate:false, archived:true, nd:false, nl:false, nf:false, nid:false, ns:false},
+      footer_br: true,
       draw_on_demand: true,
       load_on_demand: false,
       t2h_sel: 'page',
@@ -357,6 +361,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       posts_search_op: 'opaque',
       posts_search_op_opacity: 40,
       deleted_posts: {detect:'acc', store:'LS', merge:true, auto_clean:true},
+      detect_sage: false,
+      page_his: false,
 //      auto_config_posts_search: true,
       promiscuous: false,
       imagesearch: {
@@ -371,7 +377,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 
       env: {
         disp_offset:0,
-        disp_filler:null,
+        disp_filler:'',
         popup_native:true,
         expand_thumbnail_inline_native:true,
         image_hover_native:false,
@@ -562,6 +568,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          tag_scansite : true,
           tag_search: {str:'', re:false, show_nof_boards:false,   get ci(){return pref.liveTag.ci;}, sentence:false, rexps:null},
           tag2bList: {label:'', by:'tag'},
+          auto_list: {use:false, str:'', obj7:null, kill:false, watch:true, sticky:false, style:false, style_str:''},
         },
         bookmark_list_rm404 : true,
         auto_load_filter : false,
@@ -586,7 +593,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         embed_frame : true,
         embed_archive: false,
 //        order : {reply_to_me: true, reply: true, watch: 'dont_care', sticky:'dont_care', find_sage_in_8chan: false},
-        order : {reply_to_me: true, reply: true, watch: 'dont_care', sticky:'dont_care'},
+        order : {reply_to_me: true, reply: true, watch: 'dont_care', sticky:'first'},
 //        health_indicator: {on: true, max:10},
         auto_watch: true,
         unmark_on_hover: true,
@@ -600,6 +607,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         t2h_sel: 'no',
         click: 'open',
         env:Object.create(proto.env),
+        footer: {__proto__:proto.footer}, // this is required for save, or refers proto directly and deletes them all.
         __proto__: proto},
       filter: {disable_list_when_kwd_active:true},
       page: {
@@ -609,7 +617,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         format: {show:{style:false, contents:false, layout:false, posts:true, fileinfo:true, images_2nd:true},
                  __proto__:proto.format},
         image_hover:true,
-        footer: {br:false, __proto__:proto.footer},
+        get footer(){return pref.catalog.footer;},
+        footer_br: false,
         load_on_demand: true,
         env:Object.create(proto.env),
         __proto__: proto},
@@ -618,13 +627,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         format: {show:{style:false, contents:false, layout:false, posts:true, fileinfo:true, images_2nd:true},
                  __proto__:proto.format},
         image_hover:true,
-        footer: {br:false, __proto__:proto.footer},
+        get footer(){return pref.catalog.footer;},
+        footer_br: false,
         env:{auto_update_native:true, __proto__:proto.env},
         t2h_num_of_posts : -1,
         auto_update: false,
         __proto__: proto},
       float: {
         click: 'open',
+        get footer(){return pref.catalog.footer;},
         format: {thumb: {resize: true},
                  __proto__:proto.format},
         save_board_list_sel: true,
@@ -639,7 +650,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                     auto_open:false, auto_open_th:300, auto_open_kwd:'',
                     deletion: {show:true, link:true, name:true, name_str:'color:red', addName:true, addName_str:'DELETED_', post:false, post_str:'opacity:0.4'},
                     sage: {detect:true, name:true, name_str:'color:blue', addName:false, addName_str:'SAGE_', post:false, post_str:'opacity:0.4', tolerance:1,
-                           patch_bug:false, patch_bug2:false, patch_bug2nth:8, patch_bug3:true}},
+                           patch_bug:false, patch_bug2:false, patch_bug2nth:8, patch_bug3:true, annotate:true, page:false, patch_bug4:true, patch_bug5:true, annotate_page:false}},
       thread_reader: {use: true, sync: true, triage: true, triage_close: true, check_num_of_children: true,
         own_posts_tracker: false, show_own_post_by: 'anchor', show_reply_to_me_by: 'anchor', clean_up_own_posts: true},
       settings: {indexing: 0},
@@ -660,8 +671,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        style_urtm_obj4:{},                           style_ur_obj4:{},                                style_in_obj4:{},
         pickup_interval: 10, rm_404:'imm', disp_delay:{fg:500, bg:5000}, click_func: 'in', click_func_bl: 'pkin',
         watch_all: true, lazy_each:150, lazy_delay:100,
-        ex_list: true, ex_list_str:'8chan:#selection\n', ex_list_obj5:[],
-        rm_list: true, rm_list_str:'http*\n', rm_list_obj5:[]},
+        ex_list: true, ex_list_str:'8chan:#selection\n', ex_list_obj5:null,
+        rm_list: true, rm_list_str:'http*\n', rm_list_obj5:null},
       virtualBoard: {
         show: true, max:20, scan: false, scanDelay: 5, p_board: 'replace', p_remove: false, v_remove:true,
         scan_domains: site0.domains_obj('none'),
@@ -768,7 +779,12 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     if (site0.pref_default2) pref_func.pref_overwrite(pref_new,site0.pref_default2);
     if (site0.pref_default ) pref_func.pref_overwrite(pref_new,site0.pref_default);
 //    if (site) if (site2[site.nickname].pref_default) pref_func.pref_overwrite(pref_new,site2[site.nickname].pref_default);
-    if (for_save) pref_func.delete_null(pref_new);
+    if (for_save) {
+      pref_func.delete_null(pref_new);
+      Object.defineProperty(pref_new.page,  'footer',{get:function(){return pref_new.catalog.footer;}, enumerable:true, configurable:true}); // patch for refer to each object.
+      Object.defineProperty(pref_new.thread,'footer',{get:function(){return pref_new.catalog.footer;}, enumerable:true, configurable:true});
+      Object.defineProperty(pref_new.float, 'footer',{get:function(){return pref_new.catalog.footer;}, enumerable:true, configurable:true});
+    }
     common_func.Object_modifyDescriptor(pref_new.style.userCSS,'sample',{writable:false});
     return pref_new;
   }
@@ -782,7 +798,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       },
       pref_overwrite: function(dst,src,strict){
         for (var i in src)
-          if (dst[i]!==undefined) {
+          if (dst[i]!==undefined && (dst[i]!==null || pref && pref.test_mode['117'])) {
             if (strict && typeof(src[i])!==typeof(dst[i])) continue;
             if (typeof(src[i])==='object' && !Array.isArray(src[i])) pref_func.pref_overwrite(dst[i],src[i],strict);
 //            else dst[i] = src[i];
@@ -1268,11 +1284,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             if (set) parent[tgt] = fm.value;
             else fm.value = parent[tgt];
             if (set || make_obj) {
-              if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj')]) pref_func.str2obj(tgt);
-              if (tgt.search(/str$/)!=-1 && parent[tgt.replace(/str$/,'obj2')]) pref_func.str2obj2(parent,tgt.replace(/str$/,'obj2'),fm.value);
-//              if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj4']) pref_func.str2obj4(parent,tgt.substr(0,tgt.length-3)+'obj4',fm.value);
-              if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj5']) pref_func.str2obj5(parent,tgt.substr(0,tgt.length-3)+'obj5',fm.value);
-              if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj6']===null) pref_func.str2obj6(parent,tgt,fm.value,name);
+              if (tgt.slice(-3)==='str') {
+                var stgt = tgt.slice(0,-3);
+                if (parent[stgt+'obj']) pref_func.str2obj(tgt);
+                else if (parent[stgt+'obj2']) pref_func.str2obj2(parent,stgt+'obj2',fm.value);
+//                if (tgt.substr(-3,3)==='str' && parent[tgt.substr(0,tgt.length-3)+'obj4']) pref_func.str2obj4(parent,tgt.substr(0,tgt.length-3)+'obj4',fm.value);
+                else if (parent[stgt+'obj5']!==undefined) pref_func.str2obj5(parent,stgt+'obj5',fm.value, tgt==='rm_list_str');
+                else if (parent[stgt+'obj6']===null) pref_func.str2obj6(parent,tgt,fm.value,name); // obj6===null always, obj6 is located in pref3, 
+                else if (parent[stgt+'obj7']!==undefined) pref_func.str2obj7.s2o(parent,stgt+'obj7',fm.value);
+              }
             }
           } else if (tagName==='SELECT') {
             if (set) this.apply_prep_set(parent, tgt, fm, name); // if (parent[tgt]!==undefined) parent[tgt] = fm.selectedIndex;,
@@ -1304,7 +1324,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             if (fm.onchange) fm.onchange.call(fm, {currentTarget:fm, target:fm}, true);
           }
         }
-        if (sessionStorage && (set||make_obj)) sessionStorage[pref.script_prefix+'.pref'] = JSON.stringify(pref);
+        if (pref.test_mode['117']) {if (sessionStorage && set) sessionStorage[pref.script_prefix+'.pref']=JSON.stringify(pref_func.site2_json_ex_remove());}
+        else {if (sessionStorage && (set||make_obj)) sessionStorage[pref.script_prefix+'.pref'] = JSON.stringify(pref);}
       },
       apply_prep_set: function(parent, tgt, fm, name){ // don't set if parent[tgt]===undefined, ex.time_quick_sel
         var type = typeof(parent[tgt]);
@@ -1634,27 +1655,122 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        }
 //        return JSON.parse('{' + fields.join(',') + '}');
 //      },
-      str2obj5: function(parent,key,str){
+      str2obj5: function(parent,key,str_in, flag_g){
         parent[key] = {};
         tgt = parent[key];
-        var fields = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').split(',');
+        var fields = str_in.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').split(',');
         for (var i=0;i<fields.length;i++) {
-          if (fields[i]=='') continue;
-          var idx = fields[i].indexOf(':'); // tags never contains ':'
-          var name = (idx!=-1)? fields[i].substr(0,idx) : 'DEFAULT';
+          var fd = fields[i].replace(/\s*:\s*/,':').replace(/\s+$/,'');
+          if (fd=='') continue;
+          var idx = fd.indexOf(':'); // tags never contains ':'
+          var name = (idx!=-1)? fd.substr(0,idx) : 'DEFAULT';
+          var idx2;
+          var rx = fd[idx+1]==='/' && (idx2 = fd.lastIndexOf('/'), idx2>idx+2);
+          var str = (rx)? fd.slice(idx+2,idx2) : fd.slice(idx+1);
+          var flags = (flag_g? 'g':'') + (rx? fd.slice(idx2+1).replace(/g/,'') : '');
           if (tgt[name]===undefined) tgt[name] = [];
-          tgt[name][tgt[name].length] = (fields[i][idx+1]==='/')? new RegExp(fields[i].substr(idx+2,fields[i].lastIndexOf('/')-idx-2),fields[i].substr(fields[i].lastIndexOf('/')+1)) :
-                                        (key==='ex_list_obj5')? new RegExp(fields[i].substr(idx+1).replace(/\*/g,'.*')) :
-                                                                new RegExp(fields[i].substr(idx+1).replace(/\*/g,'\\S*(\\s|$)'),'g');
+          try {
+            tgt[name][tgt[name].length] = new RegExp((rx)? str : this.str2rstr(str, flag_g), flags);
+          } catch(e) {
+            console.log('ERROR at str2obj5 in string of: '+fields[i]);
+          }
+//          tgt[name][tgt[name].length] = (fields[i][idx+1]==='/')? new RegExp(fields[i].substr(idx+2,fields[i].lastIndexOf('/')-idx-2),fields[i].substr(fields[i].lastIndexOf('/')+1)) :
+//                                        (key==='ex_list_obj5')? new RegExp(fields[i].substr(idx+1).replace(/\*/g,'.*')) :
+//                                                                new RegExp(fields[i].substr(idx+1).replace(/\*/g,'\\S*(\\s|$)'),'g');
 //          tgt[name][tgt[name].length] = new RegExp('#'+(fields[i][idx]==='/')? fields[i].substr(idx+1) :
 //                                                                               fields[i].substr(idx+1).replace(/\*/,'.*'));
         }
       },
+      str2rstr: function(str,flag_g){
+        return str.replace(/[\.\(\)\[\]\+\^\$\{\}]/g,'\\$&').replace(/\*/g,flag_g?'\\S*(\\s|\\n|$)':'.*').replace(/\?/g,'.');
+      },
+//      str2obj8: (function(){ // not tested
+//        var idx;
+//        var proto = {re:false, ci:false, match:0, sentence:false, op:true, post:false,
+//                     sub:true, name:true, trip:false, com:true, file:false, meta:false, flag:false, id:false,    rexps:null};
+//        return {
+//          str2obj: function(parent,key,str_pref){
+//            parent[key] = {};
+//            tgt = parent[key];
+//            var fields = str_pref.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').split(',');
+//            var flag_g = key==='rm_list_obj5';
+//            var json = key==='auto_list_obj5';
+//            for (var i=0;i<fields.length;i++) {
+//              var fd = fields[i].replace(/\s*:\s*/,':').replace(/\s+$/,'');
+//              if (fd=='') continue;
+//              var idx = fd.indexOf(':'); // tags never contains ':'
+//              try {
+//                var val = json? func_json(fd) : func_str(fd, flag_g); // must be preceded, this may change idx
+//              } catch(e) {
+//                console.log('ERROR at str2obj5 in string of: '+fd);
+//              }
+//              var name = (idx!=-1)? fd.substr(0,idx) : 'DEFAULT';
+//              if (tgt[name]===undefined) tgt[name] = [];
+//              tgt[name][tgt[name].length] = val;
+//            }
+//          },
+//          obj2str: function(obj){
+//            var tgt = common_func.deep_copy(obj);
+//            pref_func.obj_elim_the_same(tgt,proto);
+//            return JSON.stringify(tgt);
+//          }
+//        };
+//        function func_str(fd, flag_g){
+//          var idx2;
+//          var rx = fd[idx+1]==='/' && (idx2 = fd.lastIndexOf('/'), idx2>idx+2);
+//          var str = (rx)? fd.slice(idx+2,idx2) : fd.slice(idx+1);
+//          var flags = (flag_g? 'g':'') + (rx? fd.slice(idx2+1).replace(/g/g,'') : '');
+//          return new RegExp((rx)? str : this.str2rstr(str, flag_g), flags);
+//        }
+//        function func_json(fd){
+//          var idx2 = fd.indexOf('{');
+//          if (idx2<idx) idx = -1;
+//          var obj = JSON.parse(fd.slice(idx+1));
+//          obj.__proto__ = proto;
+//          obj.rexps = common_func.kwd_prep_regexp(obj);
+//          return obj;
+//        }
+//      })(),
+      str2obj7: (function(){
+        var proto = {use:true, str:'', re:false, ci:true, match:0, sentence:false, op:true, post:false,
+                     sub:true, name:true, trip:false, com:true, file:false, meta:false, flag:false, id:false, cmds:''};
+        return {
+          s2o: function(parent,key,str_in){
+            parent[key] = {};
+            tgt = parent[key];
+            var fields = str_in.replace(/\s*\/\/.*/mg,'').split(/\s*\n\s*/);
+            for (var i=0;i<fields.length;i++) {
+              var fd = fields[i].trim().replace(/\s*:\s*/,':');
+              if (fd=='') continue;
+              var idx = fd.indexOf(':');
+              var idx2 = fd.indexOf('{');
+              if (idx2<idx) idx = idx2-1;
+              var name = (idx!=-1)? fd.substr(0,idx) : 'DEFAULT';
+              if (tgt[name]===undefined) tgt[name] = [];
+              try {
+                var obj = JSON.parse(fd.slice(idx2));
+                obj.__proto__ = proto;
+                obj.rexps = common_func.kwd_prep_regexp(obj);
+                tgt[name][tgt[name].length] = obj;
+              } catch(e) {
+                console.log('ERROR at str2obj7 in string of: '+fields[i]);
+              }
+            }
+          },
+          o2s: function(obj){
+            var tgt = {};
+            for (var i in proto) if (proto[i]!=obj[i]) tgt[i] = obj[i];
+            delete tgt['use'];
+            if (obj.sentence && obj.str.indexOf(' ')===-1) delete tgt['sentence'];
+            return JSON.stringify(tgt);
+          },
+        };
+      })(),
       merge_obj5: function(name,obj,val){
         return this.merge_obj5_all(name,obj,val,this.merge_obj5_1);
       },
-      merge_obj5a: function(name,obj,val){
-        return this.merge_obj5_all(name,obj,val,this.merge_obj5_1a);
+      merge_obj5a: function(th,obj,val){
+        return this.merge_obj5_all(th.key,obj,val,this.merge_obj5_1a);
       },
       merge_obj5a_sc: function(name,obj,val){ // short cut logic.
         if (!obj) return val;
@@ -1696,7 +1812,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         return val;
       },
       merge_obj5_1a: function(val,obj,key){
-        return (obj[key])? obj[key].concat(val || []) : val;
+        var tgt = obj[key];
+        return tgt? (val? tgt.concat(val) : tgt) : val;
       },
       str2obj6: function(parent,key,val,name){
         var obj_hier  = pref_func.get_tgt(name, pref3);
@@ -1720,19 +1837,24 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         pref_func.settings.onchange_funcs.archive['kwd.*'](); // archiver.event_funcs['kwd.*'](); can't use this because it doesn't exist at this time.
         this.obj_init_hier(pref3, pref);
       },
-      obj_elim_the_same: function(dst,src, no_copy,not_root){
-        var flag = true;
+      obj_elim_the_same: function(dst,src, not_root, no_copy){
+        return this.obj_elim_the_same_1(new Set(), dst,src, not_root, no_copy);
+      },
+      obj_elim_the_same_1: function(done_list, dst,src, not_root, no_copy){
+        var flag = false;
         for (var i in dst) {
           if (typeof(dst[i])==='object' && src[i] && typeof(src[i])==='object') { // eliminates objects made by program automatically because original object are vacant.
-            if (pref_func.obj_elim_the_same(dst[i],src[i], no_copy,true)) delete dst[i];
+            if (!dst.hasOwnProperty(i)) continue;
+            if (done_list.has(dst[i])) continue; else done_list.add(dst[i]); // blocks getters
+            if (!pref_func.obj_elim_the_same_1(done_list, dst[i],src[i], true, no_copy)) {delete dst[i]; done_list.add(src[i]);}
             else {
-              flag = false;
+              flag = true;
               if (!no_copy) if (Array.isArray(dst[i]) || Array.isArray(src[i])) dst[i] = src[i];
             }
           } else {
             if (dst[i]===src[i]) delete dst[i];
             else {
-              flag = false;
+              flag = true;
               if (!no_copy) dst[i]=src[i];
             }
           }
@@ -1748,15 +1870,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        delete pref_test.liveTag.style_urtm_obj4;
 //        delete pref_test.liveTag.style_ur_obj4;
 //        delete pref_test.liveTag.style_in_obj4;
-        delete pref_test.liveTag.ex_list_obj5;
-        delete pref_test.liveTag.rm_list_obj5;
-        if (pref_test.settings) delete pref_test.settings;
+//        delete pref_test.liveTag.ex_list_obj5;
+//        delete pref_test.liveTag.rm_list_obj5;
+//        if (pref_test.settings) delete pref_test.settings;
 //        if (pref_test.graph) delete pref_test.graph;
-        pref_func.obj_elim_the_same(pref_test,pref);
-        pref_func.obj_elim_the_same(pref_test.catalog, pref_test.proto, true);
-        pref_func.obj_elim_the_same(pref_test.page,    pref_test.proto, true);
-        pref_func.obj_elim_the_same(pref_test.thread,  pref_test.proto, true);
-        pref_func.obj_elim_the_same(pref_test.float,   pref_test.proto, true);
+        pref_func.obj_elim_the_same(pref_test,pref); // proto might be removed
+        var proto = pref_default().proto;
+        ['catalog','page','thread','float'].forEach(function(v){ // 'v => {' can use 'this' instead of 'pref_func'.
+          if (!pref_func.obj_elim_the_same(pref_test[v], proto, true, true)) delete pref_test[v];});
         return pref_test;
       },
       site2_json_ex: function(full, filter){
@@ -2018,8 +2139,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'liveTag.rm_list_str': function(){return this.TagExLists();},
           'liveTag.ex_list_str': function(){return this.TagExLists();},
           'TagExLists': function(){return 'String, ...  or\n/RegularExpression/, ... or \nIdentifier:String, ... or \nIdentifier:/RegularExpression/, ...\n'+
-            '\nRegularExpression must be embraced by shashes.\n'+
-            'String list is applied BEFORE extraction, so it costs more than tag list which is applied AFTER extraction. Regular expression in string list accepts flags, so don\'t forgot to add \'g\' flag for usual work, like /some_regexp/g, or it removes the first match only. You can remove both cases using \'i\' flag.\n'+this.GeneralRules;},
+            '\nRegularExpression must be embraced by shashes, and accepts i flag(case insensitive).\n'+
+            'Identifier must be followed by :(colon). First colon is interpreted as a delimiter always. Put a colon at the head of line when you want to use colons in search strings for global search(without any identifiers)\n'+this.GeneralRules;},
           'catalog_board_list_str': function(){return 'How to write \'Board groups\'.\n'+
             '\nName,Identifier, ...\n\n'+
             'First column is a name of board group. The name is shown on the top right corner of catalog and become a key when you store its filter setting to local Storage.\n'+
@@ -2042,8 +2163,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             '/board/\n'+
             'domain\n'+
             '\n'+
-            '\'Board identifier\' must be expressed in a couple of slashes, like /int/. \'Thread identifier\' must be numeric. If the identifier is a word, it\'ll be treated as a \'Thread identifier\' if it is numeric, or it\'ll be a \'Domain identifier\'. '+
-            'Domain identifiers must be one of meguca, lain, 4chan, 8chan or KC',
+            '\'Board identifier\' must be expressed in a couple of slashes, like /int/. \'Thread identifier\' must be numeric. When the identifier is a word, it\'ll be \'Thread identifier\' if it is numeric, otherwise it\'ll be a \'Domain identifier\'. '+
+            'Domain identifiers must be one of meguca, lain, 4chan, 8chan or KC.',
           'catalog.style_general_list_str' : function(){return 'Identifier^Style_string\n'+
             'Style_string is a string and set to its object.style.XXXX. Therefore you can use all of styles in CSS, which ranges from \'background\' or \'border\' to \'fontSize\', \'width\' or \'height\'\n'+ this.GeneralRules;},
 //            'About Identifier, see \'board group\'.',
@@ -2434,7 +2555,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '<select name="settings.indexing">'+
                 '<option>' + pref_func.settings.options.join('</option><option>') + '</option>'+
               '</select>');
-            pn13_0_2.getElementsByTagName('select')['settings.indexing'].selectedIndex = pref.settings.indexing;
+            pn13_0_2.getElementsByTagName('select')['settings.indexing'].selectedIndex = pref.settings.indexing<pref_func.settings.options.length? pref.settings.indexing : 0;
             pref_func.settings.pn13 = pn13; // for onchange func.
             pref_func.mirror_targets.pn13_1 = pn13.childNodes[1]; // for mirror.
             pref_func.settings.onchange_funcs['settings.indexing']();
@@ -2883,6 +3004,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               html_funcs.posts_for_search('catalog')+
               html_funcs.op_in_search_result('catalog')+
               html_funcs.deleted_posts_detection('catalog')+'<br>'+
+              '2,<IC"catalog.detect_sage">Detect saged posts in 4chan<br>'+
+              '3,<IC"catalog.page_his">Store page history in 4chan<br>'+
               '2,<IC"catalog.save_board_list_sel">Save board group index<br>'+
               '2,<IC"catalog.promiscuous">Show all fetched threads<br>'+
               '1,<IC"catalog.embed_archive">Generate catalog in archive<br>'+
@@ -3036,7 +3159,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '&emsp;<input type="checkbox" name="catalog.refresh.at_switch"> Clear and refresh when boards are switched<br>'+
               '&emsp;<input type="checkbox" name="common.clear_at_manual_scan"> Clear all threads at manual scan<br>'+
               '1,'+ html_funcs.rollup_radio('liveTag.rm_404',' :Remove 404 threads', 2, '',
-                ['imm:Immediately','watched:Keep watched thread','unread:Keep watched thread with unread posts', 'no:No, keep all threads remain']) +'<br>'+
+                ['imm:Immediately','watched:Keep watched threads','unread:Keep watched threads if they have unread posts', 'no:No, keep all threads remain']) +'<br>'+
               '&emsp;<input type="checkbox" name="catalog.bookmark_list_rm404"> Remove 404 threads from bookmark<br>'+
               '&emsp;<input type="checkbox" name="pref2.8chan.utilize_boards_json"> Utilize boards.json in 8chan<br>'+
               '1,<ICBX"pref2.meguca.utilize_boards_json"> Utilize boardTimestamps in meguca<br>'+
@@ -3085,9 +3208,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '2,<ICBX"liveTag.lock_board_tags"> Lock & sticky<br>'+
           '1,<ICBX"liveTag.lock_tags_in_op"> Lock & sticky tags in OP<br>'+
           '1,<ICBX"liveTag.ex_list"> Use exclusive list<br>'+
-          '2,String list to remove before extracting tags<br>'+
+          '2,String list to remove before extraction (costs much)<br>'+
           '3,<textarea rows="1" cols="40" name="liveTag.rm_list_str"></textarea><br>'+
-          '2,Tag list to remove after extracting tags<br>'+
+          '2,Tag list to remove after extraction (costs less)<br>'+
           '3,<textarea rows="1" cols="40" name="liveTag.ex_list_str"></textarea><br>'+
           '1,Click function: tags in <br>'+
           '2,boardlist / threads<br>'+
@@ -3188,13 +3311,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           function(html_funcs){
             return 'Footer:<br>'+
               '1,<ICBX"catalog.footer.use"> Show information footer'+html_funcs.rollup(
-                '3,<ICBX"catalog.footer.br"> Always over/under the image') +'<br>'+
+                '3,<ICBX"catalog.footer_br"> Always over/under the image') +'<br>'+
               '2,<ICBX"catalog.footer.nr"> Show num of new replies (nr)<br>'+
               '3,<ICBX"catalog.footer.nrtm"> Show num of new replies to me (nm)<br>'+
               '2,<ICBX"catalog.footer.rp"> Show num of replies (rp)<br>'+
               '2,<ICBX"catalog.footer.im"> Show num of images (im)<br>'+
               '2,<ICBX"catalog.footer.nl"> Show num of stored live posts (lp)<br>'+
               '2,<ICBX"catalog.footer.nd"> Show num of deleted posts (dp)<br>'+
+              '2,<ICBX"catalog.footer.ns"> Show num of saged posts (sp)<br>'+
               '2,<ICBX"catalog.footer.page"> Show page No. (pg)<br>'+
               '2,<ICBX"threadStats.use"> Take statistics of each thread'+html_funcs.rollup(
                 '4,<ICBX"threadStats.full"> Issue additional fetchs if required') + '<br>'+
@@ -3366,8 +3490,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '3,<ICBX"uip_tracker.sage.post"> Add style to post: <ITBL30"uip_tracker.sage.post_str"><br>'+
           '3,Bug patch for corrupted data<br>'+
           '4,<ICBX"uip_tracker.sage.patch_bug3"> Ignore corrupted data at head by history<br>'+
+          '4,<IC"uip_tracker.sage.patch_bug4">Recover by page history<br>'+
+          '4,<IC"uip_tracker.sage.patch_bug5">Cease detection at encountering obsolete data<br>'+
           '4,<ICBX"uip_tracker.sage.patch_bug2"> Loose detection, to <ITB2"uip_tracker.sage.patch_bug2nth">th thread<br>'+
-          '4,<ICBX"uip_tracker.sage.patch_bug"> Re-evaluate and recover<br>',
+          '4,<ICBX"uip_tracker.sage.patch_bug"> Re-evaluate and recover<br>'+
+          '3,<IC"uip_tracker.sage.page">Annotate page history<br>'+
+          '3,<IC"uip_tracker.sage.annotate">Annotate sage from catalog<br>'+
+          '4,<IC"uip_tracker.sage.annotate_page">Annotate page history from catalog<br>',
           'Command interface for overwriting preference<br>'+
           '&emsp;<textarea style="height:1em" cols="40" name="overwrite_site2_json_str"></textarea><br>'+
           '&emsp;<button name="JSON_ex">extract</button>'+
@@ -3479,7 +3608,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2019.02.10.0<br>'+
+          'Version 2019.03.10.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4686,7 +4815,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       for (var i=kwds.length-1;i>=0;i--) {
         if (kwds[i]==='') kwds.splice(i,1);
         else {
-          if (!kwd.re) kwds[i] = kwds[i].replace(/[\.\(\)\[\]\+\^\$\{\}]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.');
+          if (!kwd.re) kwds[i] = kwds[i].replace(/[\.\(\)\[\]\+\^\$\{\}]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.'); // should be consolidated with str2rstr
           try {
             kwds[i] = new RegExp(kwds[i],(kwd.ci)? 'i' : '');
           } catch(e) {
@@ -4838,6 +4967,27 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var tack = document.createElement('i');
       tack.setAttribute('class','fa fa-thumb-tack');
       return tack;
+    },
+    make_showAlways: function(){
+      var icon = document.createElement('i');
+      icon.setAttribute('class','fa');
+      icon.textContent = '\u2605';
+      return icon;
+    },
+    set_icon : function(pn,type,kind,tgt_th16, set){
+      if (pn) {
+        var icon = tgt_th16['icon_'+kind] || kind=='sticky' && this.get_icon(pn,type,kind,tgt_th16);
+        if (set && icon) { // for initial
+          if (tgt_th16.systemSticky) icon.style.opacity = null;
+          return icon;
+        }
+        if (!icon) return this.add_icon(pn,type,kind,tgt_th16);
+        else {
+          if (kind=='sticky' && tgt_th16.systemSticky) icon.style.opacity = '0.4';
+          else icon.parentNode.removeChild(icon);
+        }
+      }
+      return null;
     },
     postform:(function(){
       function onoff(ref){
@@ -5353,8 +5503,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
       function prep_check_t1(th){
         if (pref.liveTag.ex_list) {
-          tag_ex_list = pref_func.merge_obj5a(th.key,pref.liveTag.ex_list_obj5,null);
-          str_rm_list = pref_func.merge_obj5a(th.key,pref.liveTag.rm_list_obj5,null);
+          tag_ex_list = pref_func.merge_obj5a(th,pref.liveTag.ex_list_obj5,null);
+          str_rm_list = pref_func.merge_obj5a(th,pref.liveTag.rm_list_obj5,null);
         } else {
           tag_ex_list = null;
           str_rm_list = null;
@@ -5635,12 +5785,26 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     uip_post_num : function(post){return null;}, // returns num in posts.
     uip_check: function(callback){}, // hook for uip_tracker.
     catalog_native_prep: function(depend_on_site){return [];}, // prepare for native catalog.
+    catalog_native_prep_sel: function(pn_filter, pn_tb, selector_native){
+      if (selector_native) {
+        if (selector_native.selectedIndex!=0) {
+          selector_native.selectedIndex = 0;
+          var evt = document.createEvent('UIEvents');
+          evt.initUIEvent('change', false, true, window, 1);
+          selector_native.dispatchEvent(evt);
+        }
+        selector_native.style.display = 'none';
+      }
+      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
+      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
+      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
+    },
     catalog_native_prep_swap_sortSel: function(sortSel){
       sortSel.parentNode.insertBefore(cataLog.components.catalog.indexing, sortSel.nextSibling);
       sortSel.setAttribute('style', 'display:none');
     },
     catalog_frame_prep: function(pn12){}, // prepare for frame mode.
-    catalog_native_frame_prep: function(pn12,pn12_button){ // prepare for frame mode in native catalog.
+    catalog_native_frame_prep: function(pn12_button){ // prepare for frame mode in native catalog.
       var mode = false;
       var ifrm;
       var pn_catalog;
@@ -6011,7 +6175,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           if (thqp===undefined || Array.isArray(thqp)) { // 'thqp===undefined' for multilevel popups.
             site2[th.domain].popups_post_fetch(th, dbt);
   //          cataLog.scan_init('popup',[th.domain+dbt[1]+((pref.catalog.catalog_json)? 't':'')+dbt[2]], {priority:8});
-            pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...'}, dbt[1]);
+            pn = site2[th.domain_html].post_json2html({time: 0, com:'Loading...', domain:domain, board:dbt[1], no:dbt[2]}, dbt[1]); // board and no is not used now, just a insurance.
             var key = dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3];
             pop_load_req(e, key, pn);
   //          site2['DEFAULT'].popup_info = {node:et, clientX:e.clientX, clientY:e.clientY, key:dbt[0]+dbt[1]+dbt[2]+'#'+dbt[3], func_out:site2['DEFAULT'].popups_posts.pop_down.bind(null,pn)}; //out};
@@ -6393,7 +6557,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         var blks = thq[no].backlinks;
         if (blks.indexOf(key)==-1) {
           blks[blks.length] = key;
-          if (thq[no].pn) if (pref[cataLog.embed_mode].backlink) site2[th.domain_html].add_backlinks(thq[no].pn, blks, blks.length-1, th);
+          if (thq[no].pn) if (pref[cataLog.embed_mode].backlink && !pref[cataLog.embed_mode].env.backlink_native) site2[th.domain_html].add_backlinks(thq[no].pn, blks, blks.length-1, th);
         }
       }
     },
@@ -7770,7 +7934,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       return (pn.lastChild.tagName==='BLOCKQUOTE')? pn.lastChild : pn.getElementsByTagName('blockquote')[0];
     },
     post_an2pn: function(pn){
-      while (pn && !pn.classList.contains('post')) pn = pn.parentNode;
+      while (pn && pn.classList && !pn.classList.contains('post')) pn = pn.parentNode; // because document.parentNode.parentNode.classList===undefined
       return pn;
     },
 //    post_pn2ce: function(pn){return pn;},
@@ -8773,25 +8937,30 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
       return doc.getElementsByClassName('post')[num].offsetTop;
     },
     get_icon : function(pn,type,kind,tgt_th16){
-      return (type==='catalog')? this.add_icon(pn,type,kind,tgt_th16) :
-             (kind==='sticky')? pn.getElementsByClassName('fa-thumb-tack')[0] :
-             null;
+//      return (type==='catalog')? this.add_icon(pn,type,kind,tgt_th16) :
+      return (kind==='sticky')? pn.getElementsByClassName('fa-thumb-tack')[0] : null;
     },
     add_icon : function(pn,type,kind,tgt_th16){
-      if (pn) {
-        var del_tgt = tgt_th16['icon_'+kind];
-        if (!del_tgt) {
-          var count = 0;
-          if (tgt_th16['icon_sticky']) count++;
-          if (tgt_th16['icon_show_always']) count++;
-          var icon = document.createElement('i');
-          icon.setAttribute('class',(kind==='sticky')? 'fa fa-thumb-tack' : 'fa');
-          if (kind==='show_always') icon.textContent = '\u2605';
+//      if (pn) {
+//        var del_tgt = tgt_th16['icon_'+kind];
+//        if (!del_tgt) {
+//          var count = 0;
+//          if (tgt_th16['icon_sticky']) count++;
+//          if (tgt_th16['icon_show_always']) count++;
+          var icon = (kind==='sticky')? this.make_tack() : this.make_showAlways();
           var ref;
           if (type==='catalog') {
-            icon.setAttribute('style','position:absolute;left:' + (16*count) + 'px');
-            ref = pn.getElementsByClassName('thread')[0];
-            ref.insertBefore(icon,ref.firstChild);
+            ref = pn.getElementsByClassName('threadIcons')[0];
+            if (!ref) {
+              ref = document.createElement('div');
+              ref.setAttribute('class','threadIcons');
+              ref.setAttribute('style','position:absolute');
+              pn.firstChild.insertBefore(ref,pn.firstChild.firstChild);
+            }
+            ref.appendChild(icon);
+//            icon.setAttribute('style','position:absolute;left:' + (16*count) + 'px');
+//            ref = pn.getElementsByClassName('thread')[0];
+//            ref.insertBefore(icon,ref.firstChild);
           } else {
             var op = pn.getElementsByClassName('op')[0];
             ref = op.getElementsByClassName('mentioned')[0] || op.getElementsByClassName('post_no')[1].nextSibling;
@@ -8799,9 +8968,9 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
             ref.parentNode.insertBefore(icon,ref);
           }
           return icon;
-        } else del_tgt.parentNode.removeChild(del_tgt);
-      }
-      return null;
+//        } else del_tgt.parentNode.removeChild(del_tgt);
+//      }
+//      return null;
     },
 //    add_icon : function(th,type,kind,tgt_th16){
 //      if (type==='catalog') {
@@ -9012,21 +9181,15 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
       var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('threads')[0]
                                                 : document.getElementsByName('postcontrols')[0];
-      cnst.tb_prep_for_embed(pn_tb);
+      site2['DEFAULT'].catalog_native_prep_sel(pn_filter,pn_tb,site.whereami==='catalog'? document.getElementById('sort_by') : null);
       if (site.whereami==='catalog') {
-        var selector_native = document.getElementById('sort_by');
-        if (selector_native.selectedIndex!=0) {
-          selector_native.selectedIndex = 0;
-          var evt = document.createEvent('UIEvents');
-          evt.initUIEvent('change', false, true, window, 1);
-          selector_native.dispatchEvent(evt);
-        }
-        selector_native.style.display = 'none';
-        document.getElementById('image_size').addEventListener('change', site2['8chan'].catalog_native_size_changed, false);
-        var pn_tb_new = document.createElement('span');
-        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
-        pn_tb = pn_tb_new;
-        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+        pn_tb.style.display='inline';
+        pn_tb.childNodes[3].style.display='inline';
+//        document.getElementById('image_size').addEventListener('change', site2['8chan'].catalog_native_size_changed, false);
+//        var pn_tb_new = document.createElement('span');
+//        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+//        pn_tb = pn_tb_new;
+//        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
       } else if (site.whereami==='page') {
         var pctrls = document.getElementsByName('postcontrols')[0];
         if (!pref.catalog_expand_with_hr || embed_catalog) {for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);}
@@ -9035,10 +9198,7 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
       }
 //      node_ref.parentNode.insertBefore(pn_hi,node_ref);
       node_ref.parentNode.insertBefore(pn_tb,node_ref);
-      node_ref.parentNode.insertBefore(pn_filter,node_ref);
-      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
-      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
+//      node_ref.parentNode.insertBefore(pn_filter,node_ref);
 //      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
 //      pn_tb.childNodes[1].setAttribute('style',pn_tb.childNodes[1].getAttribute('style')+';display:none');
 ////////      return site2['8chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
@@ -10276,7 +10436,6 @@ if (pref.test_mode['28']) {
 //      var node_ref = (site.whereami==='catalog')? document.getElementById('settings')
 //                                                : document.getElementsByName('postcontrols')[0];
 //      pn_tb.setAttribute('style', 'float:right');
-      cnst.tb_prep_for_embed(pn_tb);
 //      if (site.whereami==='catalog') {
       var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
       selector_catchan.setAttribute('style','float:left');
@@ -11254,12 +11413,36 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         http_req.get('sage_detection',dbt.join(),'',this.sage_detect,false,false, callback_sage);
       }
     },
-    sage_detect_last_bumps: {}, // TEMPORAL
     sage_detect: function(key,value, callback){
       var dbt = key.split(',');
       var ths = site2['4chan'].wrap_to_parse.get(value.response, dbt[0], dbt[1], dbt[3], {page:0});
-      var obj = site2['4chan'].parse_funcs['catalog_json'].add_sage(ths, site2['4chan'].sage_detect_last_bumps, site.no);
+      var obj = site2['4chan'].parse_funcs['catalog_json'].add_sage(ths, site.no);
       callback(obj);
+    },
+    sage_detect_all: function(ths){
+      this.parse_funcs['catalog_json'].add_sage(ths, null);
+      for (var i=0;i<ths.length;i++) {
+        var posts = ths[i].posts;
+        var lth = liveTag.mems.init(ths[i]); // ths[i].lth;
+        for (var j=0;j<posts.length;j++) {
+          if (posts[j].email==='sage') {
+            if (!lth.sg) lth.sg = new Set();
+            lth.sg.add(posts[j].no);
+          }
+        }
+        if (pref.catalog.page_his) { // qeuivalent to show_page in uip_tracker
+          if (!lth.pgh) lth.pgh = {};
+          var pgh = lth.pgh;
+          var no = ths[i].posts[ths[i].posts.length-1].no;
+          if (!pgh[no]) pgh[no] = [i];
+          else this.page_his_update(pgh[no],i);
+        }
+      }
+    },
+    page_his_update: function(pgh,page){
+      var lastPage = pgh[pgh.length-1];
+      if (lastPage!=page) pgh[pgh.length - (pgh.length>=3 && pgh.length%2===1? 0 : pgh.length>1 && lastPage<page? 1:0)] = page;
+      return lastPage!=page;
     },
     parse_json_thread: function(obj,from_http){
       if (from_http) {
@@ -11331,16 +11514,8 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
           if (window.getComputedStyle(node_ref[i]).display!=='none') {node_ref = node_ref[i]; break;}
       }
 //      pn_tb.setAttribute('style', 'float:right');
-      cnst.tb_prep_for_embed(pn_tb);
+      site2['DEFAULT'].catalog_native_prep_sel(pn_filter,pn_tb,site.whereami==='catalog'? document.getElementById('order-ctrl') : null);
       if (site.whereami==='catalog') {
-        var selector_native = document.getElementById('order-ctrl');
-        if (selector_native.selectedIndex!=0) {
-          selector_native.selectedIndex = 0;
-          var evt = document.createEvent('UIEvents');
-          evt.initUIEvent('change', false, true, window, 1);
-          selector_native.dispatchEvent(evt);
-        }
-        selector_native.style.display = 'none';
         document.getElementById('size-ctrl').addEventListener('change', site2['4chan'].catalog_native_size_changed, false);
 
 ////        var fl = document.getElementById('filters-ctrl'); // working code.
@@ -11401,9 +11576,6 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 //      node_ref.parentNode.insertBefore(pn_tb,node_ref);
       node_ref.appendChild(pn_tb);
 //      node_ref.parentNode.insertBefore(pn_filter,node_ref);
-      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
-      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 ////////      return site2['4chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
       if (site.whereami==='archive') {
         styleSheet.register('.'+pref.script_prefix+'_threads','padding:20px 0;text-align:center;');
@@ -11588,39 +11760,66 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         footer: 'catalog_html',
         class_thread: 'catalog_html',
         class_thumbnail: 'catalog_html',
-        add_sage: function(ths, bumps, end_no){
-          var i=0;
-          while (i<ths.length && ths[i].sticky) if (ths[i].no===end_no) return ths[i]; else i++;
-          if (pref.uip_tracker.sage.patch_bug3) { // ignore not updated data
-            var latest_bump = bumps['ALL'] || 0;
-            while (i<ths.length && ths[i].last_modified<latest_bump) if (ths[i].no===end_no) return ths[i]; else i++;
-            if (i<ths.length) bumps['ALL'] = ths[i].last_modified;
+        add_sage: (function(){
+          var bumps = {};
+          var pages = {};
+          function i2pkey(i,skey,post){
+            return 'p'+Math.floor(i/15)+'.'+(i%15)+', '+skey+'#'+post.no;
           }
-          if (i==ths.length) return;
-          if (ths[i].no==end_no) return ths[i];
-          latest_bump = ths[i].last_modified; // for deletion of the last post, instead of ths[i].posts[ths[i].posts.length-1].time;
-          var tolerance = pref.uip_tracker.sage.tolerance;
-          while (++i<ths.length) { // can't use stateful fast approach because of 4chan's bug.
-            var th = ths[i];
-            if (!th.bumplimit) {
-              for (var j=th.posts.length-1;j>=1;j--) { // annotate all
-                var time = th.posts[j].time;
-                if (bumps[th.no]>=time) break; // for deletion
-                if (latest_bump+tolerance>=time) break; // bug of 4chan at roundup, 1 tolerance is required.
-//                if (latest_bump>=time) break;
-                th.posts[j].email = 'sage'; // vichan has 'email' field.
-                if (pref.debug_mode['30']) console.log('detect: sage: p:'+Math.floor(i/15)+'.'+(i%15)+', '+th.key+'#'+th.posts[j].no+', '+time+', '+latest_bump);
-              }
-              if (j===0) time = th.posts[0].time; // j===0 when all posts are sage.
-              if (th.posts.length===1 || th.posts[th.posts.length-1].time!=th.last_modified) time = th.last_modified; // for deletion of the last post, assumes last post was age. th.posts.length===1 for new threads which has no posts.
-//              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
-              if (!bumps[th.no] || bumps[th.no]<time) bumps[th.no] = time;
-              latest_bump = (pref.uip_tracker.sage.patch_bug2 && i<pref.uip_tracker.sage.patch_bug2nth)? th.last_modified : bumps[th.no]; // for fast board like /v/.
-//              latest_bump = bumps[th.no];
+          return function(ths, end_no){
+            var pf = pref.uip_tracker.sage;
+            var i=0;
+            while (i<ths.length && ths[i].sticky) if (ths[i].no===end_no) return ths[i]; else i++;
+            if (pf.patch_bug3) { // ignore not updated data
+              var sskey = (ths[0].domain!==site.nickname? ths[0].domain : '') + ths[0].board;
+              var latest_bump = bumps[sskey] || 0;
+              while (i<ths.length && ths[i].last_modified<latest_bump) if (ths[i].no===end_no) return ths[i]; else i++;
+              if (i<ths.length) bumps[sskey] = ths[i].last_modified;
             }
-            if (th.no==end_no) return th;
+            if (i==ths.length) return;
+            if (ths[i].no==end_no) return ths[i];
+            latest_bump = ths[i].last_modified; // for deletion of the last post, instead of ths[i].posts[ths[i].posts.length-1].time;
+            var skey0 = (ths[0].domain!==site.nickname? ths[0].domain : '') + (ths[0].board!==site.board? ths[0].board : '');
+            var recovered = false;
+            var tu = this.time_unit;
+            while (++i<ths.length) { // can't use stateful fast approach because of 4chan's bug.
+              var th = ths[i];
+              var skey = skey0? skey0 + th.no : th.no; // retain numeric type.
+              if (!th.bumplimit) {
+                for (var j=th.posts.length-1;j>=1;j--) { // annotate all
+                  var time = th.posts[j].time;
+                  if (bumps[skey]>=time) break; // for deletion and reentry
+                  if (latest_bump+pf.tolerance>=time) break; // bug of 4chan at roundup, 1 tolerance is required.
+  //                if (latest_bump>=time) break;
+                  if (pf.patch_bug4 && j==th.posts.length-1) {
+                    if (i<pages[skey]) { // In case of that there are new posts but page order is corupted. More updates shall exist.
+                      if (pref.debug_mode['30']) console.log('RECOVERED by page history: '+i2pkey(i,skey,th.posts[j]));
+                      recovered = true;
+                      break;
+                    }
+                  }
+                  th.posts[j].email = 'sage'; // vichan has 'email' field.
+                  if (pref.debug_mode['30']) console.log('detect: sage: '+i2pkey(i,skey,th.posts[j])+', '+time+', '+latest_bump);
+                }
+                if (j===0) time = th.posts[0].time; // j===0 when all posts are sage.
+                if (th.posts.length===1 || th.posts[th.posts.length-1].time!=th.last_modified) time = th.last_modified; // for deletion of the last post, assumes last post was age. th.posts.length===1 for new threads which has no posts.
+  //              if (time<th.last_modified) time = th.last_modified; // for deletion of the last post.
+                var updated = bumps[skey]!=time;
+                if (!bumps[skey] || bumps[skey]<time) bumps[skey] = time;
+                latest_bump = (pf.patch_bug2 && i<pf.patch_bug2nth)? th.last_modified : bumps[skey]; // for fast board like /v/.
+                Object.defineProperty(th,'time_bumped',{value:latest_bump*tu, enumerable:true, configurable:true, writable:true});
+              }
+              var obsolete = !updated && i<pages[skey]; // )? pages[skey] : 0;
+              pages[skey] = (obsolete)? pages[skey] : i; // lock to pages[skey], 10000 is too strict for thread deletion.
+//              pages[skey] = (obsolete)? 10000 : i; // lock to 10000 as a flag, since threads are bumped without new posts in 4chan.(bug)
+              if (th.no==end_no) return th;
+              if (pf.patch_bug5 && (recovered || obsolete)) {
+                if (pref.debug_mode['30']) console.log('EXIT by obsolete data: '+i2pkey(i,skey,th.posts[j])+', '+pages[skey]);
+                break;
+              }
+            }
           }
-        },
+        })(),
         flags: 'DEFAULT.page_json',
         proto: 'DEFAULT.catalog_json',
       },
@@ -11780,7 +11979,9 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         time_pn: function(post_pn){return parseInt(post_pn.getElementsByClassName('dateTime')[0].getAttribute('data-utc'),10)*1000;}, // returns utc.
         flag: function(post){  // same as 8chan
           var flags = post.pn.getElementsByClassName('flag');
-          return (flags.length!=0)? document.importNode(flags[0],false) : null;
+          var flag = (flags.length!=0)? document.importNode(flags[0],false) : null;
+          if (flag) post.country = flag.getAttribute('class').replace(/\s*flag\-*/g,'').toUpperCase();
+          return flag;
         },
 //        country: function(post){
 //          var flag = post.flag;
@@ -11796,6 +11997,12 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         pn_name: function (post){return post.pn.getElementsByClassName('desktop')[0].getElementsByClassName('name')[0];},
         proto: 'DEFAULT.post_html',
       },
+//      'post_html_template': {
+//        get country(){
+//          var flag = this.flag;
+//          return (flag)? flag.getAttribute('class').replace(/\s*flag\-*/g,'').toUpperString() : '';
+//        },
+//      },
       'post_json': {
         proto: 'DEFAULT.post_json',
       },
@@ -11899,6 +12106,11 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
 ////      pnode.insertBefore(this.post_container(th.posts[i].pn,th.posts[i].no), ref);
 ////      return (ref_pos<now_height)? ref.offsetTop - ref_pos : null;
 ////    },
+    update_posts0_class: function(pn,search_result) {
+      site2['DEFAULT'].update_posts0_class(pn,search_result);
+      var summary = pn.parentNode && pn.parentNode.nextSibling;
+      if (summary && summary.classList.contains('summary')) site2['DEFAULT'].update_posts0_class(summary,search_result);
+    },
     post_container : function(post_pn,no, op) {
       var pn = document.createElement('div');
       pn.setAttribute('id','pc'+no);
@@ -12222,7 +12434,10 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
         sID.np = th.unique_ips;
         if (!th.id && th.posts) {
           if (!sID.h) sID.h = [];
-          sID.h.push(th.posts[th.posts.length-1].no, th.nof_posts, th.unique_ips);
+          var len = sID.h.length;
+          if (sID.h[len-3]!=th.posts[th.posts.length-1].no || sID.h[len-2]!=th.nof_posts || sID.h[len-1]!=th.unique_ips) // not updated data may come because of delay and cache 
+            sID.h.push(th.posts[th.posts.length-1].no, th.nof_posts, th.unique_ips);
+          else if (th.nof_posts<lth.nof_posts) scan.list_nup.add(lth,0,true); // for cache delay, this is safe and never be infinite loop, because lth.nof_posts will be updated to small value copie3d from th.nof_posts.
         }
       }
       if (posts_new && posts_new.length>0 && (th.id || th.country)) {
@@ -12238,6 +12453,27 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       if (th.nof_posts==1) {sID.np=1; return false;}
 //      return posts_new && posts_new.length>0 && pref.threadStats.full && (!th.id && !th.unique_ips || th.unique_ips>sID.nid); // for thread moving, but this can't make an initial kick.(BUG)
       return posts_new && posts_new.length>0 && pref.threadStats.full && !th.id && !th.unique_ips; // TEMPORAL PATCH, !th.id SHOULD BE REPLAED BY INFO IN boards.json
+    },
+    get_icon : function(pn,type,kind,tgt_th16){
+      return kind=='sticky'? pn.getElementsByClassName('stickyIcon')[0] : null;
+    },
+    add_icon : function(pn,type,kind,tgt_th16){
+      var icon = (kind==='sticky')? this.make_tack() : this.make_showAlways();
+      var ref;
+//      if (type==='catalog') {
+        ref = pn.getElementsByClassName('threadIcons')[0];
+        if (!ref) {
+          ref = document.createElement('div');
+          ref.setAttribute('class','threadIcons');
+          pn.insertBefore(ref,pn.getElementsByClassName('meta')[0]);
+        }
+        ref.appendChild(icon);
+//      } else {
+//        var op = pn.getElementsByClassName('op')[0];
+//        ref = op.getElementsByClassName('mentioned')[0] || op.getElementsByClassName('post_no')[1].nextSibling;
+//        ref.parentNode.insertBefore(icon,ref);
+//      }
+      return icon;
     },
   };
   site2['4channel'] = {
@@ -12327,7 +12563,6 @@ if (pref.features.domains['meguca']) {
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
       var node_ref = (site.whereami==='catalog')? document.getElementsByTagName('threads')[0].getElementsByTagName('aside')[0] :
                                                   document.getElementsByName('postcontrols')[0];
-      cnst.tb_prep_for_embed(pn_tb);
       if (site.whereami==='catalog') {
 ////        var selector_native = document.getElementById('sort_by');
 ////        if (selector_native.selectedIndex!=0) {
@@ -12748,11 +12983,9 @@ if (pref.features.domains['meguca']) {
 //      if (pn_tb.childNodes[3] && pn_tb.childNodes[3].ondblclick) cnst.tb_prep_for_embed(pn_tb);
 //      if (site.whereami==='catalog' || site.whereami==='page') {
         if (!cataLog.components.initialized) {
-          cnst.tb_prep_for_embed(pn_tb);
-          var pn_tb_new = document.createElement('span');
-          while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
-          pn_tb = pn_tb_new;
-          pn_tb.setAttribute('style','float:right');
+//          var pn_tb_new = document.createElement('span');
+//          while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+//          pn_tb = pn_tb_new;
           pn_tb.setAttribute('style','float:right');
           cataLog.components.pn12_0 = pn_tb;
           cataLog.components.pn_hi = pn_tb.removeChild(pn_tb.childNodes[3]); //.firstChild;
@@ -13766,23 +13999,17 @@ if (pref.features.domains['lain'] || pref.features.domains['lainjp']) {
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
       var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('threads')[0]
                                                 : document.getElementsByName('postcontrols')[0];
-      cnst.tb_prep_for_embed(pn_tb);
+      site2['DEFAULT'].catalog_native_prep_sel(pn_filter,pn_tb,site.whereami==='catalog'? document.getElementById('sort_by') : null);
       if (site.whereami==='catalog') {
-        var selector_native = document.getElementById('sort_by');
-        if (selector_native.selectedIndex!=0) {
-          selector_native.selectedIndex = 0;
-          var evt = document.createEvent('UIEvents');
-          evt.initUIEvent('change', false, true, window, 1);
-          selector_native.dispatchEvent(evt);
-        }
-        selector_native.style.display = 'none';
         document.getElementById('image_size').addEventListener('change', site2['lain'].catalog_native_size_changed, false);
-        var pn_tb_new = document.createElement('span'); // rip from div to span
-        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
-        pn_tb = pn_tb_new;
-        var pn3 = pn_tb.removeChild(pn_tb.childNodes[3]);
-        while (pn3.firstChild) pn_tb.appendChild(pn3.firstChild); // rip from div to span
-//        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+        pn_tb.style.display='inline';
+        pn_tb.childNodes[3].style.display='inline';
+//        var pn_tb_new = document.createElement('span'); // rip from div to span
+//        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
+//        pn_tb = pn_tb_new;
+//        var pn3 = pn_tb.removeChild(pn_tb.childNodes[3]);
+//        while (pn3.firstChild) pn_tb.appendChild(pn3.firstChild); // rip from div to span
+////        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
         if (this.nickname==='lain') {
           document.getElementsByClassName('controls')[0].appendChild(pn_tb);
         } else {
@@ -13814,9 +14041,6 @@ if (pref.features.domains['lain'] || pref.features.domains['lainjp']) {
 //      if (site.whereami==='catalog') node_ref.previousSibling.appendChild(pn_tb);
 //      else node_ref.parentNode.insertBefore(pn_tb,node_ref);
 //      node_ref.parentNode.insertBefore(pn_filter,node_ref);
-      var selector_catchan = pn_filter.getElementsByTagName('select')['catalog.indexing'];
-      if (site.whereami==='catalog') selector_native.parentNode.insertBefore(selector_catchan,selector_native);
-      else pn_tb.childNodes[3].insertBefore(selector_catchan,pn_tb.childNodes[3].firstChild);
 //      pn_tb.childNodes[0].setAttribute('style',pn_tb.childNodes[0].getAttribute('style')+';display:none');
 //      pn_tb.childNodes[1].setAttribute('style',pn_tb.childNodes[1].getAttribute('style')+';display:none');
 ////////      return site2['lain'].catalog_from_native(date,document,site.board,site.whereami+'_html');
@@ -13840,7 +14064,8 @@ if (pref.features.domains['lain'] || pref.features.domains['lainjp']) {
     catalog_native_size_changed: function(){site2[site.nickname].catalog_native_size = this.value;},
     parse_funcs : { // lainchan
       'catalog_html' : {
-        sticky: function(th){return false;}, // patch
+        sticky: function(th){return th.footer.textContent.indexof('(sticky)')!=-1;},
+//        sticky: function(th){return false;}, // patch
         ths: function(doc){
           var ths = this.__proto__.ths(doc);
           if (site2['lain'].all_boards.indexOf(site.board)!=-1)
@@ -14336,7 +14561,7 @@ if (pref.test_mode['94'] && i==='dist') continue;
 //  pref_func.str2obj('catalog_board_list_str');
 //  pref_func.str2obj2(pref.catalog,'style_general_list_obj2',pref.catalog.style_general_list_str);
 //  pref_func.str2obj2(pref.catalog.board,'ex_list_obj2',pref.catalog.board.ex_list_str);
-  pref_func.obj_init();
+  if (!site0.isStep) pref_func.obj_init();
   pref3.stats.use = pref.stats.use;
   pref3.stats.estimate_posts = pref.stats.estimate_posts;
 
@@ -15508,7 +15733,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         else cnst.div_destroy(options.pn, true);
       },
       settings: function(e, options){
-        if (!pref.test_mode['102'] && !options) return; // patch for embed
+//        if (!pref.test_mode['102'] && !options) return; // patch for embed
         var btn = (e.target.tagName==='BUTTON')? e.target : e.target.parentNode;
         var tgt = opts.get(btn) || options.cn.childNodes[0];
         tgt.style.display = (tgt.style.display==='none')? null : 'none';
@@ -15519,7 +15744,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     tb_funcs.bottom = tb_funcs.top;
     tb_funcs.float = tb_funcs.top;
     tb_funcs.max = tb_funcs.top;
-//    tb_funcs.filter = tb_funcs.settings;
+    tb_funcs.filter = tb_funcs.settings;
     function tb_clicks(e){
       var et = e.target;
       var func = (e.type==='click')? et.tagName==='BUTTON' && tb_funcs[et.name] || et.parentNode.tagName==='BUTTON' && tb_funcs[et.parentNode.name]
@@ -15901,8 +16126,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //        tb.childNodes[3].draggable = false;
         tb.childNodes[3].removeAttribute('style');
         tb.ondblclick = null;
-        tb.onmousedown = null;
-        tb.childNodes[2].onmousedown = null;
+//        tb.onmousedown = null;
+//        tb.childNodes[2].onmousedown = null;
       },
       add_to_tb: function(pn,str){
         var pn_2 = document.createElement('div');
@@ -16140,9 +16365,9 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         var pn = e.currentTarget.parentNode;
         return opts.get(pn).tack;
       },
-//      set_target_of_button: function(button, tgt){
-//        opts.set(button, tgt);
-//      },
+      set_target_of_button: function(button, tgt){
+        opts.set(button, tgt);
+      },
     };
   })();
 
@@ -16303,7 +16528,9 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     site.script_body.innerHTML = '<div style="display:none"></div><div></div>';
     site.popup_body = site.script_body.childNodes[1];
     site.root_body.appendChild(site.script_body);
-    if (site.features.postform && pref.features.postform && !(site.postform!=null || site2[site.nickname].postform.activation)) {
+    var sf = site.features;
+    var pf = pref.features;
+    if (sf.postform && pf.postform && !(site.postform!=null || site2[site.nickname].postform.activation)) {
       var draft = document.createElement('div');
       draft.innerHTML = '<div><textarea style="height:5em;display:none" cols="20" name="' + pref.script_prefix + '_draft"></textarea><button name="' + pref.script_prefix + '_send" style="display:none">send</button></div>'; // <div> was added for tack_float
       site.script_body.appendChild(draft);
@@ -16320,43 +16547,32 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       site.settings.childNodes[0].onclick = function(){cnst.show_hide(pn_st);};
       site.settings.childNodes[1].setAttribute('style','display:none');
     }
-    if (site.features.setting && pref.features.setting) {
-      var pn13 = cnst.init2({func_str:'left:0px:bottom:0px:button:settings:Show2:tile:set:left',pn_st:pn_st});
-      pn13.addEventListener('click', pref_func.settings.show_hide, false);
+    function make_button(str){
+      return cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:'+str+':Show2:tile:set:left',pn_st:pn_st});
     }
-    if (site.features.catalog && pref.features.catalog) {
-      if (!pref.catalog.embed_page || site.whereami!=='page') {
-        var pn12_str = (pref.catalog.embed && site.whereami==='catalog')? 'Frame' : 'Catalog';
-        var pn12 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:'+pn12_str+':Show2:tile:set:left',pn_st:pn_st});
-      }
-      catalog_obj = make_catalog_obj(pn12);
+    if (sf.setting && pf.setting) make_button('settings').addEventListener('click', pref_func.settings.show_hide, false);
+    if (sf.catalog && pf.catalog) {
+      catalog_obj = make_catalog_obj(pref[site.whereami] && pref[site.whereami].embed? (pref.test_mode['114']? make_button('Watcher') : null) : make_button('Catalog'));
+      if (pref.catalog.embed && site.whereami==='catalog') site2[site.nickname].catalog_native_frame_prep(make_button('Frame'));
     }
     if (!pref.test_mode['94']) cnst.tile_set_left();
-    if (site.features.graph && pref.features.graph && pref3.stats.use) {
-      var pn1 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:Graph:Show2:tile:set:left',pn_st:pn_st});
-      chart_obj = make_chart_obj(pn1);
-    } else chart_obj = make_chart_obj(null);
-    if (site.features.setting2 && pref.features.setting2) {
-      var pn8 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:settings2:Show2:tile:set:left',pn_st:pn_st});
-      setting_obj = make_setting_obj(pn8);
-    }
-    if (site.features.postform && pref.features.postform && (site.postform!=null || site2[site.nickname].postform.activation)) {
+    chart_obj = make_chart_obj((sf.graph && pf.graph && pref3.stats.use)? make_button('Graph') : null);
+    if (sf.setting2 && pf.setting2) setting_obj = make_setting_obj(make_button('settings2'));
+    if (sf.postform && pf.postform && (site.postform!=null || site2[site.nickname].postform.activation)) {
 //      wafd = make_wafd();
-      var pn9 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:' +((draft)? 'Draft' : 'PostForm')+ ':Show2:tile:set:left',pn_st:pn_st});
-      post_form_obj = make_post_form_obj(pn9);
+      post_form_obj = make_post_form_obj(make_button(draft?'Draft':'PostForm'));
     }
-    if (site.features.debug && pref.features.debug) {
-      var pn_debug_button = cnst.init2({func_str:'tile:get:left:tile:get:bottom:button:debug:Show2:tile:set:left',pn_st:pn_st});
-      make_debug_obj(pn_debug_button);
+    if (sf.debug && pf.debug) {
+      make_debug_obj(make_button('debug'));
 //  var pn_debug_out    = cnst.init('left:200px:bottom:50px:txt:debug_out');
     }
-    if (site.features.page && pref.features.page) {
+    if (sf.page && pf.page) {
 //      var pn0 = cnst.init('tile:get:left:tile:get:bottom:txt:init:Show2:tile:set:bottom');
       var pn0 = cnst.init2({func_str:'tile:get:left:tile:get:bottom:txt:init:Show2',pn_st:pn_st});
       timer_obj  = make_timer_obj(pn0);
     }
     cnst.tile_set_bottom();
-    if (site.features.catalog && pref.features.catalog) if (pref.catalog.board.board_tags_same) pref_func.settings.onchange_funcs['tag.same_tag_refresh']();
+    if (sf.catalog && pf.catalog) if (pref.catalog.board.board_tags_same) pref_func.settings.onchange_funcs['tag.same_tag_refresh']();
   })();
 
   function make_uip_tracker (){
@@ -16457,7 +16673,8 @@ if (pref.debug_mode['0']) console.log('auto_opener: '+i+': '+flag);
       remove_dom_event_listener();
       for (var i=0;i<post_uip.length;i++) {
         var tgt_uip = post_uip[i];
-        var tgt_post = site2[site.nickname].uip_tgt_post(tgt_uip[0]);
+        var no = tgt_uip[0];
+        var tgt_post = site2[site.nickname].uip_tgt_post(no);
         if (tgt_post) {
           var pn_uip = document.createElement('span');
           pn_uip.innerHTML = ' (<span>'+tgt_uip[2]+'</span>)';
@@ -16471,6 +16688,15 @@ if (pref.debug_mode['0']) console.log('auto_opener: '+i+': '+flag);
           }
           if (tgt_uip[5] && (pref.uip_tracker.deletion.name || pref.uip_tracker.deletion.addName || pref.uip_tracker.deletion.post))
             for (var j=0;j<tgt_uip[5].length;j++) sage_annotate({no:tgt_uip[5][j]},pref.uip_tracker.deletion,true);
+          if (pref.uip_tracker.sage.page) {
+            var pn_page = document.createElement('span');
+            if (!page_his[no]) page_his[no] = {pn:pn_page, his:[]};
+            else {
+              page_his[no].pn = pn_page;
+              if (page_his[no].his.length>0) show_page(page_his[no]);
+            }
+            pn_uip.insertBefore(pn_page,pn_uip.lastChild);
+          }
           var post_nums = site2[site.nickname].uip_post_num(tgt_post);
           post_nums[post_nums.length-1].appendChild(pn_uip);
           if (!pn_first && i==0) pn_first = [pn_uip, tgt_uip];
@@ -16548,8 +16774,22 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
     }
     var pn_first = null;
     function annotate_from_catalog(vals){
+      if (vals[0]==='page') {
+        var his = JSON.parse(vals[1]);
+        for (var i in his) page_his[i] = {pn:null, his:his[i]};
+        return;
+      }
+      if (vals[0]==='sage') {
+        sage_detect({posts:vals.map(function(v){return {no:v, email:'sage'};})}); // posts[0].no==='sage', but posts[0] will be ignored.
+        return;
+      }
       var uip_first = (pn_first)? pn_first[1] : (post_uip.length!=0)? post_uip.splice(0,1)[0] : null;
       for (var i=0;i<vals.length;i+=3) post_uip[post_uip.length] = [vals[i], vals[i+1], vals[i+2], false, vals[i+1]==vals[i+2] || i>=3 && vals[i+2]!=vals[i-1], null];
+      if (pref.uip_tracker.sage.page) {
+        var nos = {};
+        for (var i=0;i<post_uip.length;i++) nos[post_uip[i][0]] = null;
+        for (var i in page_his) if (nos[i]===undefined) post_uip.splice(post_uip.length-1,0,[i, '?', '?', false, false, null]);
+      }
       if (!uip_first) {
         last_updated = post_uip[post_uip.length-1]; // RACING CONDITION. this is faster than network access usually.
         pn_first = true;
@@ -16562,6 +16802,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       }
       uip_show_3();
     }
+    var page_his = {};
     var sage_done = {};
     var sage_scheduled = {};
     function sage_detect(th){
@@ -16571,9 +16812,9 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
         if (th.posts[i].email==='sage' && sage_done[th.posts[i].no]===undefined) sage_annotate(th.posts[i]);
         else break;
       // patch for 4chan's bug.
-      // 4chan send corrupted data sometimes. Bump oerder and posts are NOT synchronized, posts may be dropped around before 1s from generation.
+      // 4chan sends corrupted data sometimes. Bump oerder and posts are NOT synchronized, posts may be dropped around before 1s from generation.
       // You can see this by comparing Last-Modified in http header with timestamp of posts. I saw 3 sec delay so far.
-      // In this situation, threads in top orders are seen as overevaluated. Just bumped, but there are no new posts.
+      // In this situation, threads in top orders are seen as overevaluated; just bumped, but there are no new posts.
       // This bug requires re-evaluation of sage, so I can't use stateful fast approach.
       if (pref.uip_tracker.sage.patch_bug) { // patch for 4chan's bug.
         for (var i=th.posts.length-1;i>=1;i--)
@@ -16584,6 +16825,12 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
               delete sage_scheduled[th.posts[i].no];
               delete sage_done[th.posts[i].no];
             } else break;
+      }
+      if (pref.uip_tracker.sage.page && th.page!==undefined) {
+        var last_no = th.posts[th.posts.length-1].no;
+        var page = page2num(th.page);
+        if (!page_his[last_no]) page_his[last_no] = {pn:null, his:[page]};
+        else if (site2['4chan'].page_his_update(page_his[last_no].his, page)) if (page_his[last_no].pn) show_page(page_his[last_no]);
       }
     }
     function sage_annotate(post, pref_obj, deletion){
@@ -16597,6 +16844,13 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
         if (!deletion) sage_done[post.no] = null;
         return true;
       } else if (!deletion) sage_scheduled[post.no] = post;
+    }
+    function show_page(obj){
+      obj.pn.textContent = '/'+obj.his.map(function(v){return Math.floor(v/15)+'.'+(v%15);}).join('\u2192');
+    }
+    function page2num(page){
+      var ps = page.split('.');
+      return parseInt(ps[0],10)*15+parseInt(ps[1],10);
     }
     function uip_tracker_destroy(){
       remove_dom_event_listener();
@@ -16921,33 +17175,33 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
     }
 
     var triage;
-    var buttons = document.createElement('div');
-    buttons.innerHTML =
+    var btns_p = document.createElement('div');
+    btns_p.innerHTML =
       '<div>'+
         '<button name="thread_reader.buttons.B" type="button">B</button>'+
         '<button name="thread_reader.buttons.UB" type="button">UB</button>'+
         ((window.opener)? '<button name="thread_reader.buttons.X" type="button">X</button>'+
                           '<button name="thread_reader.buttons.v" type="button">v</button>' : '')+
       '</div>';
-    var buttons_collection = buttons.getElementsByTagName('*');
-    buttons_collection['thread_reader.buttons.B'].onclick  = function(){common_func.modify_bookmark(name,true)};
-    buttons_collection['thread_reader.buttons.UB'].onclick = function(){common_func.modify_bookmark(name,false)};
+    var btns = btns_p.getElementsByTagName('button');
+    btns['thread_reader.buttons.B'].onclick  = function(){common_func.modify_bookmark(name,true)};
+    btns['thread_reader.buttons.UB'].onclick = function(){common_func.modify_bookmark(name,false)};
     if (window.opener) {
-      buttons_collection['thread_reader.buttons.X'].onclick = function(){triage_exe('KILL','');};
-      buttons_collection['thread_reader.buttons.v'].onclick = function(){triage_exe('TIME','');};
+      btns['thread_reader.buttons.X'].onclick = function(){triage_exe('KILL','');};
+      btns['thread_reader.buttons.v'].onclick = function(){triage_exe('TIME','');};
     }
 //    var th_link = document.getElementById('thread-links');
 //    th_link.parentNode.insertBefore(buttons,th_link);
     var pn_ref = (typeof(site.embed_to['bottom'])==='function')? site.embed_to['bottom']() : site.embed_to['bottom'];
-    pn_ref.parentNode.insertBefore(buttons,pn_ref);
+    pn_ref.parentNode.insertBefore(btns_p,pn_ref);
     if (window.opener && pref.thread_reader.triage) {
 //      var triage_all = common_func.make_triage({onclick:triage_event, wheelpatch:false});
 //      triage_str = triage_all.str;
 //      th_link.parentNode.insertBefore(triage_all.pn,th_link);
       triage = new common_func.Triage(pref.catalog_triage_str,{onclick:triage_event, wheelpatch:false, name:'thread_reader_triage'});
-      buttons.appendChild(triage.pn);
+      btns_p.appendChild(triage.pn);
     }
-    pref_func.tooltips.add_root(buttons);
+    pref_func.tooltips.add_root(btns_p);
 
     function triage_event(){
       var flds = this.name.split(',');
@@ -16986,10 +17240,36 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
 ////////    window.addEventListener('storage', remake_own_posts_flag, false);
     window.addEventListener('storage', site2[site.nickname].check_reply.remake_own_posts, false);
 
+    if (pref.test_mode['116'] && site.nickname==='4chan') {
+      var tacks = new WeakMap();
+      site2[site.nickname].catalog_get_native_area().addEventListener('click',function(e){
+        var et = e.target;
+        if (et.tagName==='A' && et.dataset.cmd=='embed') { //  && (!et.nextElementSibling || !et.nextElementSibling.classList.contains('stickyIcon'))) {
+          var tack = tacks.get(et);
+          if (!tack) observer.observe(et.parentNode, {childList: true});
+          else {
+            if (tack.parentNode) tack.remove(); // for racing condition
+            else tacks.get(tack).remove();
+            tacks.delete(tack);
+            tacks.delete(et);
+          }
+        }
+      },false);
+      var observer = new MutationObserver(function(e){
+        var tgt = e[0].addedNodes[0];
+        var tack = site2[site.nickname].make_tack();
+        tack.onclick = cnst.tack_float_nSblgs;
+        tacks.set(tgt.previousElementSibling,tack);
+        tacks.set(tack,tgt);
+        tgt.parentNode.insertBefore(tack,tgt);
+        observer.disconnect();
+      });
+    }
+                                                                       
     return {
       mark_newer_posts: mark_newer_posts,
       destroy : function(){ // destroy
-        pref_func.tooltips.remove_root(buttons);
+        pref_func.tooltips.remove_root(btns_p);
 //        base_thread.removeEventListener('DOMSubtreeModified',updated_buf,false);
 //        base_thread.removeEventListener('DOMNodeInserted',updated_buf,false);
         observer.disconnect();
@@ -17112,6 +17392,8 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
             // ed_t: editing tags
             // ed_u: update timestamp for editing posts,
             // sID: stats of IDs
+            // sg: saged posts
+            // pgh: page history
           });
 //          var btag = bd[th.no].btag; // redundant
 //          liveTag.key_dirty[(pref.liveTag.ci)? btag.toLowerCase() : btag] = null;
@@ -17248,7 +17530,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
         for (var d in this.mems) for (var b in this.mems[d]) for (var t in this.mems[d][b]) {
           var lth = this.mems[d][b][t];
           var tags_len = lth.tag.length;
-          if (this.exclude_tags(d+b+t, lth, true)) this.retag(lth, tags_len>=pref.liveTag.max);
+          if (this.exclude_tags(lth, lth, true)) this.retag(lth, tags_len>=pref.liveTag.max);
 ////          if (scan.list_nup[th.key]===undefined) {
 ////            var ex_list = pref_func.merge_obj5(d+b+t,pref.liveTag.ex_list_obj5,null);
 ////            if (ex_list) {
@@ -17274,15 +17556,15 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
 //        this.update_pn_buf.delayed_do();
       }
     },
-    exclude_tags: function(key, tag, remove){
-      var ex_list = pref_func.merge_obj5a(key,pref.liveTag.ex_list_obj5,null);
+    exclude_tags: function(lth, tag, remove){
+      var ex_list = pref_func.merge_obj5a(lth,pref.liveTag.ex_list_obj5,null);
       if (ex_list) {
         var flag = false;
         for (var k=0;k<ex_list.length;k++) { // CAUTION. LIMIT CHANGABLE TAG OR ISSUE REDUNDANT ACCESS.
           for (var j=0;j<2;j++) {
             if (tag[j]) for (var i=tag[j].length-1;i>=0;i--) if (ex_list[k].test(tag[j][i])) {
 //            if (tag[j]) for (var i=0;i<tag[j].length;i++) if (ex_list[k].test(tag[j][i])) { // BUG, cause infinite loop when ex_list refers btag(board's tag).
-              if (remove) this.delete_tags(tag[j][i],key);
+              if (remove) this.delete_tags(tag[j][i],lth.key);
               tag[j].splice(i,1);
 //              tag[j].splice(i--,1);
               flag = true;
@@ -17593,6 +17875,16 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       var name = domain+board+no;
       var lth;
       var keep = pref.liveTag.rm_404==='no' || (lth = liveTag.mems.getFromName(name), lth && lth.watched && (pref.liveTag.rm_404==='watched' || lth.nr));
+//      if (keep) {
+//        var tgt_th = cataLog.threads[name];
+//        if (tgt_th && tgt_th[14]!=='IDB' && tgt_th[14]!=='FILE') {
+//          if (tgt_th[14]!=='x') {
+//            tgt_th[14]='x';
+//            cataLog.Footer.update_force(name); // temporal, this will be rewritten after implementing watcher
+//          }
+//        }
+//        return true; // must be here; before 'check_clean', which is NOT supporsed to be issued multiple times.
+//      }
       if (!from_IDB) {
         if (!pref.test_mode['65']) if (pref.archive.IDB.auto_clean) IDB.req(domain, board, no, 'pruned_time', Date.now(), 'check_clean');
         if (!pref.test_mode['67']) archiver.clean_list(domain, board, no);
@@ -17601,8 +17893,10 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       if (keep) {
         var tgt_th = cataLog.threads[name];
         if (tgt_th && tgt_th[14]!=='IDB' && tgt_th[14]!=='FILE') {
-          tgt_th[14]='x';
-          cataLog.Footer.update_force(name); // temporal, this will be rewritten after implementing watcher
+          if (tgt_th[14]!=='x') {
+            tgt_th[14]='x';
+            cataLog.Footer.update_force(name); // temporal, this will be rewritten after implementing watcher
+          }
         }
         return true;
       }
@@ -18425,7 +18719,7 @@ if (!pref.test_mode['24']) {
           tags_b[tag_idx] = tags_b[tag_idx].concat(extracted_tags);
 //          tags_b[tag_idx] = extracted_tags.concat(tags_b[tag_idx]);
         }
-        this.exclude_tags(th.key, tags_b);
+        this.exclude_tags(th, tags_b);
         if (tags_old) for (var i=0;i<2;i++) if (tags_old[i]) tags_b[i] = tags_b[i].concat(tags_old[i]);
         if (th.parse_funcs.has_editing && th.posts[0].editing && tags_b[0].length!=0) tags_b[0] = this.extract_tags_trim_editing(th, tag, tags_b[0]);
         if (tags_b[0].length!=0) tag[0] = this.update_tags_in_th(tags_b[0], null, {}, (tags_b[0].length < pref.liveTag.max)? tags_b[0].length : pref.liveTag.max, th, watch, this.mems[th.domain][th.board]); // update this.keys_fix
@@ -18964,15 +19258,15 @@ if (!pref.test_mode['24']) {
           if (!times_pruned[db.name]) times_pruned[db.name] = {list:[], write:null};
           var list = times_pruned[db.name].list;
           var list_len_old = list.length;
+          var nos = {Meta:null, __proto__:req.obj};
+          for (var i=0;i<list.length;i++) nos[list[i].no] = null;
           if (req.kind==='clean_up') {
-            var nos = {Meta:null, __proto__:req.obj};
-            for (var i=0;i<list.length;i++) nos[list[i].no] = null;
             var date = Date.now();
             var names = db.objectStoreNames;
             for (var i=0;i<names.length;i++) if (nos[names[i]]!==null) list[list.length] = {no:names[i], pruned_time:date};
           } else {
             for (var i=0;i<req.reqs.length;i++)
-              if (info.oss[req.reqs[i].no]===null) list[list.length] = {no:req.reqs[i].no, pruned_time:req.reqs[i].obj};
+              if (info.oss[req.reqs[i].no]===null) if (nos[req.reqs[i].no]!==null) list[list.length] = {no:req.reqs[i].no, pruned_time:req.reqs[i].obj};
           }
           if (times_pruned[db.name].write===null) {
             times_pruned[db.name].write = false;
@@ -19132,8 +19426,8 @@ if (!pref.test_mode['66']) {
         var oss = info && info.oss || {};
         src = src.filter(function(v){return oss[v.no]===null;});
         var src_obj = {};
-        for (var i=0;i<src.length;i++) src_obj[src[i].no] = null;
-        times_pruned[db.name].list = src.concat(times_pruned[db.name].list.filter(function(v,i,a){return src_obj[v.no]!==null;}));
+        for (var i=0;i<src.length;i++) {if (src_obj[src[i].no]!==undefined) src.splice(src_obj[src[i--].no],1); src_obj[src[i].no] = i;}
+        times_pruned[db.name].list = src.concat(times_pruned[db.name].list.filter(function(v){return src_obj[v.no]===undefined;}));
       }
       times_pruned[db.name].write = true;
       clean_up_end_proc(db, null, null, true); // 'complete_func' will be called by transaction.oncomplete.
@@ -20797,7 +21091,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
   function make_catalog_obj(pn12_button){
     var catalog_func = null;
     function show_hide(){
-      if (catalog_func===null) catalog_func = make_catalog(pn12_button);
+      if (catalog_func===null) catalog_func = make_catalog();
       else catalog_func = catalog_func.destroy();
     }
     var embed_catalog;
@@ -20817,18 +21111,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
     }
     cataLog.set_embed_xxxx = set_embed_xxxx;
     set_embed_xxxx();
-    if (embed_embed) {
-////      pref.catalog_board_list_sel = 0;
-////      pref.catalog.filter.show = true;
-////      pref.catalog_show_setting = true;
-////      pref.catalog.design = 'catalog';
-//      show_hide();  // moved after making software cache because of subscription.
-//      if (brwsr.ff || site.settings) pn12_button.textContent = 'Frame'; // working code.
-//      else pn12_button.getElementsByTagName('input')[0].value = 'Frame';
-    } else {
-////      pref.catalog.design = 'page';
-      pn12_button.addEventListener('click', show_hide, false); // show_hide
-    }
+    if (pn12_button) pn12_button.addEventListener('click', show_hide, false); // show_hide
     styleSheet.init(embed_mode); // patch, but WHY???
     if (!pref.test_mode['98'] && embed_mode==='catalog') styleSheet.register('.backlink','display:inline;font-size:0.8em;');
 //if (!(brwsr.ff && embed_mode==='catalog' && site.nickname==='4chan')) styleSheet.init(); // patch, but WHY???
@@ -21003,77 +21286,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 ////      }
 ////      return str2;
 ////    }
-    function make_catalog(pn12_button){
-      cataLog.embed_mode = embed_mode;
-      if (pref[embed_mode].open_spoiler_text) styleSheet.open_spoiler_text();
-      if (brwsr.sw_cache && pref.info_client) brwsr.sw_cache.subscribe(true);
-//      var threads = []; // This makes non-associative array.
-      var threads = {}; // This makes object.
-      cataLog.threads = threads;
-      var threads_idx = [];
-      var pop_up_status = {};
-////////      var boards = {};
-//      var threads_last_deleted = {};
-      var initialize_loop = true;
-
-      var pn12_0_4 = document.createElement('div');
-      var pn12 = cnst.init3({
-        func_str:'left:0px:tile:get:bottom:resize:both:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto'+
-          ((embed_embed)? ':display:none:embed':'') + ':Show'+(embed_embed?'':':bottom_top')+((embed_mode==='float')? ':tb_press:'+pref.catalog.appearance.initial.state:''),
-        rolldown: function(){pn12_0_4.style.display='';},
-        rollup: function(){pn12_0_4.style.display='none';},
-        exit: show_hide,
-        maximize: show_catalog_cont,
-        get auto_roll(){return pref.catalog_auto_rollup_when_moving;}}).pn;
-//      var pn12_whole = cnst.init('left:0px:tile:get:bottom:resize:both:Show:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto',
-//        function(){pn12_0_4.style.display='';},function(){pn12_0_4.style.display='none';},show_hide,show_catalog_cont);
-//      var pn12 = pn12_whole[0];
-//      if (embed_embed) pn12.style.display = 'none';
-//      var pn12_rollup_func = pn12_whole[1];
-
-//// test for prototype base coding.
-////      var pn12_whole = new Cnst2('left:0px:tile:get:bottom:resize:both:Show:tb:width:400px:height:400px:resize:both:overflow:auto',
-////        {rolldowm:function(){pn12_0_4.style.display='';}, rollup:function(){pn12_0_4.style.display='none';}, exit:show_hide, maximize:show_catalog_cont});
-////      var pn12 = pn12_whole.pn;
-////      var pn12_rollup_func = pn12_whole.funcs.rollup;
-
-//      cnst.bottom_top(pn12);
-      var pn12_0 = pn12.childNodes[0];
-      var pn12_1 = pn12.childNodes[1];
-//      pn12_1.id = 'catalog_debug'; // working code.
-//      var autorollup_state = false;
-//      function auto_hide_catalog() {
-//        if (pref.catalog_auto_rollup_when_moving) {
-//          if (pn12_1.style.display!='none') {
-//            pn12_rollup_func();
-//            autorollup_state = true;
-//          } else if (autorollup_state) {
-//            pn12_rollup_func();
-//            autorollup_state = false;
-//          }
-//        }
-//      }
-//      pn12.addEventListener('dragstart', auto_hide_catalog, false);
-//      pn12.addEventListener('dragend'  , auto_hide_catalog, false);
-      var pn12_0_2 = cnst.add_to_tb(pn12,
-//        '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
-//        '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
-        '<button type="button" name="filter">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'F' : cnst.icons.img(cnst.icons.filter)) +'</button>' +
-        '<button type="button" name="settings">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'S' : cnst.icons.img(cnst.icons.settings)) +'</button>'+
-//        '<button name="refresh">Refresh</button>'+
-//        '<button name="refresh">\u27f3</button>'+
-        '<button type="button" name="refresh">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'R' : cnst.icons.img(cnst.icons.refresh)) +'</button>'+
-        '<span name="num_of_pages">'+
-          '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></span>'+
-        '<span name="boards_selector"><select name="catalog_board_list_sel"></select></span>');
-      var board_sel = pn12_0_2.getElementsByTagName('select')['catalog_board_list_sel'];
-      cnst.auto_shrink_board_selector.setup(board_sel,pref.catalog_board_list_sel);
-      pref_func.apply_prep(pn12_0_2,false);
-      var pn12_0_2_childs = ['filter','settings','refresh','num_of_pages','boards_selector'];
-      for (var i=0;i<pn12_0_2_childs.length;i++)
-        if (!pref.catalog.appearance.titleBar[pn12_0_2_childs[i]]) pn12_0_2.getElementsByTagName('*')[pn12_0_2_childs[i]].style.display = 'none';
-      pn12_1.style.width = pn12_0.offsetWidth + 'px';
-
+    function make_catalog(){
       var healthIndicator = (function(){
         var his = [];
         var count = 0;
@@ -21225,13 +21438,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       cataLog.healthIndicator = healthIndicator;
       var health_indicator = new healthIndicator.HealthIndicator();
       httpd.set_health_indicator(health_indicator);
-      pn12_0.childNodes[3].appendChild(health_indicator.pn);
-      var IDB_spacer = document.createElement('span');
-      IDB_spacer.textContent = ' ';
-      pn12_0.childNodes[3].appendChild(IDB_spacer);
-      var IDB_indicator = new healthIndicator.HealthIndicator();
-      IDB.set_indicator(IDB_indicator);
-      pn12_0.childNodes[3].appendChild(IDB_indicator.pn);
 
 ////      var health_indicator = (function(){ // working code.
 ////        var pn_hi = document.createElement('span');
@@ -21264,9 +21470,82 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 ////        }
 ////      })();
 
+      cataLog.embed_mode = embed_mode;
+      if (pref[embed_mode].open_spoiler_text) styleSheet.open_spoiler_text();
+      if (brwsr.sw_cache && pref.info_client) brwsr.sw_cache.subscribe(true);
+      var initialize_loop = true;
+
+var Clg = function(embed_embed, embed_mode, watcher){
+      var pn12 = cnst.init3({
+        func_str:'left:0px:tile:get:bottom:resize:both:'+((embed_embed)? 'display:none:tb:embed':'tb')+':width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto'+
+          ':Show'+(embed_embed?'':':bottom_top')+((embed_mode==='float')? ':tb_press:'+pref.catalog.appearance.initial.state:''),
+//        rolldown: function(){pn12_0_4.style.display='';},
+//        rollup: function(){pn12_0_4.style.display='none';},
+        exit: (!watcher)? show_hide : this.destroy.bind(this),
+        maximize: show_catalog_cont,
+        get auto_roll(){return pref.catalog_auto_rollup_when_moving;}}).pn;
+//      var pn12_whole = cnst.init('left:0px:tile:get:bottom:resize:both:Show:tb:width:'+pref.catalog.appearance.initial.width+'px:height:'+pref.catalog.appearance.initial.height+'px:resize:both:overflow:auto',
+//        function(){pn12_0_4.style.display='';},function(){pn12_0_4.style.display='none';},show_hide,show_catalog_cont);
+//      var pn12 = pn12_whole[0];
+//      if (embed_embed) pn12.style.display = 'none';
+//      var pn12_rollup_func = pn12_whole[1];
+
+//// test for prototype base coding.
+////      var pn12_whole = new Cnst2('left:0px:tile:get:bottom:resize:both:Show:tb:width:400px:height:400px:resize:both:overflow:auto',
+////        {rolldowm:function(){pn12_0_4.style.display='';}, rollup:function(){pn12_0_4.style.display='none';}, exit:show_hide, maximize:show_catalog_cont});
+////      var pn12 = pn12_whole.pn;
+////      var pn12_rollup_func = pn12_whole.funcs.rollup;
+
+//      cnst.bottom_top(pn12);
+      var pn12_0 = pn12.childNodes[0];
+      var pn12_1 = pn12.childNodes[1].appendChild(document.createElement('div'));
+//      var pn12_1 = pn12.childNodes[1];
+//      pn12_1.id = 'catalog_debug'; // working code.
+//      var autorollup_state = false;
+//      function auto_hide_catalog() {
+//        if (pref.catalog_auto_rollup_when_moving) {
+//          if (pn12_1.style.display!='none') {
+//            pn12_rollup_func();
+//            autorollup_state = true;
+//          } else if (autorollup_state) {
+//            pn12_rollup_func();
+//            autorollup_state = false;
+//          }
+//        }
+//      }
+//      pn12.addEventListener('dragstart', auto_hide_catalog, false);
+//      pn12.addEventListener('dragend'  , auto_hide_catalog, false);
+      var pn12_0_2 = cnst.add_to_tb(pn12,
+//        '<label name="filter"><input type="checkbox" name="catalog.filter.show"> Filter </label>' +
+//        '<label name="settings"><input type="checkbox" name="catalog_show_setting"> Settings</label>'+
+        '<button type="button" name="filter">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'F' : cnst.icons.img(cnst.icons.filter)) +'</button>' +
+        '<button type="button" name="settings">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'S' : cnst.icons.img(cnst.icons.settings)) +'</button>'+
+//        '<button name="refresh">Refresh</button>'+
+//        '<button name="refresh">\u27f3</button>'+
+        '<button type="button" name="refresh">'+ ((site2[site.nickname].CONTENT_SECURITY_POLICY_DATAURI)? 'R' : cnst.icons.img(cnst.icons.refresh)) +'</button>'+
+        '<span name="num_of_pages">'+
+          '<span name="hide_at_embed"> up to <input type="text" name="catalog_max_page" size="2" style="text-align: right;">pages in </span></span>'+
+        '<span name="boards_selector"><select name="catalog_board_list_sel"></select></span>');
+      var board_sel = pn12_0_2.getElementsByTagName('select')['catalog_board_list_sel'];
+      cnst.auto_shrink_board_selector.setup(board_sel,pref.catalog_board_list_sel);
+      pref_func.apply_prep(pn12_0_2,false);
+      var pn12_0_2_childs = ['filter','settings','refresh','num_of_pages','boards_selector'];
+      for (var i=0;i<pn12_0_2_childs.length;i++)
+        if (!pref.catalog.appearance.titleBar[pn12_0_2_childs[i]]) pn12_0_2.getElementsByTagName('*')[pn12_0_2_childs[i]].style.display = 'none';
+      pn12_1.style.width = pn12_0.offsetWidth + 'px';
+
+      pn12_0.childNodes[3].appendChild(health_indicator.pn);
+      var IDB_spacer = document.createElement('span');
+      IDB_spacer.textContent = ' ';
+      pn12_0.childNodes[3].appendChild(IDB_spacer);
+      var IDB_indicator = new healthIndicator.HealthIndicator();
+      IDB.set_indicator(IDB_indicator);
+      pn12_0.childNodes[3].appendChild(IDB_indicator.pn);
+
+      var pn12_0_4 = document.createElement('div');
       if (embed_mode==='float') pn12_0_4.setAttribute('class', pref.script_prefix+'_window');
       pn12_0_4.style = 'margin:0px 3px; clear:both';
-      pn12_0.appendChild(pn12_0_4);
+//      pn12_0.appendChild(pn12_0_4);
       pn12_0_4.innerHTML = pref_func.format_html_str(
         '<div style="float:right;display:none">'+
           '<div style="float:right">'+
@@ -21292,12 +21571,12 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             '</div>'+
             '<div>'+
 //              '&emsp;Order<br>'+
-              '<ICBX"catalog.order.reply_to_me"> New reply to me at first<br>'+
-              '<ICBX"catalog.order.reply"> New reply at first<br>'+
+              pref_func.settings.html_funcs.rollup_radio('catalog.order.sticky', ' :Sticky', 1, '',
+                ['first:at first','last:at last','dont_care:don\'t care'])+ '<br>'+
+              '<IC"catalog.order.reply_to_me">New reply to me at first<br>'+
+              '<IC"catalog.order.reply">New reply at first<br>'+
 //              '<input type="checkbox" name="catalog.order.watch"> Watch listed at first<br>'+
               pref_func.settings.html_funcs.rollup_radio('catalog.order.watch', ' :Watch listed', 1, '',
-                ['first:at first','last:at last','dont_care:don\'t care'])+ '<br>'+
-              pref_func.settings.html_funcs.rollup_radio('catalog.order.sticky', ' :Sticky', 1, '',
                 ['first:at first','last:at last','dont_care:don\'t care'])+ '<br>'+
 //              '&emsp;<input type="radio" name="catalog.order.sticky" value="hide"> hide<br>'+
             '</div>'+
@@ -21309,7 +21588,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //            '</div>'+
 //          '</div>'+
         '</div>'+
-        '<div align="left" style="float:left">'+
+        '<div align="left" style="float:left;display:none">'+
           '<div data-show3="kwd">'+
             '<a name="HIDE3" style="cursor:pointer">[-]</a>'+
             '<ICBX"catalog.filter.kwd.use"> Keyword :'+
@@ -21336,6 +21615,17 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             '<ICBX"catalog.filter.kwd.post">Posts)'+
             '<button name="scanBoard">></button>'+
             '<button name="scanSite">>></button>'+
+          (!pref.test_mode['115']? '' : pref_func.settings.html_funcs.rollup(
+              '<div>'+
+                '&emsp;<IC"catalog.filter.auto_list.use">Auto filter list:<br>'+
+                '2,<ICBX"catalog.filter.auto_list.kill">Hide '+
+                '<ICBX"catalog.filter.auto_list.watch">Watch '+
+                '<ICBX"catalog.filter.auto_list.sticky">Sticky '+
+                '<ICBX"catalog.filter.auto_list.style">Style:'+
+                '<ITBL25"catalog.filter.auto_list.style_str">'+
+                '&emsp;<BTN"add_to_auto,+"><br>'+
+                '2,<TA"catalog.filter.auto_list.str,40,1">'+
+              '</div>')) +
           '</div>'+
 //          '<div>'+
 ////            '<button name="scanSite">scanSite</button> '+
@@ -21441,6 +21731,48 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           '<a name="SHOW3" style="cursor:pointer;float:left" data-show3="list">[+ List filters]</a>'+
         '</div>'+
         '<div style="clear:both"></div>');
+      pn12.childNodes[1].appendChild(pn12_0_4);
+      var pls = pn12_0_4.getElementsByClassName('PLACEHOLDER');
+      pls[0].appendChild(site2[site.nickname].make_tack());
+      cnst.set_tack_float(pls[0], hide_prev_float, show_prev_dock);
+      var btns = pn12_0_2.getElementsByTagName('button');
+      cnst.set_target_of_button(btns['settings'],pn12_0_4.childNodes[0]);
+      cnst.set_target_of_button(btns['filter'],pn12_0_4.childNodes[1]);
+  this.pn12 = pn12;
+  this.pn12_0 = pn12_0;
+  this.pn12_1 = pn12_1;
+  this.pn12_0_2 = pn12_0_2;
+  this.pn12_0_4 = pn12_0_4;
+  this.board_sel = board_sel;
+  this.ths = {};
+  this.idxs = [];
+  this.drawn_idx = 0;
+  this.show_catalog = show_catalog || function(){};
+  this.mode = embed_mode;
+  this.order = pref.catalog.order;
+  this.ths_odl = {};
+    };
+      Clg.prototype = {
+        destroy: function(e){
+          cnst.div_destroy(e.currentTarget.parentNode, true);
+        },
+      };
+
+      var pClg = new Clg(embed_embed, embed_mode); // primary catalog
+      var pn12 = pClg.pn12;
+      var pn12_0 = pClg.pn12_0;
+      var pn12_1 = pClg.pn12_1;
+      var pn12_0_2 = pClg.pn12_0_2;
+      var pn12_0_4 = pClg.pn12_0_4;
+      var board_sel = pClg.board_sel;
+      var threads = pClg.ths;
+      cataLog.threads = threads;
+      var threads_idx = pClg.idxs;
+      var pop_up_status = {};
+  Object.defineProperty(pClg,'idxs',{get:function(){return threads_idx;}, set:function(v){threads_idx = v;}}); // temporarily patch
+  Object.defineProperty(pClg,'order',{get:function(){return pref.catalog.order;}}); // temporarily patch
+  Object.defineProperty(pClg,'drawn_idx',{get:function(){return drawn_idx;}, set:function(v){drawn_idx = v;}}); // temporarily patch
+
       function hide_prev_float(e){
         cnst.tack_float_nSblgs(e, true);
 //        site.script_body.appendChild(e.currentTarget.nextSibling);
@@ -21452,12 +21784,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         tack.previousSibling.style.display = null;
         cnst.tack_dock_nSblgs(e);
       }
-      var pls = pn12_0_4.getElementsByClassName('PLACEHOLDER');
-      pls[0].appendChild(site2[site.nickname].make_tack());
-      cnst.set_tack_float(pls[0], hide_prev_float, show_prev_dock);
-//      var btns = pn12_0_2.getElementsByTagName('button');
-//      cnst.set_target_of_button(btns['settings'],pn12_0_4.childNodes[0]);
-//      cnst.set_target_of_button(btns['filter'],pn12_0_4.childNodes[1]);
 
       cataLog.components = {
         catalog: {indexing:pn12_0_4.getElementsByTagName('select')['catalog.indexing']},
@@ -21470,7 +21796,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       if (embed_mode==='catalog' || embed_mode==='page' || embed_mode==='thread') {
         pn12_0_2.getElementsByTagName('span')['hide_at_embed'].style.display = 'none';
         pn12_0_4.getElementsByTagName('div')['hide_at_embed'].style.display = 'none';
-        if (embed_mode==='catalog') site2[site.nickname].catalog_native_frame_prep(pn12,pn12_button);
       }
       var hide_target = (pref.catalog.text_mode.mode==='text')? 'catalog.text_mode.mode.graphic' : 'catalog.text_mode.mode.text';
       pn12_0_4.getElementsByTagName('span')[hide_target].style.display = 'none';
@@ -21511,8 +21836,8 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var onchange_funcs = {
 //        'catalog.filter.show' : function(){cnst.show_hide(pn_filter,pn12_1);},
 //        'catalog_show_setting': function(){cnst.show_hide(pn_setting,pn12_1);},
-        'filter' : function(){cnst.show_hide(pn_filter,pn12_1);cnst.toggleButton(this);}, // pn12_1 for maximize state
-        'settings': function(){cnst.show_hide(pn_setting,pn12_1);cnst.toggleButton(this);},
+//        'filter' : function(){cnst.show_hide(pn_filter,pn12_1);cnst.toggleButton(this);}, // pn12_1 for maximize state
+//        'settings': function(){cnst.show_hide(pn_setting,pn12_1);cnst.toggleButton(this);},
 //        'refresh'             : function(){catalog_refresh(true,null,false);},
         'refresh'             : function(){auto_update.timer_tgt(true);},
         'catalog_board_list_sel' : function(e, init){
@@ -21563,7 +21888,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //        'save'                : function(){if (localStorage) localStorage.setItem(onchange_funcs.load_save_key(pref.catalog_board_list_sel),JSON.stringify(pref.catalog.filter));},
         'save'                : function(sel){
           if (localStorage) {
-            if (sel===undefined) sel = pref.catalog_board_list_sel;
+            if (typeof(sel)!=='number') sel = pref.catalog_board_list_sel;
             var pf = pref.catalog.filter;
             var save_str = JSON.stringify(
               pref_func.obj_elim_the_same(pref_default(true).catalog.filter, pref.catalog.filter),
@@ -21650,6 +21975,15 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         'catalog.filter.tag_search.show_nof_boards': liveTag.popup_filter.onchange_funcs['catalog.filter.tag_search.show_nof_boards'],
         'tagB.*': liveTag.cbx_all_onchange,
         'tag2bList': liveTag.add_tags_to_boardlist,
+        'add_to_auto': function(e){
+          var pf = pref.catalog.filter.auto_list;
+          var cmds = [pf.kill? 'KILL':null, pf.watch? 'WATCH':null, pf.sticky? 'STICKY':null, pf.style? 'ATTR:'+pf.style_str:null].filter(function(v){return v;}).join();
+          if (pref.catalog.filter.kwd.str==='') return;
+          var str = pref_func.str2obj7.o2s({cmds:cmds, __proto__:pref.catalog.filter.kwd});
+          pref.catalog.filter.auto_list.str += str+'\n';
+          var pn = e.target.parentNode.getElementsByTagName('TEXTAREA')[0];
+          pref_func.apply_prep(pn,false, null, null, true);
+        },
         __proto__: oninput_funcs,
       };
 ////      onchange_funcs.entry_func = (function(myself){ // working code.
@@ -22176,6 +22510,7 @@ if (pref.test_mode['22']) {
 //            var post_updated_static = pref.liveTag.from==='post' || pref.stats.use || pref[embed_mode].deleted_posts.detect==='full';
             var pf_store = (pref[embed_mode].storePosts==='ALL_agg' || pref[embed_mode].storePosts==='auto' && pref4.search_posts_active_once)? 'ALL' : pref[embed_mode].deleted_posts.detect;
             if (pf_store==='no' && embed_mode==='page') pf_store = pref[embed_mode].t2h_num_of_posts;
+            if (pref[embed_mode].detect_sage && dbt[0]==='4chan' && dbt[3]==='catalog_json') site2['4chan'].sage_detect_all(ths);
             for (var i=0;i<ths.length;i++) {
               var th = ths[i];
               if (!th.no) continue; // PATCH for a bug in 4chan, 4chan returns invalid data.
@@ -22383,6 +22718,7 @@ if (pref.test_mode['22']) {
 ////              if (pref.liveTag.use) scan.list_nup.add_board(dbt[0]+dbt[1], value.date);
               scan.list_nup.got_200_board(dbt[0]+dbt[1]);
               rm_items_404_check(dbt[0],dbt[1],ths);
+//              if (pref[embed_mode].detect_sage && th.domain==='4chan' && dbt[3]==='catalog_json') site2['4chan'].sage_detect_all(ths);
 ////              if (liveTag.mems[dbt[0]][dbt[1]] && liveTag.mems[dbt[0]][dbt[1]].f) { // 'liveTag.mems[dbt[0]][dbt[1]]' is for /popular/
 ////                for (var i=0;i<ths.length;i++) scan.list_nup.add(ths[i].key);
 ////                liveTag.mems[dbt[0]][dbt[1]].f = false;
@@ -22710,7 +23046,7 @@ if (pref.test_mode['22']) {
 ////        liveTag.filter_onchange();
 ////      }
 ////      if (!pref.catalog.filter.show) pn_filter.style.display = 'none';
-      pn_filter.style.display = 'none';
+//      pn_filter.style.display = 'none';
 ////      pn_filter.getElementsByTagName('*')['catalog.filter.kwd.str'].onkeyup = function(){ // working code.
 ////        pref_func.apply_prep(this,true,true);
 ////        if ((!pref.catalog.filter.kwd.use && this.value!=='') || (pref.catalog.filter.kwd.use && this.value==='')) {
@@ -22852,7 +23188,7 @@ if (pref.test_mode['22']) {
 //      pn12_1.style.height = '';
 
       var scroll_event_src = (embed_embed)? ((site2[site.nickname].catalog_get_native_scroll_area)? site2[site.nickname].catalog_get_native_scroll_area() : window) :
-                                            triage_parent;
+                                            triage_parent.parentNode;
 //      var scroll_event_src = (embed_embed)? window : triage_parent;
       var pn12_triage;
       var triage_str;
@@ -23127,8 +23463,8 @@ if (pref.test_mode['22']) {
           'UNWATCH': function(tgt_th){return !(tgt_th[19][0]&0x000c0000);},
           'SHOW': function(tgt_th){return tgt_th[16].icon_show_always;},
           'UNSHOW': function(tgt_th){return !tgt_th[16].icon_show_always;},
-          'STICKY': function(tgt_th){return tgt_th[16].icon_sticky;},
-          'UNSTICKY': function(tgt_th){return !tgt_th[16].icon_sticky;},
+          'STICKY': function(tgt_th){return tgt_th[20];},
+          'UNSTICKY': function(tgt_th){return !tgt_th[20];},
           'ARC': function(tgt_th,lth){return lth.archived;},
           'ARC1': function(tgt_th,lth){return lth.archived;},
           'UARC': function(tgt_th,lth){return !lth.archived;},
@@ -23396,7 +23732,7 @@ if (!pref.test_mode['13']) {
 ////////
 //      function insert_thread(src, nickname, page_no, date_load, name, html_org, src2, url, from_native, th, type){
       function merge_deleted_posts(lth, posts, num, t2h){
-        return site2[lth.domain].update_posts_merge_prep(posts, lth.pd, (num===false)? posts.length-1 : (num===-1)? -1 : num + ((t2h==='unread' || t2h==='N_unread')? lth.pd.length : 0), true);
+        return site2[lth.domain].update_posts_merge_prep(posts, lth.pd, (num===false)? posts.length-1 : (num===-1)? -1 : num + ((t2h==='unread' || t2h==='N_unread')? lth.pd.length : 0), true); // patch; count of unread posts doesn't contain deleted posts.
       }
       var tgt_th16_proto = {
         get no(){return this.dbt[2];},
@@ -23576,6 +23912,10 @@ if (pref.test_mode['19']) { // stability test.
 ////            tgt_th[16].tn_h = th.tn_h;
 ////            tgt_th[16].op_img_url = th.op_img_url;
 ////          }
+          if (pref.test_mode['115'] && pref.catalog.filter.auto_list.use) {
+            var auto_obj = pref_func.merge_obj5a(th,pref.catalog.filter.auto_list.obj7,null);
+            if (auto_obj) catalog_filter_query_keyword.auto_list(th, auto_obj);
+          }
         }
         if (th.parse_funcs.posts_full) th.parse_funcs.posts_full(th);
         if (!date[0]) date[0] = tgt_th[8][0];
@@ -23720,6 +24060,7 @@ if (pref.test_mode['19']) { // stability test.
 
           tgt_th[0].addEventListener('mouseover', tgt_th[2][0], false);
 
+if (!pref.test_mode['104']) {
           common_func.dom_addEventListener(tgt_th[5], th.pn, 'click', click_thread_whole);
           common_func.dom_addAttribute(th.pn, 'class', pref.script_prefix+'_thread');
           var tn_as = th.parse_funcs_html.tn_as(th);
@@ -23727,12 +24068,13 @@ if (pref.test_mode['19']) { // stability test.
             tn_as[i].onclick = click_thread_tn; // preventDefault is in this event handler.
             common_func.dom_addAttribute(tn_as[i], 'class', pref.script_prefix+'_thumbnail');
           }
+}
           var tn_imgs = th.parse_funcs_html.tn_imgs(th);
           if (pref[embed_mode].format.thumb.resize) // BUG, should be moved into show_catalog() because threads aren't shown all the time and cause memory leak.
             for (var i=0;i<tn_imgs.length;i++) tn_imgs[i].addEventListener('load',(i==0)?image_resize1_onload : image_resize2_onload, false);
 
-          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain_html].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
-                                                                                       site2[th.domain_html].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
+//          if (tgt_th[20]===true) tgt_th[16].icon_sticky = (insert_thread_from_native)? site2[th.domain_html].get_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]) :
+//                                                                                       site2[th.domain_html].add_icon(tgt_th[0],th.type_html, 'sticky', tgt_th[16]); // first time only.
           catalog_attr_set(th.key,tgt_th[0]);
   
           if (embed_mode==='float' && pref.catalog.text_mode.mode==='text') { // place after th.op_img_url. // NEED TO MODIFY REMOVE_THREAD TO PREVENT MEMORY LEAK.
@@ -24040,10 +24382,13 @@ if (pref.test_mode['19']) { // stability test.
                     if (tgt_th[16].posts[i].no!==th_new[i].no) {flag=true; break;} // for no OP
                     i--;
                   }
-                  if (!flag && tgt_th[16].posts && tgt_th[16].posts[0] && tgt_th[16].posts[0].pn &&
-                      (tgt_th[16].posts[0].pn.classList.contains('CatChan_search_miss')==th_new[0].search_result))
-                    site2[th.domain_html].update_posts0_class(tgt_th[16].posts[0].pn,th_new[0].search_result);
+//                  if (!flag && tgt_th[16].posts && tgt_th[16].posts[0] && tgt_th[16].posts[0].pn && // BUG in page mode, tgt_th[16].posts[0].pn exists always even if flag==true.
+//                      (tgt_th[16].posts[0].pn.classList.contains('CatChan_search_miss')==th_new[0].search_result))
+//                    site2[th.domain_html].update_posts0_class(tgt_th[16].posts[0].pn,th_new[0].search_result);
                 }
+                if (tgt_th[16].posts && tgt_th[16].posts[0] && tgt_th[16].posts[0].pn &&
+                    (tgt_th[16].posts[0].pn.classList.contains('CatChan_search_miss')==th_new[0].search_result))
+                  site2[th.domain_html].update_posts0_class(tgt_th[16].posts[0].pn,th_new[0].search_result);
                 if (flag) {    
                   format_html.prepare_html_prep_posts(th);
                   tgt_th[16].th = {posts:th_new, __proto__:th};
@@ -24118,8 +24463,8 @@ if (pref.test_mode['19']) { // stability test.
           this.formatted_arr = null;
           for (var name in this.threads) this.update_force(name);
         },
-        update_force: function(name,tags){
-          this.update(name,null,tags, true);
+        update_force: function(name,tags,flags){
+          this.update(name,flags,tags, true);
         },
         update: function(name,flags,tags, force){
           var footer = this.threads[name][24];
@@ -24166,7 +24511,7 @@ if (pref.test_mode['19']) { // stability test.
 //          }
 //          return flags[idx];
 //        },
-        remove_nullfy: function(footer,idx){
+        remove_nullify: function(footer,idx){
           footer[0].removeChild(footer[idx]);
           footer[idx] = null;
         },
@@ -24221,6 +24566,7 @@ if (pref.test_mode['19']) { // stability test.
             dn: function(pf){return (pf.domain)? function(){return lth.domain;} : null;},
             bd: function(pf){return (pf.board)?  function(){return lth.board;} : null;},
             no: function(pf){return (pf.no)?     function(){return lth.no;} : null;},
+            sp: function(pf){return (pf.ns)?     function(){return lth.sg? lth.sg.size : '';} : null;},
             wrap: function(p,func,l){
               var str = func();
               return str!==''? p+str+l : '';
@@ -24235,15 +24581,15 @@ if (pref.test_mode['19']) { // stability test.
             },
           };
           var fmts = {
-            native:    '(ar )(U: nm/nr / )R: (lp/)(r1)(+dp) / I: (im)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
-            condensed: '(ar )(nm/)(nr/)(lp/)(rp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
-            meguca:    '(ar )(dn)(bd)(no) (nm/)(nr/)(lp/)(rp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr ) ',
+            native:    '(ar )(U: nm/nr / )R: (lp/)(r1)(*sp)(+dp) / I: (im)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+            condensed: '(ar )(nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+            meguca:    '(ar )(dn)(bd)(no) (nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr ) ',
 //            get custom_str(){return pref[myself.mode].footer.custom_str;}, // patch for minify. This line hits a bug in minifier.
           };
           function compile(myself_in){
             myself = myself_in;
             var pf = pref[myself.mode].footer;
-            var elems = 'ar|n[mrfio]|pg|r[p1]|im|[ld]p|[cbp][tT]|pr|dn|bd'
+            var elems = 'ar|n[mrfio]|pg|r[p1]|im|[lds]p|[cbp][tT]|pr|dn|bd'
             var arr = pf.custom_str.split(new RegExp('(\\(.*?(?:'+elems+').*?\\))')).filter(function(v){return v;}); // will be changed to fmts[pf[myself.mode]]
             var rx = new RegExp('('+elems+')');
             var obj = {};
@@ -24289,7 +24635,7 @@ if (pref.test_mode['19']) { // stability test.
             footer.innerHTML = '<span></span>' + str;
             footer = footer.childNodes[0];
           }
-          if (pref[this.mode].footer.br) {
+          if (pref[this.mode].footer_br) {
             var footer_style = footer.getAttribute('style');
             footer_style = ((footer_style)? footer_style + ';' : '') + 'clear:both';
             footer.setAttribute('style',footer_style);
@@ -24319,11 +24665,12 @@ if (pref.test_mode['19']) { // stability test.
               var page = tgt_th[14] || '?';
               var str_nr = ((pf.nrtm)? lth.nrtm +'/' : '' ) + lth.nr;
               var str_nl = (pf.nl && lth.ta && lth.ta.posts)? lth.ta.posts.length+'/' : '';
+              var str_ns = (pf.ns && lth.sg)? '*'+lth.sg.size : '';
               var str_nd = (pf.nd && lth.pd)? '+'+lth.pd.length : '';
               str     = ((pf.archived && lth.archived)? 'A ' : '') +
                         ((pf.design==='native')?
-                          ((pf.nr)? ((lth.watched)? 'U: '+ str_nr + ' / ' : ''):'') + 'R: '+ str_nl+(nums2[2]-1)+str_nd +  ' / I: '+nums2[3] + ((pf.page)? ' / P: '+page : '')
-                        : ((pf.nr)? ((lth.watched)? str_nr + '/' : ''):'') + str_nl+nums2[2]+str_nd + '/'+nums2[3]+ ((pf.page)? '/'+page : '')); // trial.
+                          ((pf.nr)? ((lth.watched)? 'U: '+ str_nr + ' / ' : ''):'') + 'R: '+ str_nl+(nums2[2]-1)+str_ns+str_nd +  ' / I: '+nums2[3] + ((pf.page)? ' / P: '+page : '')
+                        : ((pf.nr)? ((lth.watched)? str_nr + '/' : ''):'') + str_nl+nums2[2]+str_ns+str_nd + '/'+nums2[3]+ ((pf.page)? '/'+page : '')); // trial.
               if (str) str += ' ';
               if (pf.nf || pf.nid) {
                 var str_nc = pf.nf && lth.sID && lth.sID.nc;
@@ -24350,7 +24697,7 @@ if (pref.test_mode['19']) { // stability test.
           if (str) {
             if (footer[5]) footer[5].textContent = str;
             else footer[5] = footer[0].insertBefore(document.createTextNode(str), footer[0].firstChild);
-          } else if (footer[5]) Footer.remove_nullfy(footer,5);
+          } else if (footer[5]) Footer.remove_nullify(footer,5);
   
           if (pf.tag && pf.use) {
             if (tags || !footer[3]) {
@@ -24358,7 +24705,7 @@ if (pref.test_mode['19']) { // stability test.
               if (footer[3]) footer[3].parentNode.removeChild(footer[3]);
               footer[3] = footer[0].insertBefore(pn, footer[6]);
             }
-          } else if (footer[3]) Footer.remove_nullfy(footer,3);
+          } else if (footer[3]) Footer.remove_nullify(footer,3);
 //          if (pf.tag && pf.use) { // working code
 //            tags = tags && lth;
 //            if (!footer[3]) {
@@ -24366,7 +24713,7 @@ if (pref.test_mode['19']) { // stability test.
 //              tags = lth;
 //            } else if (tags) footer[3].removeChild(footer[3].firstChild);
 //            if (tags) footer[3].appendChild(liveTag.update_tag_string(lth.tags, ', ', liveTag.tag_node_onclick));
-//          } else if (footer[3]) Footer.remove_nullfy(footer,3);
+//          } else if (footer[3]) Footer.remove_nullify(footer,3);
   
           if (pf.flag && pref[this.mode].t2h_num_of_posts>=0 && pf.use) {
             if (flags || !footer[6]) flags = tgt_th[16].recent_posts(); // .slice(); // EMBED_MODE IS USED IN THIS, MUST BE CHANGED.
@@ -24393,7 +24740,7 @@ if (pref.test_mode['19']) { // stability test.
 //              footer[1] = flags;
             }
           } else {
-            if (footer[6]) Footer.remove_nullfy(footer,6);
+            if (footer[6]) Footer.remove_nullify(footer,6);
 //            if (flags) footer[1] = flags;
           }
           if (pref.debug_mode['32'] && footer[6]) {
@@ -24460,67 +24807,8 @@ if (pref.test_mode['19']) { // stability test.
       function re_sort_thread(){
         threads_index.idx_re_sort();
       }
-      var threads_index = (function(){ // threads_idx, threads_odl and drawn_idx must be separated.
-        function re_sort(){
-          var odl = [];
-          for (var i=0;i<threads_idx.length;i++) if (threads_idx[i].substr(0,4)==='ODL:') odl[odl.length] = threads_idx[i];
-          threads_idx=[];
-          for (var i in threads) insert(i);
-          for (var i=0;i<odl.length;i++) threads_idx[threads_idx.length] = odl[i];
-          drawn_idx = 0;
-          show_catalog();
-        }
-//      function reorder_threads_idx(names){
-//        for (var i in names) reorder_thread_idx(i);
-//      }
-////      function reorder_thread_idx(name, skip_check){ // working code.
-//////        for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
-//////        insert_thread_idx(name);
-////        var i;
-////        if (!skip_check) {
-////          i = 0;
-////          while (i<threads_idx.length && threads_idx[i]!==name) i++;
-////          if (i<threads_idx.length) threads_idx.splice(i,1);
-////        } else i = -1;
-////        return (i!=insert_thread_idx(name) || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
-////      }
-
-////      function raise_threads_idx_odl(db,key){ // works, but blocked by stikies.
-////        var idx = threads_idx.indexOf(key);
-////        if (idx!=-1) {
-////          var kwd_odldb = 'ODL:'+db;
-////          for (var i=idx+1;i<threads_idx.length;i++)
-////            if (threads_idx[i].indexOf(kwd_odldb)===0) {
-////              if (i!=idx+1) threads_idx.splice(idx+1,0,threads_idx.splice(i,1)[0]);
-////              break;
-////            }
-////        }
-////      }
-////      function raise_threads_idx_odl(db){ // working, but blinks when there are 'watched and first' threads. (stickies can't be sticky)
-////        for (var i=threads_idx.length-1;i>=0;i--)
-////          if (threads_idx[i].indexOf(db)===0) {
-////            if (i<threads_idx.length-2) {
-////              var kwd_odldb = 'ODL:'+db;
-////              for (var j=i+1;j<threads_idx.length;j++)
-////                if (threads_idx[j].indexOf(kwd_odldb)===0) {
-////                  if (j!=i+1) threads_idx.splice(i+1,0,threads_idx.splice(j,1)[0]);
-////                  break;
-////                }
-////            }
-////            break;
-////          }
-////      }
-        function reorder(name){
-          var idx_old = threads_idx.indexOf(name);
-          if (idx_old!=-1) threads_idx.splice(idx_old,1);
-          var idx_new = insert(name);
-          if ((idx_new !== idx_old || embed_mode==='page') && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0;
-          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = 0;
-//          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
-//          if (idx_new !== idx_old && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
-          return (idx_new !==idx_old || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
-        }
-        var threads_odl = {};
+      common_func.Object_defProps(Clg.prototype, (function(){ // threads_idx, threads_odl and drawn_idx must be separated.
+//        var threads_odl = {};
 //        var threads_odl_default = { '8': [0, undefined, undefined, undefined, undefined], // disable 'on demand mode' at indexing of 1,2,3
         var threads_odl_default = { '8': [0, 0, 0, 0, 0],
                                    '19': [0,0,0]};
@@ -24529,6 +24817,7 @@ if (pref.test_mode['19']) { // stability test.
           return (page===0)? {'8': [undefined, undefined, undefined, undefined, undefined], __proto__: threads_odl_default} : // force to top
                              {'8': [-page, -page, -page, -page, -page], __proto__: threads_odl_default};  // force to last
         }
+        var threads_odl,threads;
         var start,end;
         var kwd_odl = 'ODL:';
         var check_funcs = {
@@ -24543,9 +24832,9 @@ if (pref.test_mode['19']) { // stability test.
           return (str.indexOf(kwd_odl)===0)? (threads_odl[str] || get_threads_odl_default(str)) :
                                              threads[str];
         }
-        function check_sub(myself, check_func){
+        function check_sub(myself, check_func, idxs){
           var ref = start;
-          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
+          while (ref<end && check_func(get_tgt_th(idxs[ref]))) ref++;
           if (check_func(myself)) end = ref;
           else start = ref;
         }
@@ -24557,14 +24846,18 @@ if (pref.test_mode['19']) { // stability test.
           2: function(tgt_th8){return tgt_th8[2];},
           3: function(tgt_th8){return tgt_th8[3];},
         }
-        function insert(name){
+        function insert(name, clg){
+          var idxs = clg.idxs;
+          threads = clg.ths;
+          threads_odl = clg.ths_odl;
           start = 0;
-          end = threads_idx.length;
+          end = idxs.length;
+          var pf = clg.order;
           var myself = get_tgt_th(name);
-          if (pref.catalog.order.reply_to_me) check_sub(myself, check_funcs.reply_to_me);
-          if (pref.catalog.order.reply) check_sub(myself, check_funcs.reply);
-          if (pref.catalog.order.watch!=='dont_care') check_sub(myself, (pref.catalog.order.watch==='last')? check_funcs.watch_last : check_funcs.watch_first);
-          if (pref.catalog.order.sticky!=='dont_care') check_sub(myself, (pref.catalog.order.sticky==='last')? check_funcs.sticky_last : check_funcs.sticky_first);
+          if (pf.sticky!=='dont_care') check_sub(myself, (pf.sticky==='last')? check_funcs.sticky_last : check_funcs.sticky_first, idxs);
+          if (pf.reply_to_me) check_sub(myself, check_funcs.reply_to_me, idxs);
+          if (pf.reply) check_sub(myself, check_funcs.reply, idxs);
+          if (pf.watch!=='dont_care') check_sub(myself, (pf.watch==='last')? check_funcs.watch_last : check_funcs.watch_first, idxs);
           var get_date = funcs_get_date[pref.catalog.indexing%6];
 //          var indexing  = pref.catalog.indexing%6;
 //          var indexing2 = pref.catalog.indexing;
@@ -24575,42 +24868,208 @@ if (pref.test_mode['19']) { // stability test.
           var check_func = (pref.catalog.indexing>=5 && pref.catalog.indexing<11)? function(tgt_th){return date>=get_date(tgt_th[8]);} :
                                                                                    function(tgt_th){return date<=get_date(tgt_th[8]);};
           var ref = start;
-          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
+          while (ref<end && check_func(get_tgt_th(idxs[ref]))) ref++;
   
-          if (ref==threads_idx.length) threads_idx[threads_idx.length] = name;
-          else threads_idx.splice(ref,0,name);
+          if (ref==idxs.length) idxs[idxs.length] = name;
+          else idxs.splice(ref,0,name);
   //        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
           return ref;
         }
-        function raise_odl(th){
-          var i = threads_idx.indexOf(th.key);
-          if (i!=-1) {
-            var kwd_odldb = 'ODL:'+ th.domain + th.board;
-            while (++i<threads_idx.length) {
-              if (threads_idx[i].indexOf(kwd_odldb)===0) {
-                threads_odl[threads_idx[i]] = {'8':[ (th.time_posted || th.time_bumped), th.time_created, th.nof_posts, th.nof_files, (th.time_bumped || th.time_posted) ],
-                                               __proto__:threads_odl_default};
-                insert(threads_idx.splice(i,1)[0]);
-                break;
-          }}}
-        }
-        function delete_odl(keys){
-          for (var i=0;i<keys.length;i++) delete threads_odl[kwd_odl+keys[i]];
-        } 
-        function insert_odl(name){
-          delete threads_odl[kwd_odl+name];
-          reorder(kwd_odl+name);
-        }
         return {
-          idx_insert: insert,
-          idx_raise_odl: raise_odl,
-          idx_delete_odl: delete_odl,
-          idx_insert_odl: insert_odl,
+          idx_raise_odl: function(th){
+            var i = this.idxs.indexOf(th.key);
+            if (i!=-1) {
+              var kwd_odldb = kwd_odl + th.domain + th.board;
+              while (++i<this.idxs.length) {
+                if (this.idxs[i].indexOf(kwd_odldb)===0) {
+                  this.ths_odl[this.idxs[i]] = {'8':[ (th.time_posted || th.time_bumped), th.time_created, th.nof_posts, th.nof_files, (th.time_bumped || th.time_posted) ],
+                                                 __proto__:threads_odl_default};
+                  insert(this.idxs.splice(i,1)[0], this);
+                  break;
+            }}}
+          },
+          idx_delete_odl: function(keys){
+            for (var i=0;i<keys.length;i++) delete this.ths_odl[kwd_odl+keys[i]];
+          },
+          idx_insert_odl: function(name){
+            delete this.ths_odl[kwd_odl+name];
+            this.idx_reorder(kwd_odl+name);
+          },
 //          clear: clear, // NEED TO BE IMPLEMENTED to clear 'threads_odl' to prevent memory from leaking.
-          idx_reorder: reorder,
-          idx_re_sort: re_sort,
-        }
-      })();
+          idx_re_sort: function(){
+            var odls = this.idxs.filter(function(v){return v.substr(0,4)==='ODL:';});
+            this.idxs = [];
+            for (var i in this.ths) insert(i, this);
+            this.idxs = this.idxs.concat(odls);
+            this.drawn_idx = 0;
+            this.show_catalog();
+          },
+          idx_reorder: function(name){
+            var idx_old = this.idxs.indexOf(name);
+            if (idx_old!=-1) this.idxs.splice(idx_old,1);
+            var idx_new = insert(name, this);
+            if ((idx_new !== idx_old || this.mode==='page') && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0;
+            else if (this.mode==='page' && this.drawn_idx===true) this.drawn_idx = 0;
+  //          else if (this.mode==='page' && this.drawn_idx===true) this.drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
+  //          if (idx_new !== idx_old && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
+            return (idx_new !==idx_old || (this.ths[name] && this.ths[name][9][0]!=this.ths[name][1])); // returns need to redraw.
+          },
+        };
+      })());
+      var threads_index = pClg;
+      
+//      var threads_index = pref.test_mode['114']? pClg : (function(){ // threads_idx, threads_odl and drawn_idx must be separated. // working code.
+//        function re_sort(){
+//          var odl = [];
+//          for (var i=0;i<threads_idx.length;i++) if (threads_idx[i].substr(0,4)==='ODL:') odl[odl.length] = threads_idx[i];
+//          threads_idx=[];
+//          for (var i in threads) insert(i);
+//          for (var i=0;i<odl.length;i++) threads_idx[threads_idx.length] = odl[i];
+//          drawn_idx = 0;
+//          show_catalog();
+//        }
+////      function reorder_threads_idx(names){
+////        for (var i in names) reorder_thread_idx(i);
+////      }
+//////      function reorder_thread_idx(name, skip_check){ // working code.
+////////        for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
+////////        insert_thread_idx(name);
+//////        var i;
+//////        if (!skip_check) {
+//////          i = 0;
+//////          while (i<threads_idx.length && threads_idx[i]!==name) i++;
+//////          if (i<threads_idx.length) threads_idx.splice(i,1);
+//////        } else i = -1;
+//////        return (i!=insert_thread_idx(name) || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
+//////      }
+//
+//////      function raise_threads_idx_odl(db,key){ // works, but blocked by stikies.
+//////        var idx = threads_idx.indexOf(key);
+//////        if (idx!=-1) {
+//////          var kwd_odldb = 'ODL:'+db;
+//////          for (var i=idx+1;i<threads_idx.length;i++)
+//////            if (threads_idx[i].indexOf(kwd_odldb)===0) {
+//////              if (i!=idx+1) threads_idx.splice(idx+1,0,threads_idx.splice(i,1)[0]);
+//////              break;
+//////            }
+//////        }
+//////      }
+//////      function raise_threads_idx_odl(db){ // working, but blinks when there are 'watched and first' threads. (stickies can't be sticky)
+//////        for (var i=threads_idx.length-1;i>=0;i--)
+//////          if (threads_idx[i].indexOf(db)===0) {
+//////            if (i<threads_idx.length-2) {
+//////              var kwd_odldb = 'ODL:'+db;
+//////              for (var j=i+1;j<threads_idx.length;j++)
+//////                if (threads_idx[j].indexOf(kwd_odldb)===0) {
+//////                  if (j!=i+1) threads_idx.splice(i+1,0,threads_idx.splice(j,1)[0]);
+//////                  break;
+//////                }
+//////            }
+//////            break;
+//////          }
+//////      }
+//        function reorder(name){
+//          var idx_old = threads_idx.indexOf(name);
+//          if (idx_old!=-1) threads_idx.splice(idx_old,1);
+//          var idx_new = insert(name);
+//          if ((idx_new !== idx_old || embed_mode==='page') && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0;
+//          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = 0;
+////          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
+////          if (idx_new !== idx_old && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
+//          return (idx_new !==idx_old || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
+//        }
+//        var threads_odl = {};
+////        var threads_odl_default = { '8': [0, undefined, undefined, undefined, undefined], // disable 'on demand mode' at indexing of 1,2,3
+//        var threads_odl_default = { '8': [0, 0, 0, 0, 0],
+//                                   '19': [0,0,0]};
+//        function get_threads_odl_default(str){
+//          var page = parseInt(str.substr(str.lastIndexOf('/')+2),10);
+//          return (page===0)? {'8': [undefined, undefined, undefined, undefined, undefined], __proto__: threads_odl_default} : // force to top
+//                             {'8': [-page, -page, -page, -page, -page], __proto__: threads_odl_default};  // force to last
+//        }
+//        var start,end;
+//        var kwd_odl = 'ODL:';
+//        var check_funcs = {
+//          reply_to_me: function(tgt_th){return (tgt_th[19][0]&0x000c0000) && (tgt_th[19][1]>>16)!=0;},
+//          reply: function(tgt_th){return (tgt_th[19][0]&0x000c0000) && tgt_th[19][1]!=0;},
+//          watch_first: function(tgt_th){return tgt_th[19][0]&0x000c0000;},
+//          watch_last: function(tgt_th){return !(tgt_th[19][0]&0x000c0000);},
+//          sticky_first: function(tgt_th){return tgt_th[20];},
+//          sticky_last: function(tgt_th){return !tgt_th[20];},
+//        }
+//        function get_tgt_th(str){
+//          return (str.indexOf(kwd_odl)===0)? (threads_odl[str] || get_threads_odl_default(str)) :
+//                                             threads[str];
+//        }
+//        function check_sub(myself, check_func){
+//          var ref = start;
+//          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
+//          if (check_func(myself)) end = ref;
+//          else start = ref;
+//        }
+//        var funcs_get_date = {
+//          0: function(tgt_th8){return tgt_th8[0] || tgt_th8[4];},
+//          4: function(tgt_th8){return tgt_th8[4] || tgt_th8[0];},
+//          get 5(){var now = Date.now(); return function(tgt_th8){return (now - tgt_th8[1])/tgt_th8[2];}},
+//          1: function(tgt_th8){return tgt_th8[1];},
+//          2: function(tgt_th8){return tgt_th8[2];},
+//          3: function(tgt_th8){return tgt_th8[3];},
+//        }
+//        function insert(name){
+//          start = 0;
+//          end = threads_idx.length;
+//          var pf = pref.catalog.order;
+//          var myself = get_tgt_th(name);
+//          if (pf.sticky!=='dont_care') check_sub(myself, (pf.sticky==='last')? check_funcs.sticky_last : check_funcs.sticky_first);
+//          if (pf.reply_to_me) check_sub(myself, check_funcs.reply_to_me);
+//          if (pf.reply) check_sub(myself, check_funcs.reply);
+//          if (pf.watch!=='dont_care') check_sub(myself, (pf.watch==='last')? check_funcs.watch_last : check_funcs.watch_first);
+//          var get_date = funcs_get_date[pref.catalog.indexing%6];
+////          var indexing  = pref.catalog.indexing%6;
+////          var indexing2 = pref.catalog.indexing;
+////          var get_date = (indexing===0 || indexing===4)? function(tgt_th){return tgt_th[8][indexing] || tgt_th[8][(indexing===0)?4:0];} :
+////                         (indexing===5)?                 (function(){var now = Date.now(); return function(tgt_th){return (now - tgt_th[8][1])/tgt_th[8][2];}})() :
+////                                                         function(tgt_th){return tgt_th[8][indexing];};
+//          var date = get_date(myself[8]);
+//          var check_func = (pref.catalog.indexing>=5 && pref.catalog.indexing<11)? function(tgt_th){return date>=get_date(tgt_th[8]);} :
+//                                                                                   function(tgt_th){return date<=get_date(tgt_th[8]);};
+//          var ref = start;
+//          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
+//  
+//          if (ref==threads_idx.length) threads_idx[threads_idx.length] = name;
+//          else threads_idx.splice(ref,0,name);
+//  //        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
+//          return ref;
+//        }
+//        function raise_odl(th){
+//          var i = threads_idx.indexOf(th.key);
+//          if (i!=-1) {
+//            var kwd_odldb = 'ODL:'+ th.domain + th.board;
+//            while (++i<threads_idx.length) {
+//              if (threads_idx[i].indexOf(kwd_odldb)===0) {
+//                threads_odl[threads_idx[i]] = {'8':[ (th.time_posted || th.time_bumped), th.time_created, th.nof_posts, th.nof_files, (th.time_bumped || th.time_posted) ],
+//                                               __proto__:threads_odl_default};
+//                insert(threads_idx.splice(i,1)[0]);
+//                break;
+//          }}}
+//        }
+//        function delete_odl(keys){
+//          for (var i=0;i<keys.length;i++) delete threads_odl[kwd_odl+keys[i]];
+//        } 
+//        function insert_odl(name){
+//          delete threads_odl[kwd_odl+name];
+//          reorder(kwd_odl+name);
+//        }
+//        return {
+//          idx_insert: insert,
+//          idx_raise_odl: raise_odl,
+//          idx_delete_odl: delete_odl,
+//          idx_insert_odl: insert_odl,
+////          clear: clear, // NEED TO BE IMPLEMENTED to clear 'threads_odl' to prevent memory from leaking.
+//          idx_reorder: reorder,
+//          idx_re_sort: re_sort,
+//        }
+//      })();
 ////////      function insert_thread_idx(name){ // working code.
 ////////        var indexing = pref.catalog.indexing;
 ////////        var ref=0;
@@ -25045,7 +25504,7 @@ if (pref.test_mode['19']) { // stability test.
         if (pref[embed_mode].click==='none') return;
         e.preventDefault();
         if (pref[embed_mode].click_area==='entire') return;
-        click_thread(get_name_recursive(this), (this.classList.contains(pref.script_prefix+'_link'))? this.getAttribute('href') : null);
+        click_thread(get_name_recursive(e.target), (e.target.classList.contains(pref.script_prefix+'_link'))? e.target.getAttribute('href') : null);
       }
       function click_thread_whole(){
         if (pref[embed_mode].click_area==='entire') click_thread(this.name);
@@ -25149,9 +25608,13 @@ if (pref.test_mode['19']) { // stability test.
         if (!site2[site.nickname].historyAPI || !site2[dbt[0]].historyAPI || !pref.pref2.meguca.historyAPI) {
           var cw = window.open(url,window_name);
           send_message(window_name, message,cw);
-          if (pref.uip_tracker.on && pref.uip_tracker.annotate) {
+          if (pref.uip_tracker.on) {
             var lth = liveTag.mems.getFromName(name);
-            if (lth.sID && lth.sID.h) send_message(window_name, ['UIP',lth.sID.h]);
+            if (pref.uip_tracker.sage.annotate) {
+              if (pref.uip_tracker.sage.annotate_page && lth.pgh) send_message(window_name, ['UIP', ['page',JSON.stringify(lth.pgh)]]);
+              if (lth.sg && lth.sg.size) send_message(window_name, ['UIP', ['sage'].concat(Array.from(lth.sg))]);
+            }
+            if (pref.uip_tracker.annotate) if (lth.sID && lth.sID.h) send_message(window_name, ['UIP',lth.sID.h]);
           }
           if (threads[name][16].archiveFile) {
             var file = threads[name][16].archiveFile;
@@ -25169,7 +25632,7 @@ if (pref.test_mode['19']) { // stability test.
         else site2['DEFAULT'].check_reply.set_unwatch(threads[name][19]);
         if (pref.liveTag.style) liveTag.update_ur(name,0,true);
 //        site2[cnst.name2domainboardthread(name,true)[0]].insert_footer2(threads[name][0],threads[name][18],threads[name][19],threads[name][8]);
-        Footer.update_force(name);
+        Footer.update_force(name, null, pref.catalog.footer.flag);
 //        if (reorder_thread_idx(name)) show_catalog(name); // called in triage_exe
         if (pref.notify.favicon) notifier.favicon.set(threads);
       }
@@ -25353,7 +25816,7 @@ if (pref.test_mode['23']) drawn_idx = 0;
               if (i%lazy_step===0) lazy_check = true;
               if (draw_on_demand || tgts===undefined || name in tgts) {
                 if (threads[name][9][0]===null) threads[name][9] = catalog_filter_query(name, true);
-                if (threads[name][9][0] && embed_mode==='page' && !pref.test_mode['52']) format_html.replace_posts_by_search(threads[name]); // may change threads[name][9][0]
+                if (threads[name][9][0] && (embed_mode==='page' || pref.test_mode['52'])) format_html.replace_posts_by_search(threads[name]); // may change threads[name][9][0]
                 if (threads[name][9][0]) {
                   if (!threads[name][0] || threads[name][16].th) {
                     insert_thread_prepare_html_lazy(threads[name], !threads[name][0], false, true);
@@ -25504,7 +25967,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       },
       func_track_reset: function(){
         this.ref_count = this.ref_count_init;
-        this.drawn_y = 0;
+        this.drawn_y = -1;
         drawn_idx= 0; // temporal patch, should be this.drawn_idx
 //        cataLog.Footer.timestamp_inc();
       },
@@ -25520,7 +25983,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
 //      },
       permit_draw_on_demand: true,
       ref_step: 1,
-      drawn_y: 0,
+      drawn_y: -1, // for floating catalog
       ref_count: 0,
       ref_count_init: 0,
 //      drawn_idx_mb: -1,
@@ -25707,6 +26170,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       cataLog.catalog_obj2 = catalog_obj2;
       var show_catalog_db_th100 = new DelayBuffer(show_catalog, pref.network.th100_delay);
       var show_catalog_db_th20 = new DelayBuffer(show_catalog, pref.network.th20_delay);
+  pClg.show_catalog = show_catalog; // temporarily patch
       
 function threads_idx_debug(idx,y,count, threads_idx){
   var str = 'drawn_idx:'+idx+', drawn_y:'+y+', ref_count:'+count+' ';
@@ -25837,17 +26301,21 @@ function threads_idx_debug(idx,y,count, threads_idx){
             }
           }
         }
-        if (val && val.cmd || tgt_th[16].icon_sticky || tgt_th[16].icon_show_always || tgt_th[16].systemSticky) {
+        if (val && val.cmd || tgt_th[20] || tgt_th[16].icon_show_always || tgt_th[16].systemSticky) {
+//        if (val && val.cmd || tgt_th[16].icon_sticky || tgt_th[16].icon_show_always || tgt_th[16].systemSticky) {
           var sticky = !!((val && val.cmd && val.cmd['sticky']!==undefined)? val.cmd['sticky'] : tgt_th[16].systemSticky); // !! for ^
-          if (sticky ^ tgt_th[20]) { // sticky
+          if (sticky ^ tgt_th[20]) {
             tgt_th[20] = sticky;
-            if (tgt_th[20] != tgt_th[16].icon_sticky) tgt_th[16].icon_sticky = site2[site.nickname].add_icon(tgt_th[0],tgt_th[16].type_html, 'sticky', tgt_th[16]);
+            threads_index.idx_reorder(name);
+            flag_redraw = true;
+            if (show_catalog && tgt_th[0]) show_catalog(name); // 'if (show_catalog)' is a patch.
           }
+          if (tgt_th[20] != tgt_th[16].icon_sticky) tgt_th[16].icon_sticky = site2[site.nickname].set_icon(tgt_th[0],tgt_th[16].type_html, 'sticky', tgt_th[16], sticky); // pass always because of lazy draw, pn was not prepared at initial.
           if ((val && val.cmd && val.cmd['show']) ^ !!tgt_th[16].icon_show_always) { // show
-            tgt_th[16].icon_show_always = site2[site.nickname].add_icon(tgt_th[0],tgt_th[16].type_html, 'show_always', tgt_th[16]);
-            tgt_th[16].show_always = val.cmd['show']; // for lazy pn generation.
+            tgt_th[16].icon_show_always = site2[site.nickname].set_icon(tgt_th[0],tgt_th[16].type_html, 'show_always', tgt_th[16]);
+            tgt_th[16].show_always = val.cmd && val.cmd['show']; // for lazy pn generation.
             tgt_th[9] = catalog_filter_query(name);
-            if (show_catalog) show_catalog(name); // 'if (show_catalog)' is a patch.
+            if (show_catalog && tgt_th[0]) show_catalog(name); // 'if (show_catalog)' is a patch.
           }
         }
       }
@@ -26041,7 +26509,18 @@ if (!pref.test_mode['59']) {
             result[0].search_result = this.kwd_1(pref.catalog.filter.kwd, posts[0], domain);
             for (var i=1;i<posts.length;i++) if (this.kwd_1(pref.catalog.filter.kwd, posts[i], domain)) result[result.length] = posts[i];
             return (result.length!=1 || this.kwd_1(pref.catalog.filter.kwd, posts[0], domain))? result : null;
-          }
+          },
+          auto_list: function(th, obj){
+            for (var i=0;i<obj.length;i++)
+              if (obj[i].use!==false && this.kwd({use:true, __proto__:obj[i]}, th.posts, th.domain, th)) {
+                var cmds = obj[i].cmds.split(',');
+                for (var j=0;j<cmds.length;j++) {
+                  var idx = cmds[j].indexOf(':');
+                  if (idx===-1) triage_exe_0(th.key, cmds[j]); // CAUTION: TRIAGE IS SLOW BECAUSE IT IS DESIGNED TO BE USED GUI, it redraws doms and remake objs always.
+                  else triage_exe_0(th.key, cmds[j].slice(0,idx), cmds[j].slice(idx+1));
+                }
+              }
+          },
         };
       })();
       cataLog.catalog_filter_query_keyword = catalog_filter_query_keyword;
@@ -26848,6 +27327,8 @@ if (pref.test_mode['95'] && site.nickname==='dist') site2[site.nickname].testPos
       if (embed_embed) {  // for native catalog
 //        pn12.style.display = 'none';
         setTimeout(function(){ // patch for liveTag.
+          cnst.tb_prep_for_embed(pn12_0);
+          pn12_0.appendChild(pn12_0_4);
           site2[site.nickname].catalog_native_prep(Date.now(),pn12_0_4,pn12_0, embed_mode==='catalog');
           var ths = insert_myself(null, true);
 //          if (site.whereami==='catalog') site2[site.nickname].clean_up_LS(ths);
@@ -27334,10 +27815,24 @@ if (pref.test_mode['0']) {
         geh: site2[site.nickname].general_event_handler[site.whereami],
         click: function(e){
           var et = e.target;
-          if (pref.test_mode['104'] && GEH.prototype.geh.isThumbnail(e)) {
-            var domain = site2['DEFAULT'].popups_posts.href2domain(et.getAttribute('src'));
-            if (!GEH.prototype.blacklist_click.has(et) && (!pref[embed_mode].env.expand_thumbnail_inline_native || !(pref[embed_mode].env.event_dynamic && domain===site.nickname)))
-              DIH.expand_thumbnail_inline.call(e.target, e);
+          if (pref.test_mode['104']) {
+            var isThumbnail = GEH.prototype.geh.isThumbnail(e);
+            if (cataLog.embed_mode==='catalog' && (isThumbnail || pref[cataLog.embed_mode].click_area==='entire')) {
+              e.preventDefault();
+              var tgt = GEH.prototype.geh.recSearch_thread(e.target, e.currentTarget);
+              if (tgt) click_thread(tgt.name);
+            } else if (isThumbnail) {
+              var domain = site2['DEFAULT'].popups_posts.href2domain(et.getAttribute('src'));
+              if (!GEH.prototype.blacklist_click.has(et) && (!pref[embed_mode].env.expand_thumbnail_inline_native || !(pref[embed_mode].env.event_dynamic && domain===site.nickname)))
+                DIH.expand_thumbnail_inline.call(e.target, e);
+            }
+//          if (pref.test_mode['104'] && GEH.prototype.geh.isThumbnail(e)) {
+//            if (cataLog.embed_mode==='catalog') click_thread_tn(e);
+//            else {
+//              var domain = site2['DEFAULT'].popups_posts.href2domain(et.getAttribute('src'));
+//              if (!GEH.prototype.blacklist_click.has(et) && (!pref[embed_mode].env.expand_thumbnail_inline_native || !(pref[embed_mode].env.event_dynamic && domain===site.nickname)))
+//                DIH.expand_thumbnail_inline.call(e.target, e);
+//            }
           } else if (et.tagName==='A') {
             if (pref.test_mode['93']) {
               var filename = et.getAttribute('download');
@@ -27451,9 +27946,19 @@ if (pref.test_mode['0']) {
         site.components.boardlist.addEventListener('mouseleave',GEH.prototype.mouseleave_bl,false);
       }
       site2['DEFAULT'].popups_posts.init(triage_parent);
+
+      function make_watcher(){
+        console.log('watcher');
+        var clg = new Clg(false,'float', true);
+      }
       
       return {
         destroy: function(){ // destructor
+          if (pref.test_mode['114']) {
+            make_watcher();
+            return this;
+          }
+
           cataLog.general_event_handler.destroy();
 //          triage.off();
           for (var name in threads) remove_thread(name);
