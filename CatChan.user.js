@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2019.03.10.0
+// @version 2019.03.31.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3608,7 +3608,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2019.03.10.0<br>'+
+          'Version 2019.03.31.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -11603,6 +11603,11 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         var div = document.createElement('div');
         div.setAttribute('class',pref.script_prefix+'_threads');
         arc.parentNode.insertBefore(div,arc);
+        var btn = document.createElement('button');
+        btn.textContent= 'More threads';
+        arc.parentNode.insertBefore(btn,arc);
+        btn.onclick = function(){
+          cataLog.insert_myself(null,true);}; // argument init is a patch for patch, should be removed.
         return div;
       }
       return (site.whereami==='catalog')? document.getElementById('threads') : document.getElementsByClassName('board')[0];
@@ -12269,6 +12274,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
         ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
         ((post.capcode)? '<strong class="capcode hand id_mod" title="Highlight posts by Moderators">##' + post.capcode + '</strong>' : '')+
 //        '<img src="//s.4cdn.org/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"></span>
+        ((post.since4pass)? '<span title="Pass user since '+post.since4pass+'" class="n-pu"></span>':'')+
         ((post.id)? '<span class="posteruid id_'+post.id+'">(ID: '+
           '<span class="hand" title="Highlight posts by this ID"'+
           (desktop? (color = this.post_json2html_colorID(post), ' style="color: ' + color[1] + '; background-color: rgb(' + color[0] + ');"'):'') + '>'+post.id+'</span>'+
@@ -23030,7 +23036,7 @@ if (pref.test_mode['22']) {
         }
       })();
       cataLog.auto_update = auto_update;
-      auto_update.set();
+      if (site.whereami!=='archive') auto_update.set();
 //      var auto_update_timer = null; // working code.
 //      function set_auto_update(){
 //        if (auto_update_timer) {clearTimeout(auto_update_timer);auto_update_timer=null;}
@@ -28625,7 +28631,7 @@ if (!pref.test_mode['42']) {
         }
       }
     }
-    if (pref.stats.auto_acquisition_scan) setTimeout(auto_acquisition_init, pref.stats.auto_acquisition_scan_delay*1000);
+    if (pref.stats.auto_acquisition_scan && site.whereami!=='archive') setTimeout(auto_acquisition_init, pref.stats.auto_acquisition_scan_delay*1000);
     return {
       aggregate: function(th){
         if (!th.posts) return;
