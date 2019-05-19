@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2019.05.05.0
+// @version 2019.05.19.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1407,8 +1407,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         else {
           var idx = pn_name.indexOf('.');
           if (idx!=-1) {
-            var name = '*'+pn_name.substr(idx); // *.XXX
-            if (this[name]) this[name].call(e.currentTarget,e);
+            var name = pn_name.substr(idx); // *.XXX
+            if (this['*'+name]) this['*'+name].call(e.currentTarget,e);
+            else if (this['*w/'+name]) this['*w/'+name].call(e.currentTarget,e,pn_name);
             else {
               var idx_l = pn_name.lastIndexOf('.');
               if (idx_l!=-1) {
@@ -3677,7 +3678,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2019.05.05.0<br>'+
+          'Version 2019.05.19.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4442,8 +4443,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'scanSite': 'scanBoard',
           'scanSiteIf': 'scanBoard',
           'tighten_loosed_limits': function(e){pref4.search_posts_active_once = false;},
-          'catalog.t2h_sel': function(){if (cataLog.Footer && pref.catalog.footer.use && pref.catalog.footer.flag) cataLog.Footer.update_all_flags_force();},
-          'catalog.t2h_num_of_posts': 'catalog.t2h_sel',
+          '*w/.t2h_sel': function(e,src){if (cataLog.Footer && pref.catalog.footer.use && pref.catalog.footer.flag) cataLog.Footer.update_all_force(e,src,true);},
+          '*w/.t2h_num_of_posts': 'catalog.t2h_sel',
         },
       },
       bind_myself: function(obj, args){for (var i of args) obj[i] = obj[i].bind(obj);},
@@ -17983,7 +17984,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       }
       var th = {com:lth.tags.join(' '), parse_funcs:{type_com:'txt'}, __proto__:lth}; // patch
       liveTag.prep_tags(th, true);
-      if (cataLog.threads[lth.key]) cataLog.Footer.update_force(lth.key,lth);
+      if (cataLog.threads[lth.key]) cataLog.Footer.update_force(lth.key,null,lth);
     },
     retag_db: DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){if (cataLog.catalog_filter_changed) cataLog.catalog_filter_changed();}, 10)),
     inherit_board_name_changed: function(){
@@ -22056,28 +22057,45 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       var Footer = {
         mode: embed_mode,
         threads: threads,
-        timestamp_trial: 16,
-        timestamp: 16,
-        timestamp_trial_prep: function(){this.timestamp_trial = this.timestamp + 16;},
-        timestamp_inc: function(){this.timestamp = this.timestamp_trial;},
-        update_all_flags_force: function(){
-          for (var name in this.threads) this.update(name, true, null, true);
+//        timestamp_trial: 16,
+        timestamp: 0,
+        timestamp_set: function(){
+          if (this.timestamp) {
+            this.timestamp += 16; // 16 is the magic number here, search it. This is used in literal forms in all cases.
+            this.clg.drawn_idx = 0;
+            this.clg.show_catalog(); // update footers, this is too heavy, but required.
+//            this.update_all_lazy(null, true);
+          }
         },
-        update_all_force: function(e,src){
+//        timestamp_trial_prep: function(){this.timestamp_trial = this.timestamp + 16;},
+//        timestamp_inc: function(){this.timestamp = this.timestamp_trial;},
+//        update_all_flags_force: function(){
+//          for (var name in this.threads) this.update(name, true, null, true);
+//        },
+        update_all_force: function(e,src, flags){
           if (this.mode==='float' ^ src.indexOf('float')!=-1) return;
-          this.formatted_arr = this.compile(pref[this.mode].footer);
-//          this.formatted_arr = null;
+          if (!flags) this.compile();
           for (var name in this.threads) this.update_force(name);
+//          this.update_all_lazy(flags);
         },
-        update_force: function(name,tags,flags){
+//        update_all_lazy: function(flags, only_shown){
+//          var idxs = this.clg.idxs;
+//          var drawn_idx = this.clg.drawn_idx; // drawn_idx doesn't track exactly, it points meaningless point when tgts_in are given for show_catalog(tgts_in).
+//          if (drawn_idx===true) drawn_idx = idxs.length;
+//          var end = (only_shown)? drawn_idx : idxs.length;
+//          for (var i=0;i<end;i++) if (idxs[i].slice(0,4)!=='ODL:') this.update(idxs[i], flags, null, i<drawn_idx);
+//        },
+        update_force: function(name,flags,tags){
           this.update(name,flags,tags, true);
         },
-        update: function(name,flags,tags, force){
+        update: function(name,flags,tags, force){ // must update if footer is in clean area of lazy draw.
           var footer = this.threads[name][24];
           if (!footer) return;
-          if (this.threads[name][1] && (footer[4]>=this.timestamp || force)) { // footer[4]>=this.timestamp means 'drawn by lazy draw which is not completed'
+          if (this.threads[name][1] && force) { // force or not must be judged by callser.
+//          if (this.threads[name][1] && (footer[4]>=this.timestamp || force)) { // BUG, this should be footer[4]>=this.timestamp_TRIAL to track clean area.
             this.insert_footer3(footer, name, flags, tags);
-            footer[4] &= 0xfffffff0; // keep timestamp
+            footer[4] = this.timestamp;
+//            footer[4] &= 0xfffffff0; // keep timestamp
           } else {
             footer[4] |= (flags? 0x01 : 0) | (tags? 0x04 : 0) | 0x08; // | (page? 0x02 : 0); // 0x08 is dirty mark
 //            if (flags) footer[1] = flags;
@@ -22092,18 +22110,23 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             return true;
           }
         },
-        draw: function(name){
+        draw: function(name){ // must update if footer has not updated data.
           var footer = this.threads[name][24];
           if (!footer) return;
-          if (footer[4] & 0x0f) this.insert_footer3(footer, name);
-          footer[4] = this.timestamp_trial; // keep updating while lazy drawing is not completed, but this is too much.
+          if (footer[4]!==this.timestamp) {
+            this.insert_footer3(footer, name);
+            footer[4] = this.timestamp;
+          }
+//          if (footer[4] & 0x0f) this.insert_footer3(footer, name);
+//          footer[4] = this.timestamp_trial; // keep updating while lazy drawing is not completed, but this is too much.
         },
-        factory: function(mode, threads){
+        factory: function(mode, threads, clg){
           return {
             threads: threads,
-            timestamp_trial: this.timestamp,
+//            timestamp_trial: this.timestamp,
             timestamp: this.timestamp,
             mode: mode,
+            clg: clg,
             __proto__: this
           };
         },
@@ -22128,8 +22151,8 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         ts_refresh: null,
         refresh_start: null,
         formatted_arr: null,
-        format_relative_time: null,
-        format_time: null,
+//        format_relative_time: null,
+//        format_time: null,
         get_str: null,
         prep_footer3: function(th, footer_old){
           var footer = th.footer;
@@ -22404,7 +22427,8 @@ if (pref.test_mode['119']) { // stateful approach
           meguca:    '(ar )(dn)(bd)(no) (nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr ) ',
 //          get custom_str(){return pref[myself.mode].footer.custom_str;}, // patch for minify. This line hits a bug in minifier.
         };
-        function compile(pf){
+        parent.compile = function(){
+          var pf = pref[this.mode].footer;
           var fmt = fmts[pf.design] || pf[pf.design] || ''; // '' for safety
           var elems = 'ar|n[mrfio]|pg|rp|im|[lds]p|[cbp][tT]|pr|dn|bd'
           var arr = fmt.split(new RegExp('(\\(.*?(?:'+elems+').*?\\))')).filter(function(v){return v;}); // will be changed to fmts[pf[myself.mode]]
@@ -22431,17 +22455,19 @@ if (pref.test_mode['119']) { // stateful approach
             } else if (arr[i]) Object.defineProperty(obj, len++, {value: arr[i], __proto__:proto});
           }
           obj.length = len;
+          this.formatted_arr = obj;
+          this.timestamp = (pf.prate || pf.rptime || pf.rbtime)? 16 : 0;
           return obj;
         }
         function refresh_start(){
           ts_refresh = Date.now();
           ts_refresh_rx = null;
+          this.timestamp_set();
         }
         parent.refresh_start = refresh_start;
         Object.defineProperty(parent,'ts_refresh', {get:function(){return ts_refresh;}, enumerable:true, configurable:true});
 //        parent.format_relative_time = format_relative_time;
 //        parent.format_time = format_time;
-        parent.compile = compile;
         return function(tgt_th_in, lth_in){
 //          if (!this.formatted_arr) this.formatted_arr = compile(this);
           tgt_th = tgt_th_in;
@@ -22450,7 +22476,7 @@ if (pref.test_mode['119']) { // stateful approach
           return Array.prototype.join.call(this.formatted_arr,'');
         };
       })(Footer);
-      Footer.formatted_arr = Footer.compile(pref[embed_mode].footer);
+      Footer.compile();
       cataLog.Footer = Footer;
 //      cataLog.insert_footer3 = insert_footer3;
 
@@ -22750,13 +22776,22 @@ var Clg = function(embed_embed, embed_mode, watcher){
         var clgs = Clg.prototype.Clgs;
         for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.update(name,flags,tags, force);
       },
+      update_force: function(name,flags,tags){
+        var clgs = Clg.prototype.Clgs;
+        for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.update_force(name,flags,tags);
+      },
       color_tag_node: function(name,tag){
         var clgs = Clg.prototype.Clgs;
         for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.color_tag_node(name,tag);
       },
-      update_all_force: function(e,src){
+      update_all_force: function(e,src, flags){
         var clgs = Clg.prototype.Clgs;
-        for (var i=0;i<clgs.length;i++) clgs[i].footer.update_all_force(e,src);
+        for (var i=0;i<clgs.length;i++) clgs[i].footer.update_all_force(e,src, flags);
+      },
+      refresh_start: function(){
+        var clgs = Clg.prototype.Clgs;
+        clgs[0].footer.refresh_start();
+        for (var i=1;i<clgs.length;i++) clgs[i].footer.timestamp_set();
       },
       __proto__: Footer},
     show_catalog: function(tgts_in){
@@ -22764,6 +22799,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
       for (var i=0;i<clgs.length;i++) {
         var clg = clgs[i];
         if (!tgts_in) clg.show_catalog();
+        else if (typeof(tgts_in)==='string') {if (clg.threads[tgts_in]) clg.show_catalog(tgts_in);}
         else {
           var tgts = {};
           var flag = false;
@@ -22777,7 +22813,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
       for (var i=0;i<clgs.length;i++) clgs[i].remove_thread(name, pn_only);
     },
     __proto__:Clg.prototype});
-  this.footer = (clgs.length>=2)? Footer.factory(this.mode, this.threads) : Footer;
+  this.footer = (clgs.length>=2)? Footer.factory(this.mode, this.threads, this) : (Footer.clg = this, Footer);
     };
       Clg.prototype = {
         Clgs: [],
@@ -22785,8 +22821,9 @@ var Clg = function(embed_embed, embed_mode, watcher){
           var pn12 = e.currentTarget.parentNode;
           cnst.div_destroy(e.currentTarget.parentNode, true);
           var idx = Clg.prototype.Clgs.map(function(v){return v.pn12;}).indexOf(pn12);
-          Clg.prototype.Clgs.splice(idx,1);
-          if (Clg.prototype.Clgs.length==1) Clg.prototype.hook_set(pClg);
+          var clg = Clg.prototype.Clgs.splice(idx,1)[0];
+          clg.footer.clg = null; // cut reference loop.
+          if (Clg.prototype.Clgs.length==1) Clg.prototype.hook_set(Clg.prototype.Clgs[0]);
         },
         hook_set: function(clg){
           gClg = clg;
@@ -26442,7 +26479,7 @@ if (pref.test_mode['124']) { // must be redundant, but not debugged, so this is 
         else site2['DEFAULT'].check_reply.set_unwatch(threads[name][19]);
         if (pref.liveTag.style.use) liveTag.update_ur(name,0,true);
 //        site2[cnst.name2domainboardthread(name,true)[0]].insert_footer2(threads[name][0],threads[name][18],threads[name][19],threads[name][8]);
-        gClg.footer.update_force(name, null, pref.catalog.footer.flag);
+        gClg.footer.update_force(name, pref.catalog.footer.flag);
 //        if (reorder_thread_idx(name)) show_catalog(name); // called in triage_exe
         if (pref.notify.favicon) notifier.favicon.set(threads);
       }
@@ -26565,9 +26602,10 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         var draw_adaptive = draw_on_demand && pref.network.adaptive;
         var draw_count = 0;
         if (draw_on_demand) {
-          var ref_height = get_ref_height((pref[cataLog.embed_mode].merge)? 4 : (draw_adaptive)? ((show_catalog_db_th20.id!==null)? 0.2 : 1) : 1.5);
+          var ref_height = get_ref_height((pref[cataLog.embed_mode].merge)? 4 : (this.disp_th20)? 0.2 : (this.disp_th100)? 1 : 1.5);
           if (this.drawn_idx!==0 && this.drawn_y>=ref_height)
-            if (this.ppn.offsetHeight<this.drawn_y) this.drawn_idx = 0; // for expanding posts or images.
+            if (this.ppn.offsetTop + this.ppn.offsetHeight<this.drawn_y) this.drawn_y = -1; // for expanding posts or images.
+//            if (this.ppn.offsetHeight<this.drawn_y) this.drawn_idx = 0; // for expanding posts or images.
             else return;
 //          if (drawn_idx!==0 && this.drawn_y>=ref_height) return;
         }
@@ -26592,8 +26630,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         if (catalog_expand_with_hr) this.ref_count_init = show_catalog_skip_hs(this.ref_count_init);
         if (!draw_on_demand || this.drawn_idx===0 || this.drawn_idx===true) {
           this.func_track_reset(); // called with drawn_idx===true from 'release_draw'.
-//          if (tgts===undefined) cataLog.Footer.timestamp_inc();
-          cataLog.Footer.timestamp_trial_prep();
+//          cataLog.Footer.timestamp_trial_prep();
         }
         var load_tgt = '';
 //        this.drawn_idx_mb = -1;
@@ -26619,7 +26656,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
             }
           } else {
             if (draw_on_demand && this.drawn_y>=ref_height) {
-              if (!this.lazy_draw || mode_merge_tails===false) {cataLog.Footer.timestamp_inc(); break;}
+              if (!this.lazy_draw || mode_merge_tails===false) break; // {cataLog.Footer.timestamp_inc(); break;}
               if (mode_merge_tails===null) mode_merge_tails = i + 1; // be true
               if (!site2['DEFAULT'].update_posts_merge_bases.isShownForTails(name)) {i++;continue;}
             }
@@ -26635,11 +26672,12 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
                     if (draw_adaptive) {
                       if (++draw_count==pref.network.th100) {
                         ref_height = get_ref_height(1);
-                        show_catalog_db_th100.delayed_do();
+                        if (!this.disp_th100) {this.disp_th100 = setTimeout(function(){this.disp_th100 = null; this.show_catalog();}.bind(this), pref.network.th100_delay);}
                       } else if (draw_count===pref.network.th20) {
                         ref_height = get_ref_height(0.2);
-                        show_catalog_db_th100.cancel();
-                        show_catalog_db_th20.delayed_do();
+                        if (!this.disp_th20) {
+                          clearTimeout(this.disp_th100);
+                          this.disp_th20 = setTimeout(function(){this.disp_th20 = null; this.show_catalog();}.bind(this), pref.network.th20_delay);}
                         draw_adaptive = false; // close
                       }
                     }
@@ -26984,8 +27022,8 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       cataLog.show_catalog = show_catalog;
       cataLog.catalog_obj2 = pClg; // Clg.prototype;
 //      cataLog.catalog_obj2 = catalog_obj2;
-      var show_catalog_db_th100 = new DelayBuffer(show_catalog, pref.network.th100_delay);
-      var show_catalog_db_th20 = new DelayBuffer(show_catalog, pref.network.th20_delay);
+//      var show_catalog_db_th100 = new DelayBuffer(show_catalog, pref.network.th100_delay);
+//      var show_catalog_db_th20 = new DelayBuffer(show_catalog, pref.network.th20_delay);
 
 function threads_idx_debug(idx,y,count, threads_idx){
   var str = 'drawn_idx:'+idx+', drawn_y:'+y+', ref_count:'+count+' ';
@@ -27890,7 +27928,7 @@ if (!pref.test_mode['49']) {
 ////////      }
       function catalog_refresh(refresh, embed_init, from_auto, from_switch) {
         pref4.refresh.count++;
-        Footer.refresh_start();
+        gClg.footer.refresh_start();
         if (!pref.test_mode['67'] && !embed_init) archiver.refresh_start();
         if (!from_switch && !embed_init && pref.catalog.auto_save_filter_at_refresh) onchange_funcs['save']();
         var result = catalog_refresh_1(embed_mode, refresh, embed_init, from_auto, 'refresh', board_sel.selectedIndex, pref.catalog.filter.bookmark_list_str, false, undefined, from_switch);
