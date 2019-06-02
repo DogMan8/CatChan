@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2019.05.19.0
+// @version 2019.06.02.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3678,7 +3678,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2019.05.19.0<br>'+
+          'Version 2019.06.02.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -20978,7 +20978,7 @@ if (!pref.test_mode['79']) {
             post_deleted = othp[j++];
 //            while (k<othpd.length && post_deleted.no>=othpd[k].no) k++; // BUG at serial posts are removed.
             if (!post_deleted.deleted_after) {
-              if (pref.debug_mode['33'] && post_deleted.no===undefined) alert('Stopped by illegal deleted posts,(BUG)'); // can stop without developer tool
+              if (pref.debug_mode['33'] && (post_deleted.no===undefined || post_deleted.no===null)) alert('Stopped by illegal deleted posts,(BUG)'); // can stop without developer tool
               post_deleted.deleted_after  = th_old.time_loaded;
               post_deleted.deleted_before = value && value.date || null;
 //              post_deleted.deleted_debug  = th.type_parse + ', '+ th_old.type_parse + ', last' + (othp.length-j);
@@ -21160,10 +21160,11 @@ if (!pref.test_mode['79']) {
         var posts_deleted = (src)? src_obj || JSON.parse(src) :
           (pref[cataLog.embed_mode].deleted_posts.store==='LS' && localStorage)? sanitize(JSON.parse(localStorage[site2[th.domain].ls_key_deletedPosts + th.board + th.no] || null)) :
           (pref[cataLog.embed_mode].deleted_posts.store==='SS' && sessionStorage)?      JSON.parse(sessionStorage[site2[th.domain].ls_key_deletedPosts + th.board + th.no] || null) : null;
-        if (pref.test_mode['123'] && posts_deleted) { // BUG PATCH
+        if (!pref.test_mode['123'] && posts_deleted) { // BUG PATCH
           var nos = {};
-          for (var i=1;i<th.posts.length;i++) nos[th.posts[i].no] = null;
-          for (var i=posts_deleted.length-1;i>=1;i--) if (!posts_deleted[i].no || nos[posts_deleted[i].no]===null) posts_deleted.splice(i,1);
+          for (var i=0;i<th.posts.length;i++) nos[th.posts[i].no] = null;
+          for (var i=posts_deleted.length-1;i>=0;i--) if (!posts_deleted[i].no || nos[posts_deleted[i].no]===null) posts_deleted.splice(i,1);
+          if (posts_deleted.length===0) posts_deleted = null;
         }
         if (posts_deleted) {
 //          for (var i=0;i<posts_deleted.length;i++) delete posts_deleted[i].pn;
@@ -22629,8 +22630,8 @@ var Clg = function(embed_embed, embed_mode, watcher){
             '<button name="scanSite">>></button>'+
           (!pref.test_mode['115']? '' : pref_func.settings.html_funcs.rollup(
               '<div>'+
-                '&emsp;<IC"filter.disable_list_when_kwd_active">Disable list filter when keyword filter is active<br>'+
-                '1,<IC"filter.disable_tag_when_kwd_active">Disable tag filter when keyword filter is active<br>'+
+                '&emsp;&emsp;<IC"filter.disable_list_when_kwd_active">Disable list filter when keyword filter is active<br>'+
+                '2,<IC"filter.disable_tag_when_kwd_active">Disable tag filter when keyword filter is active<br>'+
                 '1,<IC"catalog.filter.auto_list.use">Auto filter list:<br>'+
                 '2,<ICBX"catalog.filter.auto_list.kill">Hide '+
                 '<ICBX"catalog.filter.auto_list.watch">Watch '+
