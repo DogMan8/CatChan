@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.01.05.0
+// @version 2020.01.12.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -870,7 +870,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     get_key_recursive: function(pn, pn_end, allow_merged){
       var key;
       while (pn && !(key=this.pns_all_keys.get(pn)) && pn!==pn_end) pn = pn.parentNode;
-      if (!allow_merged) if (typeof(key)!=='string') key = key.lths[0].key; // for merged thread
+      if (key) if (!allow_merged) if (typeof(key)!=='string') key = key.lths[0].key; // for merged thread
       return key;
     },
     pns_all_keys: new WeakMap(),
@@ -3886,7 +3886,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2020.01.05.0<br>'+
+          'Version 2020.01.12.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -7017,7 +7017,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        var link_regex = />>(>\/.+\/)*[0-9]+$/;
 //    popups_link_regex: />>(>\/.+\/)*[0-9]+(\s\(You\))*$/, // patch for '(You)'
     popups_link_regex: /^>>(>\/[^/]+\/)*[0-9]+/, // patch for '(You)' and '(OP)'
-    popups_add_1: function(th, post, deactivate, thq, dig, from_native){ // must be able to accept multiple calls, this is called at every appearance/dissapearance.
+    popups_add_1: function(th, post, deactivate, thq, dig, from_native, from_not_popup){ // must be able to accept multiple calls, this is called at every appearance/dissapearance.
 //      if (!post.pn) post.pn = site2[th.domain_html].post_json2html(post,th.board);
       var as = Array.prototype.slice.call(site2[th.domain_html].post_pn2ce(post.pn).getElementsByTagName('a')); // static array for adding '<a>Merge</a>' later.
       if (deactivate && pref[cataLog.embed_mode].env.backlink_native) {
@@ -7061,7 +7061,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           }
         }
       }
-      this.popups_set(thq,post.no,post, quotes && quotes.length!=0 && quotes);
+      this.popups_set(thq,post.no,post, quotes && quotes.length!=0 && quotes, from_not_popup);
 //      if (op) thq[post.no].isOP = site2[th.domain_html].popups_op_func_set(post.pn);
     },
     popups_add_backlink: function(thq, no, key, th, dig, from_native){
@@ -7116,16 +7116,19 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 ////      if (pref.debug_mode['10']) console.log('popups_remove_backlink: '+(idx>=0?'suc':'fail')+', '+no+'<-'+key+':    '+this.popups_debug(thq));
 ////      if (ary.length===0) return true;
     },
-    popups_set: function(thq, no, val, quotes){
+    popups_set: function(thq, no, val, quotes, from_not_popup){
       if (no<=2) if (!Object.hasOwnProperty.call(thq,no)) thq[no] = undefined; // PATCH before renaming, now thq has prototype, [0][1] or [2] returns tags or watch.
       if (thq[no]===undefined) {
         if (val.backlinks) val.backlinks = undefined; // PATCH FOR MEGUCA, meguca has backlinks in native.
+        thq[no] = val;
       } else if (Array.isArray(thq[no])) {
         val.backlinks = thq[no];
+        thq[no] = val;
       } else { // for multiple entry at editing===true, update thq[no].
         if (thq[no].backlinks) val.backlinks = thq[no].backlinks;
+        if (from_not_popup) thq[no] = val; // BUG, keep lth.q for backlinks, but this can track only one instance. Bug when there are multiple thread/page views.
       }
-      thq[no] = val;
+//      thq[no] = val;
       if (quotes) thq[no].quotes = quotes;
       if (val.editing) this.popups_set_waiting(thq,no); // keep updating while editing by 'popups_fetched'
       this.popups_remove_waiting(thq,no);
@@ -8722,7 +8725,7 @@ if (site.nickname==='4chan' || pref.test_mode['140']) {
           if (j>=th_old.posts.length || th.posts[i].no!=th_old.posts[j].no) {
             var editing = editings && editings.indexOf(th.posts[i])!=-1;
             var thq = editing? liveTag.mems[th.domain][th.board][th.no].q : null; // must be here?
-            cataLog.format_html.prepare_html_post(th, th.posts[i], null, null, null, deactivate, true, from_native);
+            cataLog.format_html.prepare_html_post(th, th.posts[i], null, null, null, deactivate, true, from_native, true);
             if (editing) {
 //              this.popups_add_1(th, th.posts[i], false, thq, true);
               if (pref[cataLog.embed_mode].backlink) if (thq[th.posts[i].no].backlinks) site2[th.domain_html].add_backlinks(th.posts[i].pn,thq[th.posts[i].no].backlinks, undefined, th);
@@ -12523,7 +12526,8 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
     uip_check: function(callback_in, callback_sage){
 //      var dbt = [site.nickname,site.board,site.no,(pref.uip_tracker.sage.detect)? 'catalog_json' : 'thread_json']; // catalog doesn't contain 'unique_ips'
       var dbt = [site.nickname,site.board,site.no,'thread_json']; // [site.protocol + '//a.4cdn.org' + site.board +'thread/' + site.no + '.json', 'json'];
-      var callback = (pref.test_mode['136'] && pClg)? function(key,value,args){cataLog.scan_boards_keyword_callback2(key,value, ['sage_detect',{refresh:null, __proto__:cataLog.scan_boards_keyword_callback2_default_args}]); callback_in(key,value,args);} : callback_in;
+      var callback = (pref.test_mode['136'] && pClg)? function(key,value,args){callback_in(key,value,args); cataLog.scan_boards_keyword_callback2(key,value, ['sage_detect',{refresh:null, __proto__:cataLog.scan_boards_keyword_callback2_default_args}]);} : callback_in; // callback2 merges deleted posts to show.
+//      var callback = (pref.test_mode['136'] && pClg)? function(key,value,args){cataLog.scan_boards_keyword_callback2(key,value, ['sage_detect',{refresh:null, __proto__:cataLog.scan_boards_keyword_callback2_default_args}]); callback_in(key,value,args);} : callback_in;
       http_req.get('uip',dbt.join(),'',callback,false,false);
       if (pref.uip_tracker.sage.detect) {
         dbt[3] = 'catalog_json';
@@ -13143,14 +13147,16 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
         prep_mimic: function(th){ // for archiving from html
           for (var i=0;i<th.posts.length;i++) {
             var post = th.posts[i];
-            var name = post.name; // dummy for invoking getter
-            var sub = post.sub;
-            var com = post.com;
-            var trip = post.trip;
-            var id = post.id;
-            var time = post.id;
-            var country = post.country;
-            post.country_name = post.parse_funcs.country_name(post); // no getter
+            if (post.type_data==='html') {
+              var name = post.name; // dummy for invoking getter
+              var sub = post.sub;
+              var com = post.com;
+              var trip = post.trip;
+              var id = post.id;
+              var time = post.id;
+              var country = post.country;
+              post.country_name = post.parse_funcs.country_name(post); // no getter
+            }
           }
         },
         proto: 'post_html',
@@ -16304,7 +16310,7 @@ if (pref.test_mode['94'] && i==='dist') continue;
     while (send_message_emu.length>0) receive_message({data:send_message_emu.shift()}, name || site.key);
   }
   function jump_to_time(th, time){
-    var idx = site2[th.domain].mark_newer_posts2(th.posts,time,pref.catalog.unmark_on_hover, true) || null;
+    var idx = site2[th.domain].mark_newer_posts2(th.posts,time,pref.catalog.unmark_on_hover, true); //  || null;
 //      var marked_first_post = (common_obj.thread_reader && pref.test_mode['16'])? common_obj.thread_reader.mark_newer_posts(val[1])
 //                                                        : site2[site.nickname].mark_newer_posts(document,val[1],pref.catalog.unmark_on_hover, true);
     var tgt_post = gGEH.marked_first_post && th.posts[idx]? (gGEH.marked_first_post.time_tu < th.posts[idx].time_tu? gGEH.marked_first_post : th.posts[idx])
@@ -28192,7 +28198,7 @@ if (pref.test_mode['124']) { // must be redundant, but not debugged, so this is 
           if (pref.test_mode['109'] || th.no!=site.no || th.board!=site.board || th.domain!=site.nickname) site2[th.domain].toplevel_anchor(pn, th);
           if (site.nickname!==th.domain) site2[th.domain].absolute_link(pn);
         },
-        prepare_html_post: function(th, post, thq, pref_env, not_anchor,  deactivate, dig, from_native){
+        prepare_html_post: function(th, post, thq, pref_env, not_anchor,  deactivate, dig, from_native, from_not_popup){
           if (!post.pn) {
             post.pn = site2[th.domain_html].parse_funcs['post_json'].pn(post);
             if (!thq) thq = th.lth.q; // for expand old posts, to add backlinks.
@@ -28202,7 +28208,7 @@ if (pref.test_mode['124']) { // must be redundant, but not debugged, so this is 
           site2[th.domain_html].format_pn(post.pn, (thq)? thq[post.no] : null, pref_env, post, th);
           if (post.editing) post.pn.classList.add(pref.script_prefix+'_post_editing');
 //          if (post.editing) post.pn.style.background = '#cec952';
-          if (pref[embed_mode].popup) site2[th.domain].popups_add_1(th, post, deactivate, thq || th.lth.q, dig, from_native); // BUG. this updates internal model also, not view only. Being called from popups destructs data of backlinks.
+          if (pref[embed_mode].popup) site2[th.domain].popups_add_1(th, post, deactivate, thq || th.lth.q, dig, from_native, from_not_popup);
           if (/*from_native &&*/ !post.pn_menu && pref[embed_mode].postMenu) post.pn_menu = this.add_postMenu(th, post);
         },
         add_postMenu(th, post){
@@ -28260,7 +28266,7 @@ if (pref.test_mode['124']) { // must be redundant, but not debugged, so this is 
           var deactivate = insert_thread_from_native && pref[this.mode].env.popup_native && !pref[this.mode].env.event_dynamic;
           var posts_used = !insert_thread_from_native? (init_new? th.posts.slice() : [])// slice for merging deleted posts
                          : insert_thread_from_native.init? insert_thread_from_native.posts_shown : insert_thread_from_native.posts_updated;
-          for (var i=0;i<posts_used.length;i++) format_html.prepare_html_post(th, posts_used[i], th.lth.q, pf_env, not_anchor, deactivate, true, insert_thread_from_native);
+          for (var i=0;i<posts_used.length;i++) format_html.prepare_html_post(th, posts_used[i], th.lth.q, pf_env, not_anchor, deactivate, true, insert_thread_from_native, true);
           if (merge_base || tgt_th[16].posts && tgt_th[16].posts!==th.posts) {
 //          if (merge_base || tgt_th[16].posts && ((!insert_thread_from_native || insert_thread_from_native.init) && tgt_th[16].posts!==th.posts)) {
 ////          if (!init_new || tgt_th[16].posts && tgt_th[16].posts!==th.posts) {
