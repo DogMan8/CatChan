@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.01.12.0
+// @version 2020.01.19.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3886,7 +3886,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2020.01.12.0<br>'+
+          'Version 2020.01.19.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -28079,7 +28079,9 @@ if (pref.test_mode['124']) { // must be redundant, but not debugged, so this is 
         if (pref[this.mode].merge_op_lv_add) this.merge_bases.add_to_lv_list(tgts, pref[this.mode].merge_op_lv + (pref[this.mode].merge_op_lv_inc? hop : 0), this);
         for (var i=0;i<tgts.length;i++) {
           var dbt = common_func.fullname2dbt(tgts[i]);
-          liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]}).mh = hop +1;
+          var lth = liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]});
+          if (!lth.mh || lth.mh > hop +1) lth.mh = hop +1; // for racing condition
+//          liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]}).mh = hop +1;
         }
       };
       Clg.prototype.merge_cross_links_in_op_manually = function(name){
