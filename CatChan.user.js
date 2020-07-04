@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.01.19.0
+// @version 2020.07.05.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
 // @include http*://boards.4channel.org/*
 // @include http*://i.4cdn.org/*
-// @include http*://8chan.co/*
-// @include http*://8ch.net/*
+// @include http*://8kun.top/*
 // @include http*://lainchan.org/*
 // @include http*://lainchan.jp/*
 // @include http*://*meguca.org/*
@@ -160,6 +159,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       for (var i in src) dst[i] = src[i];
       return src;
     },
+    Array_toObj: function(src, val){
+      var obj = {};
+      for (var i=0;i<src.length;i++) obj[src[i]] = val;
+      return obj;
+    },
   };
 
   var site0 = (function(){ // for less memory consumption and faster execution if background
@@ -192,6 +196,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           env:{event_dynamic: true}
         },
         easy2:{limits:2},
+        style:{addSS:{str:'//s.4cdn.org/css/flags.689.css'}},
       };
     } else if (href.indexOf('lainchan.org')!==-1) {
       domain = 'lain';
@@ -226,7 +231,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         style:{post_new:'border:2px solid red !important'},
       };
       pref_default2 = true;
-    } else if (href.search(/8chan.co|8ch.net/)!=-1) {
+    } else if (href.search(/8kun.top/)!=-1) { // 8chan.co|8ch.net
       domain = '8chan';
       pref_default = {
         catalog_expand_with_hr: true,
@@ -251,7 +256,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
     }
     var domains = ['meguca', '4chan', 'lain', 'lainjp', '8chan', 'KC'];
     if (domain) domains.unshift(domains.splice(domains.indexOf(domain),1)[0]);
-    var domains_all = ['8chan','8chan_live','vichan','KC','4chan_i','4chan','meguca','imeguca','lain','lainjp']; // , 'CatChan_tgt']; // adding 'CatChan_tgt' with opening fixed-tab is good for testing the step window.
+    var domains_all = ['8chan','8chan_live','vichan','KC','4chan_i','4chan','4chanB','4chanR','meguca','imeguca','lain','lainjp']; // , 'CatChan_tgt']; // adding 'CatChan_tgt' with opening fixed-tab is good for testing the step window.
     if (pref_default2) {
       pref_default2 = {// new default patch
         catalog:{auto_load_filter:true, auto_save_filter:true, auto_save_filter_at_refresh:true},
@@ -267,13 +272,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       domains: domains,
       pref_default: pref_default,
       pref_default2: pref_default2,
-      domains_obj: function(val, protect){
-        var obj={};
-        for (var i=0;i<domains.length;i++) obj[domains[i]] = val;
-        if (protect) common_func.Object_modifyDescriptor(obj,domain,{writable:false});
-        return obj;
-      },
       isStep: window.opener && domains_all.indexOf(window.name)!=-1,
+      add_domain: function(domain){
+        this.domains.push(domain);
+        this.debug_domains.push(domain);
+        pref.virtualBoard.scan_domains[domain] = 'none';
+        pref.debug_mode.domains[domain] = true;
+      },
+      debug_domains: ['DEFAULT','4chan','vichan','lain','8chan','KC','meguca','meguca1','meguca2'],
+      debug_types: ['','_json','_html'], // ,'_json_template','_html_template']; // '' for common
     };
   })();
 
@@ -316,8 +323,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                thumb: {resize: false, size:'small', small:{w1:150, h1:150, w2:75, h2:75}, large:{w1:250, h1:250, w2:125, h2:125}, vsmall:{w1:80, h1:80, w2:40, h2:40}},
       },
       footer: {use:true, nrtm:true, nr:true, rp:true, im:true, domain:false, board:true, no:false, flag:false, tag:true, page:true, design:'native', rOP:true, iOP:true,
-               custom: '(ar )(U: nm/nr / )(IB)R: (lp/)(RP)(*sp)(+dp)(Ib)( /II I: IMIi)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
-               custom2:'(ar )(nm/)(nr/)(IB)(lp/)(RP)(*sp)(+dp)(Ib)(/IIIMIi)(/pg) (ni/nf) (ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+               custom: '(ar )(U: nm/nr / )(<iB>R: (lp/)(RP)(*sp)(+dp)(</iB>)( /<iI> I: IM</iI>)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+               custom2:'(ar )(nm/)(nr/)(<iB>)(lp/)(RP)(*sp)(+dp)(</iB>)(/<iI>IM</iI>)(/pg) (ni/nf) (ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
                custom3:'(ar )(nm/)(nr/)(lp/)(<iB style="color:orange">RP</iB>)(<u>*sp</u>)(<span style="opacity:0.6">+dp</span>)(/<iI style="color:orange">IM</iI>)(/pg) (<u>ni/nf</u>) (ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
                ctime:false, btime:false, ptime:false, rctime:false, rbtime:false, rptime:false, br:true, prate:false, archived:true, nd:false, nl:false, nf:false, nid:false, ns:false,
                triage:false, menu:true, triage_str:'KILL,x,,SPC, ,', menu_str:'MENU, \u25b6,',
@@ -412,7 +419,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         page: true, graph: true, setting: true, setting2: true, postform: true, catalog: true, listener : true, uip_tracker: true, thread_reader: true, debug: false,
         notify:{desktop:true, sound:true, favicon:true},
         recovery: true,
-        domains: site0.domains_obj(true, true),
+        domains: common_func.Array_toObj(site0.domains, true),
       },
       max_capture: 576,
       interval_found: 10,
@@ -696,6 +703,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         order: {reply_to_me:true, reply:true, watch:'dont_care', sticky:'first', ordering:0},
         view: 'headline', hide_unwatched:false, refresh_src:'wl',
         disable_kwd_filter_at_initial: true, 
+        auto_launch: false,
         __proto__: proto},
       headline:{
         triage_hover:false,
@@ -745,7 +753,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         rm_list: true, rm_list_str:'http*\n', rm_list_obj5:null},
       virtualBoard: {
         show: true, max:20, scan: false, scanDelay: 5, p_board: 'replace', p_remove: false, v_remove:true,
-        scan_domains: site0.domains_obj('none'),
+        scan_domains: common_func.Array_toObj(site0.domains,'none'),
 //        scan_domains: {meguca:'none', lain:'none', '8chan':'none', '4chan':'none', KC:'none', lainjp:'none'},
         instant_scan: true,
         search: {show: true,  str:'', re:false,    get ci(){return pref.liveTag.ci;}, sentence:false, rexps:null},
@@ -784,6 +792,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           merged2:true, merged2_str:'merged2::before{float:left;content:">>";}',
           merged3:true, merged3_str:'merged3::before{float:left;content:">>>";}',
         },
+        addSS: {use:false, str:''},
       },
       recovery:{comment:true, interval:10, auto_clean:true},
       healthIndicator: {show:true, max:10, expand_running:false, dont_retire_running:true, cancel:true},
@@ -817,7 +826,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               },
       threadStats: {use:false, full:true, retry:false},
       debug_mode : {unread_count:'', parse_error:false, site2func:'', site2func_expand:true, pfunc:'', pfunc_expand: true, pfunc_all:'', pfunc_all_expand: true,
-                    pfunc_comp:'', pfunc_comp_expand_same:true, pfunc_comp_expand_diff:true, pfunc_comp_proto:'',},
+                    pfunc_comp:'', pfunc_comp_expand_same:true, pfunc_comp_expand_diff:true, pfunc_comp_proto:'', domains: common_func.Array_toObj(site0.debug_domains,true),
+                    types: common_func.Array_toObj(site0.debug_types, true)},
       test_mode: {tips:false, num:0, num_f:0, test_str:''},
       patch: {
         delayed_invoke: {use: false, sec: 10},
@@ -864,13 +874,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //      Object.defineProperty(pref_new.float, 'footer',{get:function(){return pref_new.catalog.footer;}, enumerable:true, configurable:true});
     }
     common_func.Object_modifyDescriptor(pref_new.style.userCSS,'sample',{writable:false});
+    common_func.Object_modifyDescriptor(pref_new.features.domains, site0.domain, {writable:false});
     return pref_new;
   }
   var gGEH = {
     get_key_recursive: function(pn, pn_end, allow_merged){
       var key;
       while (pn && !(key=this.pns_all_keys.get(pn)) && pn!==pn_end) pn = pn.parentNode;
-      if (key) if (!allow_merged) if (typeof(key)!=='string') key = key.lths[0].key; // for merged thread
+      if (key) if (!allow_merged && typeof(key)!=='string') key = key.lths[0].key; // for merged thread
       return key;
     },
     pns_all_keys: new WeakMap(),
@@ -1123,6 +1134,18 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       }
     }
     var cpf = '.'+pref.script_prefix+'_';
+    var addSS;
+    function addSS_changed(){ // additional StyleSheets
+      if (addSS) addSS.forEach(function(v){v.parentNode.removeChild(v);});
+      addSS = null;
+      var pf = pref.style.addSS;
+      if (pf.use) addSS = pf.str.split('\n').filter(function(v){return v;}).map(function(v){
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = v;
+        return document.head.appendChild(l);});
+    }
+    addSS_changed(); // init
     var uss = null;
     function userCSS_changed(){
       var pf = pref.style.userCSS;
@@ -1165,6 +1188,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       open_spoiler_text: open_spoiler_text,
       register: register,
       register_cc: function(cls,rule){this.register(cpf+cls, rule);}, // class is reserved word.
+      addSS_changed: addSS_changed,
       userCSS_changed: userCSS_changed,
     }
   })();
@@ -2107,306 +2131,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          console.log(e);
 //        }
       },
-      tooltips: (site0.isStep)? null : (function(){
-        var tooltip = document.createElement('div');
-        tooltip.style.position = 'fixed';
-////        tooltip.style.background = '#e5f4f9';
-////        tooltip.style.color = '#000000';
-////        tooltip.style.border = '2px solid blue';
-//          tooltip.style.fontWeight = 'normal';
-        tooltip.setAttribute('class', pref.script_prefix+'_popUp');
-        tooltip.style.zIndex = pref.tooltips.zIndex;
-        var tooltip_on = null;
-//        var tooltip_shown = false;
-        var tooltip_kind = 'help';
-//        var func = {};
-        var show_timer = null;
-        var hide_timer = null;
-//        var str_tooltip = '';
-
-//        function add_hier(pn){ // working code
-//          var all = pn.getElementsByTagName('*');
-////          if (pref.test_mode.tips) for (var i=0;i<all.length;i++) if (!str[all[i].name]) str[all[i].name] = 'Name: ' + all[i].name;
-////          for (var i=0;i<all.length;i++) if (all[i].name) add(all[i]); // span can't return if .name
-//          for (var i=0;i<all.length;i++) {
-//            var name = all[i].getAttribute('name');
-//            if (name && (str[name] || (str[name]!==false && pref.test_mode.tips))) add(all[i]);
-//          }
-//        }
-//        function remove_hier(pn){
-//          var all = pn.getElementsByTagName('*');
-////          for (var i=0;i<all.length;i++) if (all[i].name) remove(all[i]);
-//          for (var i=0;i<all.length;i++) if (all[i].hasAttribute('name')) remove(all[i]);
-//        }
-//        function add(elem){
-//////          if (str.hasOwnProperty(elem.name)) {
-//            if (!func.hasOwnProperty(elem.name)) func[elem.name] = [];
-//            func[elem.name].push(elem);
-//            elem.addEventListener('mouseover', show, false);
-//////          }
-//        }
-//        function remove(elem){
-//          if (func.hasOwnProperty(elem.name)) {
-//            var elems = func[elem.name];
-//            for (var i=0;i<elems.length;i++) {
-//              if (elem===elems[i]) {
-//                elem.removeEventListener('mouseover', show, false);
-//                elems.splice(i,1);
-//                if (elems.length==0) delete func[elem.name];
-//                break;
-//              }
-//            }
-////            for (var i=0;i<elems.length;i++) {
-////              var elem = func[elem.name][i];
-////              elem.removeEventListener('mouseover', show, false);
-////            }
-////            delete func[elem.name];
-//          }
-//        }
-        function show(e){
-//          if (!pref.tooltips.help.show) return;
-          var name = e && (e.target.name || e.target.getAttribute('name')) || this.name;
-          if (name && e && e.target.type==='radio') name += ', '+e.target.value;
-          if (!name && e.target.tagName==='LABEL') name = e.target.childNodes[0].name + (e.target.childNodes[0].type==='radio'? ', '+e.target.childNodes[0].value : '');
-          if (name==='SHOW2_I') name = e.target.previousSibling.childNodes[1].getAttribute('name');
-          if (name==='SHOW2') name = e.target.childNodes[1].getAttribute('name');
-          if (!name) return; // for add_root
-//          var name = this.name || this.getAttribute('name')); // for add_hier
-////          for (var i in str_func) if (this.name.indexOf(i)==0) {
-////            str_tooltip = str_func[i](this,e);
-////            break;
-////          }
-          var str_tooltip = (typeof(str[name])==='function')? str[name](e) : str[name];
-//            if (!str_tooltip) str_tooltip = str[this.parentNode.name];
-          if (!str_tooltip) str_tooltip = str[name.substr(0,name.lastIndexOf('.')+1)+'*'];
-          if (!str_tooltip) str_tooltip = str_hier(str,name,'') || '';
-          if (pref.test_mode.tips) str_tooltip = 'Name: ' + name + '\n' + str_tooltip;
-          str_tooltip = str_tooltip.replace(/\n/mg,'<br>').replace(/  /g,'&emsp;');
-
-          if (name[0]==='#') return str['#*'](e, str_tooltip);
-//          if (name[0]==='#') {str['#*'](e, str_tooltip);return;}
-//          if (str_tooltip) show_1.call(this,e,str_tooltip);
-          return str_tooltip;
-        }
-//        function show_1(e,str_func, callback, info_tips){ // working code
-//          tooltip_kind = (info_tips)? 'info' : 'help';
-//          if (!pref.tooltips[tooltip_kind].show) return;
-//          tooltip.innerHTML = str_func;
-//          if (callback) callback(tooltip);
-//          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;} // test
-//          if (!e || tooltip_on===e.target) return;
-//          tooltip.style.left = e.clientX + 20 + 'px';
-//          tooltip.style.top  = e.clientY + 20 + 'px';
-////          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;}
-//          if (tooltip_on) tooltip_on.removeEventListener('mouseout' ,hide, false);
-//          else {
-//            if (show_timer!==null) clearTimeout(show_timer);
-//            show_timer = setTimeout(show_exe,pref.tooltips[tooltip_kind].popup_delay);
-//          }
-//          tooltip_on = e.target;
-//          tooltip_on.addEventListener('mouseout' , hide, false);
-//        }
-//        function show_exe(){
-//          show_timer = null;
-////          tooltip_set(tooltip_contents.str_func, tooltip_contents.e, tooltip_contents.callback);
-//          site.script_body.appendChild(tooltip);
-//          tooltip_shown = true;
-//        }
-//        function hide(){ // called from both event and external function.
-//          if (hide_timer===null) hide_timer = setTimeout(hide_exe,pref.tooltips[tooltip_kind].popdown_delay);
-//        }
-//        function hide_exe(){
-//          hide_timer = null;
-//          if (tooltip_shown) {
-//            tooltip.parentNode.removeChild(tooltip);
-//            tooltip_shown = false;
-//          }
-//          if (show_timer!==null) {clearTimeout(show_timer);show_timer=null;}
-//          if (tooltip_on) {
-//            tooltip_on.removeEventListener('mouseout' ,hide, false);
-//            tooltip_on = null;
-//          }
-//        }
-
-        var tooltip_e = null;
-        var tooltip_func = null;
-        function show_0(e){
-          var name = e.target.getAttribute('name');
-          var kind = (name && name[0]==='#')? 'info' : 'help'
-          if (pref.tooltips[kind].show) req_show(kind, e, show);
-        }
-        function req_show(kind, e, func){
-          tooltip_kind = kind;
-          var e_obj = {target:e.target, currentTarget:e.currentTarget, clientX:e.clientX, clientY:e.clientY};
-          if (!tooltip_on) {
-            if (show_timer!==null) clearTimeout(show_timer);
-            show_timer = setTimeout(show_exe2,pref.tooltips[kind].popup_delay);
-            tooltip_e = e_obj; // e;
-            tooltip_func = func;
-          } else if (show_2(e, func(e))) tooltip_e = e_obj;
-        }
-        function show_exe2(){
-          show_timer = null;
-          if (show_2(tooltip_e, tooltip_func(tooltip_e))) site.script_body.appendChild(tooltip);
-          else tooltip_e = null;
-          tooltip_func = null;
-        }
-        function show_2(e,contents){
-          if (!contents) {hide2();return false;}
-          if (typeof(contents)==='string') tooltip.innerHTML = contents;
-          else {
-            tooltip.innerHTML = contents.html;
-            if (contents.callback) contents.callback(tooltip);
-          }
-          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;}
-          if (e && tooltip_on!==e.target) {
-            tooltip.style.left = e.clientX + 20 + 'px';
-            tooltip.style.top  = e.clientY + 20 + 'px';
-            tooltip_on = e.target;
-          }
-          return true;
-        }
-//        function hide3(e){
-//          if (e.target===e.currentTarget) hide2(); // out from root
-//        }
-        function hide_if(pn){
-          if (tooltip_e && tooltip_e.currentTarget===pn) hide2();
-        }
-        function hide2(){ // called from both event and external function.
-          if (tooltip_e && hide_timer===null) {
-//          if ((tooltip_on || tooltip_e) && hide_timer===null) {
-            if (show_timer!==null) {clearTimeout(show_timer);show_timer=null;}
-            hide_timer = setTimeout(hide_exe2,pref.tooltips[tooltip_kind].popdown_delay);
-          }
-        }
-        function hide_exe2(){
-          hide_timer = null;
-          if (tooltip_on) {
-            tooltip.parentNode.removeChild(tooltip);
-            tooltip_on = null;
-            tooltip_e = null;
-          }
-        }
-        
-        function str_hier(root,name){
-          if (!root) return null; // cancel if miss
-          var idx = name.indexOf('.');
-          return (idx==-1)? root[name] || root['*'] || null :
-                            str_hier(root[name.substr(0,idx)],name.substr(idx+1));
-        }
-//        function str_hier(root,name,str){ // working code.
-//          if (!root) return null; // cancel if miss
-//          var idx = name.indexOf('.');
-//          if (idx==-1 || root['*']) {
-//            var val = root[name] || root['*'];
-//            return (val)? str + name + ': ' + val : null; // cancel if miss
-//          } else {
-//            var pfx = name.substr(0,idx);
-//            return str_hier(root[pfx],name.substr(idx+1),str+pfx+'.');
-//          }
-//        }
-        var str = {
-//          'pn_catalog_triage': 'hide forever, hide until new replies, watch, unwatch, undo.\n'+
-//                               'You can customize this in settings -> Catalog: Appearance (in top selector) -> Style:',
-////          'pn_catalog_triage': '1st row: Hide it forever.\n2nd row: Hide it now, but it will appear again when the thread gets new replies,\n' +
-////            '  and new replies are marked.\n3rd row: Don\'t hide it, just change its appearance.\n' +
-////            'Each column shows appearance the thread will get.\n' +
-////            'Don\'t forget checking \'Exclusive list\' and \'Attribute list\' for using this function.\n' +
-////            'In other words, you can appear it again by unckecking them.\nAnd you can configure these appearance in \'Attribute list\' and \'Triage styles\'.',
-          'catalog_refresh_clear': 'Clear all threads at update.',
-          'catalog_promiscuous': 'Gather information whatever.',
-          catalog: {
-            filter: {
-              kwd: {
-                re: 'Regular Expression.',
-                ci: 'Case insensitive. Don\'t distinguish upper and lower case.',
-                sentence: '"XXXX YYYY" matches itself as a whole instead of matching "XXXX" and/or "YYYY"',
-              },
-              time: 'Time : Hide threads which have no posts after the time.',
-              time_creation: 'Time(Creation Time) : Hide threads which were created before the time.',
-              time_watch: 'Watch: watch threads which have posts after the time.',
-              time_watch_creation: 'Watch(Creation Time): watch threads which were created after the time.',
-            }
-          },
-//          'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
-          'catalog.filter.tag_search.str': 'String for searching tags.\n[CAUTION] this function is very heavy, keep blank here when you don\'t use.',
-          'catalog.filter.tag_list': false,
-          'network.cross_domain': 'Use \'direct\' if you could, because it\'s quite light, but it doesn\'t work in almost of all environments.\n\'indirect\' usually works well and gives full functionality.\n\Or you can use \'GreaseMonkeyM\'s extension if your browser tend to close steps for cross domain when you connect over X-Frame-Options, but this doesn\'t provide localStorage/IDB features in remote domains.',
-          'debug_mode' : 'Debug mode.',
-          'show_tooltip' : 'Show this tooltip.',
-          'liveTag.rm_list_str': function(){return this.TagExLists();},
-          'liveTag.ex_list_str': function(){return this.TagExLists();},
-          'TagExLists': function(){return 'String, ...  or\n/RegularExpression/, ... or \nIdentifier:String, ... or \nIdentifier:/RegularExpression/, ...\n'+
-            '\nRegularExpression must be embraced by shashes, and accepts i flag(case insensitive).\n'+
-            'Identifier must be followed by :(colon). First colon is interpreted as a delimiter always. Put a colon at the head of line when you want to use colons in search strings for global search(without any identifiers)\n'+this.GeneralRules;},
-          'catalog_board_list_str': function(){return 'How to write \'Board groups\'.\n'+
-            '\nNameOfBoardGroup,Identifier, ..., Commands, ...\n\n'+
-            'Each line becomes each board group. One line per one board group.\n'+
-            'First column is a name of board group. The name is shown in board selector and become a key for localStorage or statistics.\n'+
-            'Second or later columns are members. Each member is expressed by \'Identifier\'.\n'+
-            'You can add tags for filtering or picking up threads. Single # means filter, double #(##) means pick up and filter. For example,\n\n'+
-            'CC, lain/\u03bb/, #CatChan // load lain/\u03bb/ and filter by #CatChan, then shows a thread for CatChan in lain/\u03bb/.\n'+
-            'lain#lainchan, lain, #lainchan // load all boards of lain and filter by #lainchan, then show all threads which have the tag(#lainchan).\n'+
-            '#tech, ##tech // load all boards which have #tech from sites which are set in VirtualBoard, and filter by #tech, then show all threads which have the tag(#tech) from sites.\n'+
-            'And you can add commands to the last of each line. \'!stats\' takes statistics if the function is enabled.\n'+
-            this.GeneralRules;},
-          'GeneralRules': 'Double slash(//) is a beginning of comment.\n\n'+
-            'Identifier:\n'+
-            'Identifier is a string which contains domain, board and/or thread. You can omit some of them. When some identifiers are dropped, it\'ll be interpreted as follows. Upper case has the priority.\n'+
-            '\n'+
-            'domain/board/thread\n'+
-            '/board/thread\n'+
-            'domain/thread\n'+
-            'thread\n'+
-            'domain/board/\n'+
-            '/board/\n'+
-            'domain\n'+
-            '\n'+
-            '\'Board identifier\' must be expressed in a couple of slashes, like /int/. \'Thread identifier\' must be numeric. When the identifier is a word, it\'ll be \'Thread identifier\' if it is numeric, otherwise it\'ll be a \'Domain identifier\'. '+
-            'Domain identifiers must be one of meguca, lain, 4chan, 8chan or KC.',
-          'catalog.style_general_list_str' : function(){return 'Identifier^Style_string\n'+
-            'Style_string is a string and set to its object.style.XXXX. Therefore you can use all of styles in CSS, which ranges from \'background\' or \'border\' to \'fontSize\', \'width\' or \'height\'\n'+ this.GeneralRules;},
-//            'About Identifier, see \'board group\'.',
-          'catalog.board.recommendation' : 'Scans \'board announcement\' and gets owner\'s recommendation. This recommendation must be start \'Recommendation: \', and the following part of the line is treated as a line of board groups. The recommendation can be seen in a last line of board groups.',
-          'overwrite_site2_eval_str' : 'For developers. This function is killed by security reason. If you want to use, you must uncomment the function \'pref_func.site2_eval\' by yourself.',
-//          'thread_reader.buttons.B' : 'Bookmark this thread to current catalog.',
-//          'thread_reader.buttons.UB': 'Unbookmark this thread from current catalog.',
-//          'thread_reader.buttons.X' : function(){return 'Kill this thread from parent catalog' + ((pref.thread_reader.triage_close)? ', and close.' : '.');},
-//          'thread_reader.buttons.v' : function(){return 'Hide this thread from parent catalog untill it gets new posts' + ((pref.thread_reader.triage_close)? ', and close.' : '.');},
-          'catalog_open_where' : 'this tab: open the thread in this tab, and catalog will be closed.\nnew tab always: this enables you to open a thread in multiple tabs.\nnamed tab: this prevents you from opening a thread in multiple tabs.\na fixed tab: this enables you to use a catalog window as a dashboard.',
-          'virtualBoard.scan_domains.*': 'None: Don\'t scan.\nBoard: Read boards.json and set them to boardlist, not scan threads at startup. Threads are scanned when you read them.\nThread: Scan all threads at startup.',
-          'scanBoard': 'Scan selected virtual boards.\nScan this physical board if no virtual board is selected.',
-          'scanSite': 'Scan all virtual boards.\nScan all boards in this site if no virtual board is selected.',
-          'style.fix.*': 'Write style strings.',
-          'style.copy.*': 'Write exact selectorText in CSS, then its styles are copied.',
-          debug_mode:['pipe','','removed threads from catalog'],
-          dummy: '',
-          archive: {kwd: null},
-          '#*': function(e, str){return liveTag.tooltip(e, str);},
-        };
-        str.archive.kwd = str.catalog.filter.kwd;
-        str['catalog.filter.tag_search.re'] = str.catalog.filter.kwd.re;
-//        Object.defineProperty(str,'catalog_triage_str',{value:str['catalog_triage_str'], enumerable:true, configurable:true, writable:false});
-        return {
-          add_root: function(elem){
-            elem.addEventListener('mouseover', show_0, false);
-            elem.addEventListener('mouseleave', hide2, false);
-          },
-          remove_root: function(elem){
-            elem.removeEventListener('mouseover', show_0, false);
-            elem.removeEventListener('mouseleave', hide2, false);
-          },
-          show: show,
-//          show_1: show_1,
-//          hide: hide,
-          str: str,
-          req_show:req_show,
-          hide2: hide2,
-          show_2: show_2,
-          hide: hide2,
-          hide_if: hide_if,
-        }
-      })(),
+//      get tooltips(){return Tooltips;}, // code was moved.
       pref_samples: (site0.isStep)? null : {
         simple: {
           catalog_triage_str: 'KILL,X,',
@@ -2640,7 +2365,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           if (!src) src = pref_func.pref_samples[this.name];
           if (src.func && typeof(src.func)==='function') src.func();
           pref_func.pref_overwrite(pref,src);
-          pref_func.pref_overwrite(pref_func.tooltips.str,src);
+          pref_func.pref_overwrite(Tooltips.str,src);
           var names = pref_func.pref_samples.get_name(src,[],'');
           var pns = Array.prototype.slice.call(document.querySelectorAll('*[name]'));
           for (var i=pns.length-1;i>=0;i--) if (names.indexOf(pns[i].name)==-1) pns.splice(i,1);
@@ -2679,10 +2404,10 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //            pref_func.mirror_targets.pn13_1 = pn13.childNodes[1]; // for mirror.
             pref_func.settings.onchange_funcs['settings.indexing']();
             pref_func.add_onchange(pn13_0_2,pref_func.settings.onchange_funcs_formatted);
-            pref_func.tooltips.add_root(pn13.childNodes[1]);
+            Tooltips.add_root(pn13.childNodes[1]);
             cnst.bottom_top(pn13);
           } else {
-            pref_func.tooltips.remove_root(pref_func.settings.pn13.childNodes[1]);
+            Tooltips.remove_root(pref_func.settings.pn13.childNodes[1]);
             pref_func.settings.files_store();
 //            pref_func.mirror_targets.pn13_1 = null;
             pref_func.settings.pn13 = cnst.div_destroy(pref_func.settings.pn13, true); // returns null
@@ -2948,16 +2673,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          userCSS_samples: 'Samples:\n'+
 //            '.CatChan_titleBar button[name^="op"]{display:none} /* remove transparency buttons in titleBar */\n',
           vb_domains: function(){
+            var pf = 'virtualBoard.scan_domains.';
 //            var str = '<span name="virtualBoard.scan_domains">'+
-            var str = '2,Scan targets:<br>'+
-                      '3,None/Board/Thread(No/Passive/Active)<br>';
-            var sites = site0.domains;
-            for (var i=0;i<sites.length;i++) {
-              str += '3,<input type="radio" name="virtualBoard.scan_domains.'+sites[i]+'" value="none">'+  // 'apply_prep' can't recognize ['domain'] notation.
-                     '<input type="radio" name="virtualBoard.scan_domains.'+sites[i]+'" value="board">'+
-                     '<input type="radio" name="virtualBoard.scan_domains.'+sites[i]+'" value="thread"> '+ sites[i] +'<br>';
-            }
-            return str;
+            return '2,Scan targets:<br>'+
+              '3,None/Board/Thread(No/Passive/Active)<br>'+
+              site0.domains.map(function(v){return '3,<IR"'+pf+v+',none"><IR"'+pf+v+',board"><IR"'+pf+v+',thread"> '+ v +'<br>';}).join('');  // 'apply_prep' can't recognize ['domain'] notation.
           },
 //          get_domains: function(){
 //            var sites = Object.keys(pref.virtualBoard.scan_domains);
@@ -3003,9 +2723,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                 '5,<IC"threadStats.retry">Retry if obsolete data(may cause infinite loop)') + '<br>'+
               '3,<IC"'+pf+'nid">Show num of IDs (ni)<br>'+
               '3,<IC"'+pf+'nf">Show num of flags (nf)<br>'+
-              '2,<ICBX"'+pf+'ctime"> <IC"'+pf+'rctime">Show created time (ct), relative (cT)<br>'+
-              '2,<ICBX"'+pf+'btime"> <IC"'+pf+'rbtime">Show bumped time (bt), relative (bT)<br>'+
-              '2,<ICBX"'+pf+'ptime"> <IC"'+pf+'rptime">Show last posted time (pt), relative (pT)<br>'+
+              '2,<IC"'+pf+'ctime"> <IC"'+pf+'rctime">Show created time (ct), relative (cT)<br>'+
+              '2,<IC"'+pf+'btime"> <IC"'+pf+'rbtime">Show bumped time (bt), relative (bT)<br>'+
+              '2,<IC"'+pf+'ptime"> <IC"'+pf+'rptime">Show last posted time (pt), relative (pT)<br>'+
               '2,<IC"'+pf+'prate">Show post rate (pr)<br>'+
               '2,<IC"'+pf+'domain">Show domain\'s name (dn)<br>'+
               '2,<IC"'+pf+'board">Show board\'s name (bd)<br>'+
@@ -3022,14 +2742,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '3,<IR"'+pf+'design,native"> U: */* / R: * / I: * / P: *<br>'+
               '3,<IR"'+pf+'design,condensed"> */*/*/*/*<br>'+
               '3,<IR"'+pf+'design,meguca"> /bd/ */*/*/*/*'+this.rollup(
-                '3,How to custoimze design<br>'+
-                '4,** are replaced by the parameter above.<br>'+
-                '4,() forms a group, all parameters to be replaced must be in ().<br>'+
-                '4,(IB) and (Ib) are italics start/end at bumplimit, must be used in pair.<br>'+
-                  '4,(II) and (Ii) are italics start/end at imagelimit, must be used in pair.<br>'+
-                  '4,tags of b, i, u, s, iB, iI and span are accepted.<br>'+
-                  '4,Style can be used also.<br>'+
-                  '4,&lt;iB&gt; and &lt;iI&gt; are pseudo tags for italics at bumplimit/imagelimit.')+'<br>'+
+                'How to custoimze design<br>'+
+                '1,** are replaced by the parameter above.<br>'+
+                '1,() forms a group, all parameters to be replaced must be in ().<br>'+
+//                '4,(IB) and (Ib) are italics start/end at bumplimit, must be used in pair.<br>'+
+//                  '4,(II) and (Ii) are italics start/end at imagelimit, must be used in pair.<br>'+
+                '1,b, i, u, s, span, iB, and iI tags are accepted.<br>'+
+                '1,Each tag can accept style attribute.<br>'+
+                '1,&lt;iB&gt; and &lt;iI&gt; are pseudo tags for italics at Bump/Image limit.')+'<br>'+
               '3,<IR"'+pf+'design,custom"> <ITBL40"'+pf+'custom"><br>'+
               '3,<IR"'+pf+'design,custom2"> <ITBL40"'+pf+'custom2"><br>'+
               '3,<IR"'+pf+'design,custom3"> <ITBL40"'+pf+'custom3"><br>';
@@ -3346,10 +3066,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.merge_list('float')+'<br>'+
           '1,'+html_funcs.rollup_radio('catalog.appearance.initial.state',' :At initial', 2, '',
             ['max:Maximized',
-             'float:Floating <ITB4"catalog.appearance.initial.width"> x <ITB4"catalog.appearance.initial.height"><br>'+
-               '4,left:<ITB4"catalog.appearance.initial.left">px, top:<ITB4"catalog.appearance.initial.top">px<br>',
+             'float:Floating <ITB4"catalog.appearance.initial.width"> x <ITB4"catalog.appearance.initial.height">(0 means auto)<br>'+
+               '4,left:<ITB4"catalog.appearance.initial.left">px, top:<ITB4"catalog.appearance.initial.top">px',
              'top:Embed to top', 'bottom:Embed to bottom'])+'<br>'+
           '1,'+ html_funcs.popup3('float',2)+
+          '1,<IC"float.auto_launch">Auto start an instance at initial<br>'+
           '1,<IC"float.save_board_list_sel">Save board group index<br>'+
           '1,<IC"float.promiscuous">Show all fetched threads<br>'+
           '1,'+html_funcs.resize_thumbnails('float')+
@@ -3850,6 +3571,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '',
       function(html_funcs){
         return 'Styles:<br>'+
+          '1,<IC"style.addSS.use">Additional StyleSheets, URLs are below<br>'+
+          '2,<TA"style.addSS.str,40,1"><br>'+
           '1,Windows and popups:<br>'+
           '2,Z-Index: <ITB4"style.zIndex"><br>'+
           '2,<IR"style.sel,fix"> Fixed <BTN"style.reset.fix,reset"><br>'+
@@ -3886,7 +3609,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2020.01.19.0<br>'+
+          'Version 2020.07.05.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3911,8 +3634,10 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           '<input type="checkbox" name="debug_mode.pfunc_comp_expand_same"><input type="checkbox" name="debug_mode.pfunc_comp_expand_diff">func <br>'+
           '1,<input type="text" name="debug_mode.pfunc_comp_proto" size="40" style="text-align: right;" placeholder="temporal prototype, DEFAULT:catalog_json"><br>'+
           '<input type="text" name="debug_mode.pfunc_all" size="15" style="text-align: right;"  placeholder="op_img_url">'+
-          '<BTN"debug_pfunc_all,find_parse_funcs">'+
-          '<input type="checkbox" name="debug_mode.pfunc_all_expand">func<br>'+
+          '<BTN"debug_pfunc_all,find_parse_funcs"><IC"debug_mode.pfunc_all_expand">func '+html_funcs.rollup(
+            '<div style="float:left">' + site0.debug_domains.map(function(v){return '<IC"debug_mode.domains.'+v+'">'+v;}).join('<br>')+'</div>'+
+            '<div style="float:left">' + site0.debug_types.map(function(v){return '<IC"debug_mode.types.'+v+'">'+v;}).join('<br>')+'</div>'+
+            '<div style="clear:both"></div>')+'<br>'+
           '<input type="checkbox" name="debug_mode.9"><br>'+
           html_funcs.cb_block('debug_mode',10)+
           '<BTN"debugWindow,debugWindow"><br>'+
@@ -4274,6 +3999,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             pref_func.settings.apply_pn13_1();
             pref_func.settings.onchange_funcs['style.sel']();
           },
+          'style.addSS.*': styleSheet.addSS_changed,
           'style.userCSS.*': styleSheet.userCSS_changed,
 ////////          'catalog.click_area': function(){ // working code.
 ////////            if (pref_func.style_sheet) {
@@ -4949,38 +4675,34 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       return [strs, hier_str, src_types[s]];
     },
     debug_parse_funcs_all: function(str) {
-      var domains = ['DEFAULT','4chan','vichan','lain','8chan','KC','meguca','meguca1','meguca2','dist'];
-      var types = ['','_json','_html']; // ,'_json_template','_html_template']; // '' for common
-      var srcs = ['common','post','thread','page','catalog'];
+      var domains = site0.debug_domains.filter(function(v){return pref.debug_mode.domains[v];});
+      var types = site0.debug_types.filter(function(v){return pref.debug_mode.types[v];}); // ['','_json','_html']; // ,'_json_template','_html_template']; // '' for common
+      var srcs = ['common','post','thread','page','catalog','base'];
       var objs = {};
-      for (var d=0;d<domains.length;d++)
-        for (var t=0;t<types.length;t++) {
-          if (domains[d]==='KC' && types[t]==='_json') continue;
-          for (var s=0;s<srcs.length;s++) {
-            if (domains[d]!=='DEFAULT' && srcs[s]==='common' || !site2[domains[d]]) continue; // !site2[domains[d]] is a patch for 'dist'
-            var src_type = srcs[s]+types[t];
-            if (site2[domains[d]].parse_funcs[src_type]) {
-              var result = this.debug_parse_funcs_parse(domains[d], src_type, str);
-              var strs = result[0];
-              var hier_str = result[1];
-              src_type = result[2];
-//            try {
-              var obj_root = site2[domains[d]].parse_funcs[src_type];
-              if (obj_root) {
-                var obj = obj_root[str];
-                var flag = true;
-                for (var i in objs) if (objs[i][0]===obj) {strs[strs.length] = ' (==='+i+')'; flag=false; objs[i][1]++; break;}
-  //              if (flag) objs[domains[d]+':'+src_type] = obj;
-                if (flag) objs[hier_str] = [obj,1];
-                if ((typeof(obj)==='string' || typeof(obj)==='number')) strs[str.length] = ', '+obj;
-              }
-//            } catch(e){
-//              if (src_type.indexOf('_template')==-1) throw e; // templates don't have parse_funcs and cause excaption.
-//            }
-              console.log(strs.join(''));
-            }
-          }
+      for (var d=0;d<domains.length;d++) for (var t=0;t<types.length;t++) for (var s=0;s<srcs.length;s++) {
+        var domain = domains[d];
+        var src_type = srcs[s]+types[t];
+        if (domain!=='DEFAULT' && srcs[s]==='common' || (site2[domain].no_JSONAPI? types[t]==='_json' : src_type==='base_html')) continue;
+        if (!site2[domain].parse_funcs[src_type]) continue;
+        var result = this.debug_parse_funcs_parse(domain, src_type, str);
+        var strs = result[0];
+        var hier_str = result[1];
+        src_type = result[2];
+//      try {
+        var obj_root = site2[domain].parse_funcs[src_type];
+        if (obj_root) {
+          var obj = obj_root[str];
+          var flag = true;
+          for (var i in objs) if (objs[i][0]===obj) {strs[strs.length] = ' (==='+i+')'; flag=false; objs[i][1]++; break;}
+//        if (flag) objs[domain+':'+src_type] = obj;
+          if (flag) objs[hier_str] = [obj,1];
+          if ((typeof(obj)==='string' || typeof(obj)==='number')) strs[str.length] = ', '+obj;
         }
+//      } catch(e){
+//        if (src_type.indexOf('_template')==-1) throw e; // templates don't have parse_funcs and cause excaption.
+//      }
+        console.log(strs.join(''));
+      }
       var num = 0;
       if (pref.debug_mode.pfunc_all_expand) for (var i in objs) console.log((num++)+'('+objs[i][1]+'): '+ i +': '+objs[i][0]);
     },
@@ -5377,7 +5099,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var key = 'boards_json_'+this.nickname;
       if (this.boards_json) this.get_boards_json_callback(this.nickname,{status:200, response:this.boards_json},[callback,callback_always]);
       else httpd.req({initiator:key,
-                      INDICATOR: dummy_indicator? {shift:function(){}, report:function(){}} : null, IDX:0, FINISHED:0, SUC:0, max:1, // patch for 8chan, see tag.generate_caller
+//                      INDICATOR: dummy_indicator? {shift:function(){}, report:function(){}} : null, IDX:0, RUNNING:0, SUC:0, max:1, // patch for 8chan, see tag.generate_caller
                       tgts:[{domain:this.nickname, url:this.url_boards_json()[0], responseType:'json', data_type:'json'}],
                       callback_1:function(req,val){this.get_boards_json_callback(key,val,[callback,callback_always,true])}.bind(this)},6);
     },
@@ -6299,7 +6021,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       function href2domain(href){
         if (href[0]==='/' || href[0]==='#') return site.nickname;
         else for (var d in liveTag.mems) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname;
-        for (var d in site2) if (href.indexOf(site2[d].domain_url)!=-1) return site2[d].nickname_href2domain || site2[d].nickname;
+        for (var d in site2) if (href.indexOf(site2[d].domain_url)!=-1) return /*site2[d].nickname_href2domain ||*/ site2[d].nickname;
       }
       var up0 = up_timer_factory(); // surface
       function over(e, force){ // image_hover can be merged to this, and popup2 also. e.path can be created easily, mouseenter can be replaced to mouseover.
@@ -6657,15 +6379,16 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
             pn.style.width  = pn.offsetWidth + 'px';
             pn.style.height = pn.offsetHeight + 'px';
           }
-          var btn = document.createElement('button');
-//          common_func.overwrite_prop(btn.style, {position:'absolute', top:'0px', left:'0px'});
-          btn.classList.add(pref.script_prefix+'_autoTp');
-          btn.appendChild(site2[site.nickname].make_tack());
-          pn.appendChild(btn);
-          btn.onclick = function(e){
+          cnst.tack_for_popup(pn, function(e){
+//          var btn = document.createElement('button');
+////          common_func.overwrite_prop(btn.style, {position:'absolute', top:'0px', left:'0px'});
+//          btn.classList.add(pref.script_prefix+'_autoTp');
+//          btn.appendChild(site2[site.nickname].make_tack());
+//          pn.appendChild(btn);
+//          btn.onclick = function(e){
             var btn = e.currentTarget;
             var pn = btn.parentNode;
-            cnst.bottom_top(pn);
+//            cnst.bottom_top(pn);
             var pn2;
             var chart = pop_down(pn,true).chart;
             if (chart) {
@@ -6680,13 +6403,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               pn2.childNodes[1].replaceChild(pn, pn2.childNodes[1].childNodes[1]);
             } else {
               pn.removeChild(btn);
-              pn2 = cnst.init3({func_str:'Show:tb'}).pn;
-              pn2.appendChild(pn);
+              pn2 = cnst.tack_for_popup_swap(pn);
+//              pn2 = cnst.init3({func_str:'Show:tb'}).pn;
+//              pn2.appendChild(pn);
             }
-            pn2.style.top = parseInt(pn.style.top,10) - pn2.offsetHeight + 'px';
-            pn2.style.left = pn.style.left;
-            common_func.overwrite_prop(pn.style, {position:'relative', border:null, top:null, left:null});
-          };
+            cnst.tack_for_popup_swap_pos(pn2,pn);
+//            pn2.style.top = parseInt(pn.style.top,10) - pn2.offsetHeight + 'px';
+//            pn2.style.left = pn.style.left;
+//            common_func.overwrite_prop(pn.style, {position:'relative', border:null, top:null, left:null});
+          });
           if (kwd) pop_setup(kwd_src, pn, {src:kwd_src, scroll:true, pf:pfX});
           else pop_setup(up_th.src, pn, chart? {src:up_th.src, chart:chart, scroll:true, pf:pf} : {src:up_th.src, scroll:true, pf:pf}, pna);
         }
@@ -7931,6 +7656,12 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           return hrefs;
         },
       },
+      'base_html': { // for HTML based sites, timeunit===1
+        time_created: function(th){return th.posts[0].time;},
+        time_posted: function(th){return th.posts[th.posts.length-1].time;},
+        time_unit: 1,
+        proto: 'page_html',
+      },
       'catalog_json_template': 'post_json_template',
       'page_json_template': 'post_json_template',
       'thread_json_template': 'post_json_template',
@@ -9118,6 +8849,7 @@ if (site.nickname==='4chan' || pref.test_mode['140']) {
       get txt() {return this.exe_sub('txt');},   // CAUTION. ADDED AFTER TUNING.
 
       get time_tu() {return this.time * this.parse_funcs.time_unit;},   // CAUTION. ADDED AFTER TUNING. THIS IS NOT A CALLER.
+      get time_tu1000() {return this.time;},  // assume time_unit===1000  // CAUTION. ADDED AFTER TUNING. THIS IS NOT A CALLER.
       get lth() {return liveTag.mems[this.domain][this.board][this.no];},   // CAUTION. ADDED AFTER TUNING. THIS IS NOT A CALLER.
       get type_mimic(){return this.type_parse;},
       get key_op() {return this.domain + this.board + (this.resto || this.op || this.no);}, // this.op for meguca, it always refer to op, while resto===0 if it is op itself.
@@ -9229,26 +8961,26 @@ if (site.nickname==='4chan' || pref.test_mode['140']) {
 if (pref.features.domains['8chan']) {
   site2['8chan'] = {
     nickname : '8chan',
-    domain_url: '8ch.net',
-    domain_url_image: 'media.8ch.net',
+    domain_url: '8kun.top', // '8ch.net',
+    domain_url_image: 'media.8kun.top',
 //    home : site.protocol + '//8chan.co/faq.html', // stop twitter and IRC access.
 //    home : site.protocol + '//8ch.net/faq.html', // stop twitter and IRC access.
 //    home : site.protocol + '//8ch.net/favicon.ico', // can't work in FF.
-    home: site.protocol + '//8ch.net' + ((brwsr.ff)? '/faq.html' : '/favicon.ico'),
+    home: site.protocol + '//8kun.top' + ((brwsr.ff)? '/faq.html' : '/favicon.ico'),
 //    protocol : 'https:',
     protocol : site.protocol,
     features : {uip_tracker: true},
     utilize_boards_json: true,
     check_func : function(){
       var href = window.location.href;
-      if (href.search(/8chan.co|8ch.net/)!=-1) { // 8chan
-        site2['8chan'].domain_url = (href.search(/8ch.net/)!=-1)? '8ch.net' : '8chan.co';
+      if (href.indexOf(this.domain_url)!==-1) { // 8chan
+//        site2['8chan'].domain_url = (href.search(/8ch.net/)!=-1)? '8ch.net' : '8chan.co';
         this.home = site.protocol + '//' + this.domain_url + this.home.substr(this.home.lastIndexOf('/')); // FF doesn't work on favicon.
         site.whereami = (document.title.indexOf('404 - Page Not Found')!=-1)? '404'
-                      : (href.search(/8ch\.net\/?$/)!=-1)? 'frame'
+                      : (href.search(/8kun\.top\/?$/)!=-1)? 'frame'
                       : (href.search(/catalog\.html/)!=-1)? 'catalog'
                       : (href.search(/res\/[0-9\+]*\.html/)!=-1)? 'thread'
-                      : (href.search(/8ch\.net\/index/)!=-1)? 'boards'
+                      : (href.search(/8kun\.top\/index/)!=-1)? 'boards'
                       : (href.search(/\/$|(index|[0-9]+)\.html|\/#all$/)!=-1)? 'page'
                       : (href.search(/boards.html/)!=-1)? 'boards'
                       : 'other';
@@ -9271,8 +9003,8 @@ if (pref.features.domains['8chan']) {
         } : {};
         if (site.components.boardlist) site.components.boardlist.style.zIndex = 0;
         if (site.whereami==='boards') {
-          var ppn = document.getElementById('search-form');
-          var button = ppn.parentNode.parentNode.insertBefore(document.createElement('button'),ppn.parentNode);
+          var ppn = document.getElementById('search-form').parentNode;
+          var button = ppn.parentNode.insertBefore(document.createElement('button'),ppn);
 //          var button = ppn.firstChild.appendChild(document.createElement('button')); // doesn't work, form is submitted.
           button.textContent = 'TagSearch';
           var pn_redirect = document.createElement('div');
@@ -9283,7 +9015,14 @@ if (pref.features.domains['8chan']) {
             pref.catalog.board.board_tags = true;
             pref_func.settings.onchange_funcs['tag.generate_caller']('tag.scan');
             var pn = liveTag.popup_filter.embed(pn_redirect);
-            if (pn) button.parentNode.insertBefore(pn, button.nextSibling);
+            if (pn) {
+              button.parentNode.insertBefore(pn, button.nextSibling);
+              button.textContent = 'Hide original search';
+              button.onclick = function(e){
+                ppn.style.display = 'none';
+                e.target.style.display = 'none';
+              }
+            }
           };
           var pn_result = document.getElementsByClassName('board-list-tbody')[0];
           var func_genResult = function(e,from_auto){
@@ -9328,8 +9067,10 @@ if (pref.features.domains['8chan']) {
               return '<a class="tag-link" href="/boards.php?tags='+tag+'">'+tag+'</a>';
             }
           };
-          pn_redirect.firstChild.onclick = func_genResult;
-          setTimeout(function(){liveTag.sub_tagSearch = function(){if (pref.tagSearch.auto) func_genResult(null, true);};},0);
+//          pn_redirect.firstChild.onclick = func_genResult;
+          setTimeout(function(){
+            liveTag.popup_filter.onchange_funcs['tagSearch.genResult'] = func_genResult;
+            liveTag.sub_tagSearch = function(){if (pref.tagSearch.auto) func_genResult(null, true);};},0);
 //          button.onclick = pref_func.settings.onchange_funcs['tag.scan'];
         }
         return true;
@@ -11590,6 +11331,7 @@ if (pref.test_mode['28']) {
 //        return imgs[imgs.length-1];
 //      }
 //    },
+    no_JSONAPI: true,
     parse_funcs : { // KC
       'catalog_html' : {
         ths: function(doc) {
@@ -12189,18 +11931,19 @@ return th.parse_funcs.time(th.posts[th.posts.length-1]);},
 }
 if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
   site2['4chan_i'] = {
-    home:undefined,
-    nickname:'4chan_i',
-    nickname_href2domain:'4chan',
+//    home:undefined,
+//    nickname:'4chan_i',
+//    nickname_href2domain:'4chan',
     domain_url: 'i.4cdn.org',
     check_func: site2['DEFAULT'].check_func,
     proto:'4chan'
   };
   site2['4chan'] = {
     nickname : '4chan',
+    get home(){return site.protocol + '//' + this.domain_url + '/favicon.ico';}, // 4chan.org is redirected to 4channel.org, see site2['4chanR'].home
+//    home : site.protocol + '//boards.4chan.org/favicon.ico',
 //    home : site.protocol + '//boards.4chan.org/int/',
-    home : site.protocol + '//boards.4chan.org/favicon.ico',
-    protocol: 'http:',
+    protocol: 'https:', // https always since 20200330
     make_tack: function(){
       var tack = document.createElement('img');
       tack.setAttribute('src','//s.4cdn.org/image/sticky.gif');
@@ -12302,7 +12045,10 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
     domain_url: 'boards.4chan.org',
     check_func : function(){
       var href = window.location.href;
-      if (href.search(this.domain_url)===-1) return false;
+      var domain = (href.indexOf(site2['4chanB'].domain_url)!==-1)? '4chanB' : (href.indexOf(site2['4chanR'].domain_url)!==-1)? '4chanR' : null;
+      if (!domain) return false;
+//      if (href.search(this.domain_url)===-1) return false;
+      this.domain_url = site2[domain].domain_url;
       site.whereami = (document.title.indexOf('404 Not Found')!=-1)? '404'
                     : (href.search(/catalog/)!=-1)? 'catalog'
                     : (href.search(/thread\/[0-9]+/)!=-1)? 'thread'
@@ -12694,13 +12440,25 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 //        while (pn_tb.firstChild) pn_tb_new.appendChild(pn_tb.firstChild);
 //        pn_tb = pn_tb_new;
 //        pn_tb.appendChild(pn_tb.removeChild(pn_tb.childNodes[3]).firstChild);
+        var settings = document.getElementById('settings');
+        pn_tb.childNodes[3].style.float = 'left';
+        pn_tb.style.float = 'right';
+        node_ref.appendChild(pn_tb.childNodes[4]);
+        node_ref.insertBefore(pn_tb.childNodes[3],settings);
+        node_ref.insertBefore(pn_tb,settings);
       } else if (site.whereami==='page') {
+        pn_tb.childNodes[3].style.display = 'inline';
+        pn_tb.style.float = 'right';
+        node_ref.appendChild(pn_tb.childNodes[3]);
+        node_ref.appendChild(pn_tb);
+        node_ref.appendChild(pn_tb.childNodes[3]);
 //        var pctrls = document.getElementsByClassName('board')[0]; // test patch
 //        for (var i=pctrls.childNodes.length-1;i>=0;i--) if (pctrls.childNodes[i].tagName==='HR') pctrls.removeChild(pctrls.childNodes[i]);
 //        pctrls.parentNode.insertBefore(document.createElement('hr'),pctrls.nextSibling);
-      }
+      } else {
 //      node_ref.parentNode.insertBefore(pn_tb,node_ref);
-      node_ref.appendChild(pn_tb);
+        node_ref.appendChild(pn_tb);
+      }
       if (site.whereami==='thread') document.getElementsByClassName('navLinksBot')[0].appendChild(pn_hi);
 //      node_ref.parentNode.insertBefore(pn_filter,node_ref);
 ////////      return site2['4chan'].catalog_from_native(date,document,site.board,site.whereami+'_html');
@@ -13101,7 +12859,7 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
           return th.nof_files;
         },
 //        name: function(post){return post.pn.getElementsByClassName('name')[0][brwsr.innerText];}, // same as 8chan
-        footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('postInfo desktop')[0]);},
+        footer: function(th){return this.insert_footer4(th.pn.getElementsByClassName('postInfo')[0]);}, //  desktop')[0]);},
         footer2:function(th){return document.getElementsByClassName('navLinksBot')[0].appendChild(cnst.dom('<div style="clear:both;float:right"></div>'));},
         sticky: function(th){return (th.pn.getElementsByClassName('stickyIcon').length!=0);},
         op_img_url:function(th){
@@ -13507,9 +13265,9 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       if (op_no===undefined) op_no = post.op || post.resto || post.no;
       if (op===undefined) op = post.resto===0 || post.no==post.op;
       var pn = document.createElement('div');
-      var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
-      var date = new Date((post.time || 0) * time_unit);
-      var name = post.name || 'Anonymous';
+//      var time_unit = (post.parse_funcs && post.parse_funcs.time_unit) || 1;
+//      var date = new Date((post.time || 0) * time_unit);
+//      var name = post.name || 'Anonymous';
       if (post.ext) {
         var fsize_str = (((post.fsize>1048576)? post.fsize/1048576 : post.fsize/1024)+0.005).toString();
         fsize_str = fsize_str.substr(0,fsize_str.indexOf('.')+3) + ((post.fsize>1048576)? ' MB' : ' KB');
@@ -13534,25 +13292,26 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
 //      var href_prefix = (post.domain!=='4chan' || site.board!==board || site.whereami==='catalog')? board+'thread/' : (site.whereami==='page')? 'thread/' : '';
       pn.innerHTML =
         '<div id="p' + post.no + '" class="post reply">'+
-          '<div class="postInfoM mobile" id="pim' + post.no + '">'+
-            this.post_json2html_nameblock(post, name, false)+
-            '<span class="dateTime postNum" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span>'+
-          '</div>'+
+          this. post_json2html_postinfo(post, false, dbtp)+'</div>'+
+//          '<div class="postInfoM mobile" id="pim' + post.no + '">'+
+//            this.post_json2html_nameblock(post, name, false)+
+//            '<span class="dateTime postNum" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span>'+
+//          '</div>'+
           ((post.ext && op)? file_html : '') +
-          '<div class="postInfo desktop" id="pi' + post.no + '">'+
-            '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
-            ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
-            this.post_json2html_nameblock(post, name, true)+
-            '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
-            '<span class="postNum desktop">'+
-              '<a href="'+ this.link_dbtp2href_abs(dbtp)      + '" title="Link to this post">No.</a>'+
-              '<a href="'+ this.link_dbtp2href_abs(dbtp,true) + '" title="Reply to this post">' + post.no + '</a>'+
-//              '<a href="'+ href_prefix + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
-//              '<a href="'+ href_prefix + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
-            '</span>'+
-            ' &nbsp; '+
+          this.post_json2html_postinfo(post, true, dbtp)+
+//          '<div class="postInfo desktop" id="pi' + post.no + '">'+
+//            '<input type="checkbox" name="' + post.no +'" value="delete"> '+ // a blank is here
+//            ((post.sub)? '<span class="subject">' + post.sub + '</span> ' : '')+
+//            this.post_json2html_nameblock(post, name, true)+
+//            '<span class="dateTime" data-utc="' + post.time + '">' + site2['common'].change_utc_to_local(date) + '</span> '+
+//            '<span class="postNum desktop">'+
+//              '<a href="'+ this.link_dbtp2href_abs(dbtp)      + '" title="Link to this post">No.</a>'+
+//              '<a href="'+ this.link_dbtp2href_abs(dbtp,true) + '" title="Reply to this post">' + post.no + '</a>'+
+////              '<a href="'+ href_prefix + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
+////              '<a href="'+ href_prefix + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
+//            '</span>'+
 //            ((op)? '<span>[<a href="thread/' + op_no + ((post.sub)? '/' + post.sub.replace(/\s/g,'-').toLowerCase() +' ': '') + '" class="replylink">Reply</a>]</span>' : '') +
-            ((op)? ('<span>[<a href="' + site2[post.domain].make_url4([post.domain, board, post.no, 'thread_html'])[0] +'" class="replylink">Reply</a>]</span>'+
+            ((op)? (' &nbsp; <span>[<a href="' + site2[post.domain].make_url4([post.domain, board, post.no, 'thread_html'])[0] +'" class="replylink">Reply</a>]</span>'+
                    ((short_link)? short_link.replace(/>\[/g,'>').replace(/<a/g,'<span>[<a').replace(/\]<\/a/g,'</a>]</span') : '')) : '') +
             (post.domain==='4chan' && site.nickname==='4chan'? '<a href="#" class="postMenuBtn" title="Post menu" data-cmd="post-menu">\u25b6</a>' : '')+
 //            (pref[pClg.mode].postMenu? Triage.prototype.postMenu_html : '')+
@@ -13562,10 +13321,23 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
         '</div>';
       return pn.removeChild(pn.childNodes[0]);
     },
-    post_json2html_nameblock: function(post, name, desktop) {
+    post_json2html_postinfo: function(post, desktop, dbtp) {
+      return '<div class="postInfo'+(desktop?' desktop':'M mobile')+'" id="pi'+(desktop?'':'m')+post.no+'">'+
+        (desktop?'<input type="checkbox" name="'+post.no+'" value="delete"> '+ // a blank is here
+          ((post.sub)?'<span class="subject">'+post.sub+'</span> ':''):'')+
+        this.post_json2html_nameblock(post, desktop)+
+        '<span class="dateTime'+(desktop?'':' postNum')+'" data-utc="'+post.time_tu1000+'">'+site2['common'].change_utc_to_local(post.time_tu)+
+        (desktop?'</span> <span class="postNum desktop">':' ')+
+          '<a href="'+ this.link_dbtp2href_abs(dbtp)      + '" title="Link to this post">No.</a>'+
+          '<a href="'+ this.link_dbtp2href_abs(dbtp,true) + '" title="Reply to this post">' + post.no + '</a>'+
+//        '<a href="'+ href_prefix + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
+//        '<a href="'+ href_prefix + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
+        '</span>';
+    },
+    post_json2html_nameblock: function(post, desktop) {
       var color;
       return '<span class="nameBlock">'+
-        '<span class="name">' + name + '</span> '+
+        '<span class="name">' + post.name + '</span> '+
         ((post.trip)? '<span class="postertrip">' + post.trip + '</span> ' : '') +
         ((post.capcode)? '<strong class="capcode hand id_mod" title="Highlight posts by Moderators">##' + post.capcode + '</strong>' : '')+
 //        '<img src="//s.4cdn.org/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"></span>
@@ -13836,13 +13608,33 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
 ////      }
       return icon;
     },
+//    domain_IDB_check: function(board){
+//      var domain = (site2['4chanR'].boards[board]===null)? '4chanR' : '4chanB';
+//      return (site2[domain].domain_url===site2['4chan'].domain_url)? '4chan' : (httpd.prep_iframe(domain), domain);
+//    },
+//    boards_prep: function(arr){
+//      var obj = {};
+//      for (var i=0;i<arr.length;i++) obj['/'+arr[i]+'/'] = null;
+//      return obj;
+//    },
   };
-  site2['4channel'] = {
-//    nickname:'4channel',
+  site2['4chanB'] = {
     domain_url: 'boards.4channel.org',
-    check_func: site2['4chan'].check_func,
+//    boards: site2['4chan'].boards_prep(['3', 'a', 'adv', 'an', 'asp', 'biz', 'c', 'cgl', 'ck', 'cm', 'co', 'diy', 'fa', 'fit', 'g', 'gd', 'his', 'int', 'jp', 'k', 'lgbt', 'lit', 'm', 'mlp', 'mu', 'n', 'news', 'o', 'out', 'p', 'po', 'qa', 'qst', 'sci', 'sp', 'tg', 'toy', 'trv', 'tv', 'v', 'vg', 'vip', 'vp', 'vr', 'w', 'wsg', 'wsr', 'x']),
     proto:'4chan'
   };
+  site2['4chanR'] = {
+    domain_url: 'boards.4chan.org',
+//    boards: site2['4chan'].boards_prep(['aco', 'b', 'bant', 'd', 'e', 'f', 'gif', 'h', 'hc', 'hm', 'hr', 'i', 'ic', 'pol', 'r', 'r9k', 's', 's4s', 'soc', 't', 'trash', 'u', 'wg', 'y']),
+    home: site.protocol + '//boards.4chan.org/pol/',
+    proto:'4chan'
+  };
+//  site2['4channel'] = {
+////    nickname:'4channel',
+//    domain_url: 'boards.4channel.org',
+//    check_func: site2['4chan'].check_func,
+//    proto:'4chan'
+//  };
 }
 if (pref.features.domains['meguca']) {
   site2['meguca1'] = { // meguca.org v1
@@ -14925,7 +14717,7 @@ if (pref.features.domains['meguca']) {
                  tgts:[{url:'https://meguca.org/json/post/'+dbt[3], responseType:'json', tgt:dbt[0]+'/*/'+dbt[2]+'#'+dbt[3], data_type:'json', domain:th.domain}],
                  callback_1:site2[th.domain].popups_post_fetch_callback.bind(site2[th.domain]),
 //                 INDICATOR: {shift:function(){}, report:function(){}},
-                 IDX:0, FINISHED:0, SUC:0, max:1,
+                 IDX:0, RUNNING:0, SUC:0, max:1,
                  dbt:dbt,
                 },8);
     },
@@ -15584,6 +15376,7 @@ if (pref.test_mode['94']) { // pref.features.domains['dist']) {
     domain_url: 'localhost',
     boards_json:site2['DEFAULT'].generate_boards_json([['a',1], ['undefined',1]],3),
     check_func: function(){ // must be owned.
+      site0.add_domain(this.nickname);
       site2['DEFAULT'].check_func.call(this),
       site.postform = document.getElementsByClassName('postForm')[0];
     },
@@ -15906,7 +15699,7 @@ if (pref.test_mode['94'] && i==='dist') continue;
 
   if (window.top != window.self) {
     if (site.nicknames.indexOf(window.name)==-1 && window.name!==site.embed_frame) return; //don't run on frames or iframes
-    for (var i in site2) if (site.nicknames.indexOf(i)!=-1 && i!=site.nickname) delete site2[i];
+    for (var i in site2) if (site.nicknames.indexOf(i)!=-1 && i!=site.nickname && site2[i].nickname!=site.nickname) delete site2[i]; // '&& site2[i].nickname!=site.nickname' for '4chan_i'
   }
 
   var pipe_name = pref.script_prefix + '.graph.' + site.board + '__pipe__';
@@ -16453,6 +16246,33 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //  if (window.opener) make_port_child(window.opener);
 
   var httpd = (function(){
+//    var cooldowns = {};
+//    function cooldown_check(req){
+//      var period = pref.scan.cooldowns[req.domain];
+//      if (!period) return req;
+//      var now = Date.now();
+//      if (!cooldowns[req.domain]) {cooldowns[req.domain] = {domain:req.domain, urls:{}, queue:[], time:now}; return req;}
+//      var cooldown = cooldowns[req.domain];
+//      var rest = cooldown.time + period*1000 - now;
+//      if (rest<=0 && !queue_get(cooldown.queue)) {cooldown.time = now; return req;}
+//      queue_add(cooldown.queue, req);
+//      if (rest<=0) {cooldown.time = now; return queue_get(cooldown.queue);}
+//      setTimeout(cooldown_wakeup.bind(null,cooldown), rest+1000); // 1000 for safty
+//      return null;
+//    }
+//    function cooldown_wakeup(cooldown){
+//      queue_add(reqs, queue_get(cooldown.queue));
+//      dispatch_if_idle();
+//    }
+//    function queue_add(queue, req){
+//      var i=0
+//      while (i<queue.length && queue[i].priority>req.priority) i++;
+//      queue.splice(i,0,req);
+//    }
+//    function queue_get(queue){
+//      while (queue[0] && queue[0].tgts.length===0) queue.shift();
+//      return queue[0];
+//    }
     var iframes = {};
     var iframes_timeout = {};
     var local = true;
@@ -16471,11 +16291,15 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
     var crawler_spawn   = new Watchdog(dispatch, pref.scan.crawler_idle_time_to_spawn);
     var xhrs_reqs = [];
     var crawler_timeout = new Watchdog(xhr_timeout, 30000);
-    var health_indicator;
+    var health_indicator = {shift:function(){return {report:function(){}};}}; // initial dummy indicator for 8chan, see tag.generate_caller, (and uip_tracker)
     function dispatch_if_idle(){
       if (!crawler_spawn.id) dispatch();
     }
     function dispatch(xhr, req_from){
+//      var req = queue_get(reqs);
+//      var i=0;
+//      while (req && req.ERR_5xx && req_from!==req) req = reqs[++i];
+//      if (!pause && req && (xhrs_count<pref.scan.crawler || req.priority>=8)) {
       if (!pause) for (var p=8;p>=0;p--) if (reqs[p] && (xhrs_count<pref.scan.crawler || p==8)) {
         while (reqs[p][0] && reqs[p][0].tgts.length===0) reqs[p].shift();
         var req = reqs[p][0];
@@ -16486,14 +16310,16 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
           req.INDICATOR = (req.indicator || health_indicator).shift('limegreen', req.initiator[0], req.initiator, p);
           req.INDICATOR.report({start:Date.now(), prog:req}); // make reference loop.
           req.IDX = 0;
-          req.FINISHED = 0;
+          req.RUNNING = 0;
           req.SUC = 0;
           if (!req.max) req.max = req.tgts.length;
         }
-        var req_1 = (req.get_tgt_func)? req.get_tgt_func(req) : {REQ:req, __proto__:req.tgts[req.IDX++]};
-        if (req.IDX>=req.max) reload_reqs(req,p);
+        var req_1 = (req.ABORT)? null : (req.get_tgt_func)? req.get_tgt_func(req) : {REQ:req, __proto__:req.tgts[req.IDX++]};
+        if (req.IDX>=req.max || !req_1 && req.ABORT) reload_reqs(req,p);
+//        if (req.IDX>=req.max) reload_reqs(req,p);
         xhrs_count++; // THIS CAN BE A SINK AND CAUSE DEADLOCK WHEN OVER X_FRAME_OPTIONS.
 //        xhrs_count_by_domain[req_1.domain] = (xhrs_count_by_domain[req_1.domain] || 0) + 1;
+        req.RUNNING++;
         if (req_1) {
           req.INDICATOR.report({tgt:req_1.tgt || url2tgt(req_1.url)});
           if (req_1.domain===site.nickname && !req_1.domain_xhr || pref.network.cross_domain!=='indirect') download_local(xhr, req_1);
@@ -16504,11 +16330,11 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
           if (pref.scan.crawler_adaptive) crawler_spawn.restart(pref.scan.crawler_idle_time_to_spawn);
           else if (xhrs_count<pref.scan.crawler) dispatch();
         } else {
-          if (!(req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads))) {
-            reload_reqs(req,p);
-            req.FINISHED += req.max - req.IDX;
-            req.IDX = req.max;
-          }
+//          if (!(req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads))) {
+//            reload_reqs(req,p);
+//            req.FINISHED += req.max - req.IDX;
+//            req.IDX = req.max;
+//          }
           setTimeout(function(){xhr_onload_1({type:'SKIPPED_TO_END'}, xhr, {REQ:req}, true, {date:Date.now(), status:200});},0);
         }
         return;
@@ -16522,7 +16348,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       else reqs[p] = null;
       reqs_waiting_finish[reqs_waiting_finish.length] = req;
     }
-    function download_remote(req){
+    function download_remote(req){ // , prep_only){
       var domain = req.domain_xhr || req.domain;
       if (!iframes[domain]) {
         var func_timeout = function(req_in){xhr_onload_1({type:'SKIPPED'}, undefined, req_in || req, false, {date:Date.now(), status:499});};
@@ -16538,6 +16364,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         } else if (iframes[domain]===false) {setTimeout(func_timeout,0); return;}
       }
       remote_opened[domain] = null;
+//      if (prep_only) return;
       remote_reqs[remote_count] = req;
       if (!req.archive) req.responseType = 'text';
       send_message(domain,['HTTPD',['SUB_GET',[{ID:remote_count++, url:req.url, responseType:req.responseType, domain:req.domain,
@@ -16671,7 +16498,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       if (local) {
         xhrs_count--;
 //        xhrs_count_by_domain[req.domain]--;
-        var end = ++req.REQ.FINISHED === req.REQ.IDX && req.REQ.IDX >= req.REQ.max;
+        var end = --req.REQ.RUNNING === 0 && (req.REQ.IDX >= req.REQ.max || req.ABORT);
+//        var end = ++req.REQ.FINISHED === req.REQ.IDX && req.REQ.IDX >= req.REQ.max;
         dispatch(xhr, (value.status<500)? req : null);
         if (end) end_proc_httpd(req.REQ);
         // CACHE WRITE CODE HERE
@@ -16730,10 +16558,11 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       }
       if (req.from && local) delete archiver.list_all_obj_downloading[req.from];
       var ignore_domain = pref.network.cross_domain!=='indirect';
-      if ((req.domain_xhr||req.domain)===site.nickname || ignore_domain) {
+      if (req.domain===site.nickname && (!local || !req.domain_xhr) || ignore_domain) {
+//      if ((req.domain_xhr||req.domain)===site.nickname || ignore_domain) {
         var suffix = req.kind + '_'+ req.url.replace(/.*\//g,'');
         if (req.to_file) archiver.download_url3(value.response, req, suffix, req.timestamp);
-        if (req.to_idb) if (!pref.test_mode['65'] || !local) IDB.req(req.domain, req.board, req.no, suffix, value.response, 'put');
+        if (req.to_idb) if (!pref.test_mode['65']) IDB.req(req.domain, req.board, req.no, suffix, value.response, 'put');
       }
       if (local && req.REQ.TAR_FLUSH) { // remote doesn't have 'req.REQ'
 //        if (check_timestamp_and_flush(req.timestamp)) // flush local
@@ -16796,6 +16625,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       pause_cancel: pause_cancel,
       set_health_indicator: function(val){health_indicator = val;},
       get isLocal(){return local;},
+//      prep_iframe: function(domain){download_remote({domain_xhr:domain},true);},
     };
   })();
 
@@ -16810,8 +16640,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       httpd.req({initiator:key,
                  tgts:[{url:url[0], responseType:(url[1]==='html')? 'document' : (url[1]==='raw')? 'text' : url[1], tgt:key, data_type:url[1], domain:dbt[0]}],
                  callback_1:function(req,val){callback(key,val,callback_arg);},
-                 INDICATOR: {shift:function(){}, report:function(){}},
-                 IDX:0, FINISHED:0, SUC:0, max:1,
+//                 INDICATOR: {shift:function(){}, report:function(){}},
+//                 IDX:0, RUNNING:0, SUC:0, max:1,
                 },6);
     },
   };
@@ -17272,8 +17102,8 @@ if (!pref.test_mode['130']) {
       var et = e.target;
       var s = ecT.style;
       var pos_fixed = s.position==='fixed';
-      var top = pos_fixed? e.clientY - ((s.top)? parseInt(s.top, 10) : bottom2top(s.bottom,ecT)) : e.offsetY + (ecT===et? 0 : et.offsetTop - ecT.offsetTop);
-      var left = pos_fixed? e.clientX - ((s.left)? parseInt(s.left, 10) : right2left(s.right,ecT)) : e.offsetX + (ecT===et? 0 : et.offsetLeft - ecT.offsetLeft);
+      var top = pos_fixed? e.clientY - ((s.top)? parseInt(s.top, 10) : bottom2top(s.bottom,ecT)) : e.offsetY + (ecT===et? 0 : et.offsetTop); //  - ecT.offsetTop);
+      var left = pos_fixed? e.clientX - ((s.left)? parseInt(s.left, 10) : right2left(s.right,ecT)) : e.offsetX + (ecT===et? 0 : et.offsetLeft); //  - ecT.offsetLeft);
       var bottom = ecT.offsetHeight - top;
       var right = ecT.offsetWidth - left;
       var tlbr = [top, left, bottom, right];
@@ -17359,6 +17189,7 @@ if (!pref.test_mode['130']) {
     }
     var drag_sx;
     var drag_sy;
+    var drag_opacity_back;
 //    var drag_cursor_style;
     var root_body = document.body;
     function div_dragstart_dynamic(e){ // with tb or popup
@@ -17379,6 +17210,7 @@ if (!pref.test_mode['130']) {
       e.dataTransfer.dropEffect = 'move';
 //      e.preventDefault();
       e.stopPropagation(); // prevent from invoking twice when legend on chart is moved.
+      drag_opacity_back = cT.style.opacity;
       cT.style.opacity = 0.4;
 //      div_dragend_caller = this;
       cT.addEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
@@ -17405,7 +17237,7 @@ if (!pref.test_mode['130']) {
       else          s.top =    (parseInt(s.top   ,10) + e.screenY - drag_sy) + 'px';
 //      if (div_dragend_caller.dragend) div_dragend_caller.dragend.call(div_dragend_caller.this_obj,e); // isn't used anymore.
 //      div_dragend_caller = null;
-      s.opacity = 1;
+      s.opacity = drag_opacity_back;
       e.stopPropagation();
     }
     function div_scroll(e){
@@ -17880,6 +17712,26 @@ if (!pref.test_mode['130']) {
           while (pn.firstChild) parent.insertBefore(pn.firstChild,ref);
         };
       })(),
+      tack_for_popup: function(pn, func_onclick){
+        var btn = document.createElement('button');
+        btn.classList.add(pref.script_prefix+'_autoTp');
+        btn.appendChild(site2[site.nickname].make_tack());
+        pn.appendChild(btn);
+        btn.onclick = func_onclick;
+        return btn;
+      },
+      tack_for_popup_swap: function(pn, ref, dont_overwrite){
+        var pn2all = cnst.init3({func_str:'Show:tb'});
+        if (ref) cnst.tack_for_popup_swap_pos(pn2all.pn, ref, dont_overwrite);
+        pn2all.cn.appendChild(pn);
+        return pn2all.pn;
+      },
+      tack_for_popup_swap_pos: function(pn2, pn, dont_overwrite){
+        cnst.bottom_top(pn);
+        pn2.style.top = parseInt(pn.style.top,10) - pn2.offsetHeight + 'px';
+        pn2.style.left = pn.style.left;
+        if (!dont_overwrite) common_func.overwrite_prop(pn.style, {position:'relative', border:null, top:null, left:null});
+      },
     };
   })();
 
@@ -18028,6 +17880,321 @@ if (!pref.test_mode['130']) {
 ////    }
 ////  }
 
+  var Tooltips = (site0.isStep)? null : (function(){
+        var tooltip = document.createElement('div');
+        tooltip.style.position = 'fixed';
+////        tooltip.style.background = '#e5f4f9';
+////        tooltip.style.color = '#000000';
+////        tooltip.style.border = '2px solid blue';
+//          tooltip.style.fontWeight = 'normal';
+        tooltip.setAttribute('class', pref.script_prefix+'_popUp');
+        tooltip.style.zIndex = pref.tooltips.zIndex;
+        tooltip.innerHTML = '<div></div>';
+        tooltip.onmouseover = keep_shown;
+        tooltip.onmouseleave = hide2;
+        var tack = cnst.tack_for_popup(tooltip, function(e){
+          cnst.tack_for_popup_swap(tooltip.replaceChild(document.createElement('div'),tooltip.firstChild), tooltip, true);
+          hide_exe2();
+        });
+        var tack_displayed = true;
+        var tooltip_on = null;
+//        var tooltip_shown = false;
+        var tooltip_kind = 'help';
+//        var func = {};
+        var show_timer = null;
+        var hide_timer = null;
+//        var str_tooltip = '';
+
+//        function add_hier(pn){ // working code
+//          var all = pn.getElementsByTagName('*');
+////          if (pref.test_mode.tips) for (var i=0;i<all.length;i++) if (!str[all[i].name]) str[all[i].name] = 'Name: ' + all[i].name;
+////          for (var i=0;i<all.length;i++) if (all[i].name) add(all[i]); // span can't return if .name
+//          for (var i=0;i<all.length;i++) {
+//            var name = all[i].getAttribute('name');
+//            if (name && (str[name] || (str[name]!==false && pref.test_mode.tips))) add(all[i]);
+//          }
+//        }
+//        function remove_hier(pn){
+//          var all = pn.getElementsByTagName('*');
+////          for (var i=0;i<all.length;i++) if (all[i].name) remove(all[i]);
+//          for (var i=0;i<all.length;i++) if (all[i].hasAttribute('name')) remove(all[i]);
+//        }
+//        function add(elem){
+//////          if (str.hasOwnProperty(elem.name)) {
+//            if (!func.hasOwnProperty(elem.name)) func[elem.name] = [];
+//            func[elem.name].push(elem);
+//            elem.addEventListener('mouseover', show, false);
+//////          }
+//        }
+//        function remove(elem){
+//          if (func.hasOwnProperty(elem.name)) {
+//            var elems = func[elem.name];
+//            for (var i=0;i<elems.length;i++) {
+//              if (elem===elems[i]) {
+//                elem.removeEventListener('mouseover', show, false);
+//                elems.splice(i,1);
+//                if (elems.length==0) delete func[elem.name];
+//                break;
+//              }
+//            }
+////            for (var i=0;i<elems.length;i++) {
+////              var elem = func[elem.name][i];
+////              elem.removeEventListener('mouseover', show, false);
+////            }
+////            delete func[elem.name];
+//          }
+//        }
+        function show(e){
+//          if (!pref.tooltips.help.show) return;
+          var name = e && (e.target.name || e.target.getAttribute('name')) || this.name;
+          if (name && e && e.target.type==='radio') name += ', '+e.target.value;
+          if (!name && e.target.tagName==='LABEL') name = e.target.childNodes[0].name + (e.target.childNodes[0].type==='radio'? ', '+e.target.childNodes[0].value : '');
+          if (name==='SHOW2_I') name = e.target.previousSibling.childNodes[1].getAttribute('name');
+          if (name==='SHOW2') name = e.target.childNodes[1].getAttribute('name');
+          if (!name) return; // for add_root
+//          var name = this.name || this.getAttribute('name')); // for add_hier
+////          for (var i in str_func) if (this.name.indexOf(i)==0) {
+////            str_tooltip = str_func[i](this,e);
+////            break;
+////          }
+          var str_tooltip = (typeof(str[name])==='function')? str[name](e) : str[name];
+//            if (!str_tooltip) str_tooltip = str[this.parentNode.name];
+          if (!str_tooltip) str_tooltip = str[name.substr(0,name.lastIndexOf('.')+1)+'*'];
+          if (!str_tooltip) str_tooltip = str_hier(str,name,'') || '';
+          if (pref.test_mode.tips) str_tooltip = 'Name: ' + name + '\n' + str_tooltip;
+          str_tooltip = str_tooltip.replace(/\n/mg,'<br>').replace(/  /g,'&emsp;');
+
+          if (name[0]==='#') return str['#*'](e, str_tooltip);
+//          if (name[0]==='#') {str['#*'](e, str_tooltip);return;}
+//          if (str_tooltip) show_1.call(this,e,str_tooltip);
+          return str_tooltip;
+        }
+//        function show_1(e,str_func, callback, info_tips){ // working code
+//          tooltip_kind = (info_tips)? 'info' : 'help';
+//          if (!pref.tooltips[tooltip_kind].show) return;
+//          tooltip.innerHTML = str_func;
+//          if (callback) callback(tooltip);
+//          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;} // test
+//          if (!e || tooltip_on===e.target) return;
+//          tooltip.style.left = e.clientX + 20 + 'px';
+//          tooltip.style.top  = e.clientY + 20 + 'px';
+////          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;}
+//          if (tooltip_on) tooltip_on.removeEventListener('mouseout' ,hide, false);
+//          else {
+//            if (show_timer!==null) clearTimeout(show_timer);
+//            show_timer = setTimeout(show_exe,pref.tooltips[tooltip_kind].popup_delay);
+//          }
+//          tooltip_on = e.target;
+//          tooltip_on.addEventListener('mouseout' , hide, false);
+//        }
+//        function show_exe(){
+//          show_timer = null;
+////          tooltip_set(tooltip_contents.str_func, tooltip_contents.e, tooltip_contents.callback);
+//          site.script_body.appendChild(tooltip);
+//          tooltip_shown = true;
+//        }
+//        function hide(){ // called from both event and external function.
+//          if (hide_timer===null) hide_timer = setTimeout(hide_exe,pref.tooltips[tooltip_kind].popdown_delay);
+//        }
+//        function hide_exe(){
+//          hide_timer = null;
+//          if (tooltip_shown) {
+//            tooltip.parentNode.removeChild(tooltip);
+//            tooltip_shown = false;
+//          }
+//          if (show_timer!==null) {clearTimeout(show_timer);show_timer=null;}
+//          if (tooltip_on) {
+//            tooltip_on.removeEventListener('mouseout' ,hide, false);
+//            tooltip_on = null;
+//          }
+//        }
+
+        var tooltip_e = null;
+        var tooltip_func = null;
+        function show_0(e){
+          var name = e.target.getAttribute('name');
+          var kind = (name && name[0]==='#')? 'info' : 'help'
+          if (pref.tooltips[kind].show) req_show(kind, e, show, kind==='help');
+        }
+        function req_show(kind, e, func, tack_req){
+          if (tack_displayed^tack_req) {tack_displayed = tack_req; tack.style.display = (tack_req)? null : 'none';}
+          tooltip_kind = kind;
+          var e_obj = {target:e.target, currentTarget:e.currentTarget, clientX:e.clientX, clientY:e.clientY};
+          if (!tooltip_on) {
+            if (show_timer!==null) clearTimeout(show_timer);
+            show_timer = setTimeout(show_exe2,pref.tooltips[kind].popup_delay);
+            tooltip_e = e_obj; // e;
+            tooltip_func = func;
+          } else if (show_2(e, func(e))) tooltip_e = e_obj;
+        }
+        function show_exe2(){
+          show_timer = null;
+          if (show_2(tooltip_e, tooltip_func(tooltip_e))) site.script_body.appendChild(tooltip);
+          else tooltip_e = null;
+          tooltip_func = null;
+        }
+        function show_2(e,contents){
+          if (!contents) {hide2();return false;}
+          if (typeof(contents)==='string') tooltip.firstChild.innerHTML = contents;
+          else {
+            tooltip.firstChild.innerHTML = contents.html;
+            if (contents.callback) contents.callback(tooltip.firstChild);
+          }
+          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;}
+          if (e && tooltip_on!==e.target) {
+            tooltip.style.left = e.clientX + 20 + 'px';
+            tooltip.style.top  = e.clientY + 20 + 'px';
+            tooltip_on = e.target;
+          }
+          return true;
+        }
+//        function hide3(e){
+//          if (e.target===e.currentTarget) hide2(); // out from root
+//        }
+        function hide_if(pn){
+          if (tooltip_e && tooltip_e.currentTarget===pn) hide2();
+        }
+        function hide2(){ // called from both event and external function.
+          if (tooltip_e && hide_timer===null) {
+//          if ((tooltip_on || tooltip_e) && hide_timer===null) {
+            if (show_timer!==null) {clearTimeout(show_timer);show_timer=null;}
+            hide_timer = setTimeout(hide_exe2,pref.tooltips[tooltip_kind].popdown_delay);
+          }
+        }
+        function hide_exe2(){
+          hide_timer = null;
+          if (tooltip_on) {
+            tooltip.parentNode.removeChild(tooltip);
+            tooltip_on = null;
+            tooltip_e = null;
+          }
+        }
+        function keep_shown(e){
+          if (hide_timer!==null) {clearTimeout(hide_timer);hide_timer=null;}
+          tooltip_e.currentTarget = e.currentTarget;
+        }
+        
+        function str_hier(root,name){
+          if (!root) return null; // cancel if miss
+          var idx = name.indexOf('.');
+          return (idx==-1)? root[name] || root['*'] || null :
+                            str_hier(root[name.substr(0,idx)],name.substr(idx+1));
+        }
+//        function str_hier(root,name,str){ // working code.
+//          if (!root) return null; // cancel if miss
+//          var idx = name.indexOf('.');
+//          if (idx==-1 || root['*']) {
+//            var val = root[name] || root['*'];
+//            return (val)? str + name + ': ' + val : null; // cancel if miss
+//          } else {
+//            var pfx = name.substr(0,idx);
+//            return str_hier(root[pfx],name.substr(idx+1),str+pfx+'.');
+//          }
+//        }
+        var str = {
+//          'pn_catalog_triage': 'hide forever, hide until new replies, watch, unwatch, undo.\n'+
+//                               'You can customize this in settings -> Catalog: Appearance (in top selector) -> Style:',
+////          'pn_catalog_triage': '1st row: Hide it forever.\n2nd row: Hide it now, but it will appear again when the thread gets new replies,\n' +
+////            '  and new replies are marked.\n3rd row: Don\'t hide it, just change its appearance.\n' +
+////            'Each column shows appearance the thread will get.\n' +
+////            'Don\'t forget checking \'Exclusive list\' and \'Attribute list\' for using this function.\n' +
+////            'In other words, you can appear it again by unckecking them.\nAnd you can configure these appearance in \'Attribute list\' and \'Triage styles\'.',
+          'catalog_refresh_clear': 'Clear all threads at update.',
+          'catalog_promiscuous': 'Gather information whatever.',
+          catalog: {
+            filter: {
+              kwd: {
+                re: 'Regular Expression.',
+                ci: 'Case insensitive. Don\'t distinguish upper and lower case.',
+                sentence: '"XXXX YYYY" matches itself as a whole instead of matching "XXXX" and/or "YYYY"',
+              },
+              time: 'Time : Hide threads which have no posts after the time.',
+              time_creation: 'Time(Creation Time) : Hide threads which were created before the time.',
+              time_watch: 'Watch: watch threads which have posts after the time.',
+              time_watch_creation: 'Watch(Creation Time): watch threads which were created after the time.',
+            }
+          },
+//          'catalog.filter.time_mark': 'Mark: mark newer posts and scrool to them when it\'s opened.',
+          'catalog.filter.tag_search.str': 'String for searching tags.\n[CAUTION] this function is very heavy, keep blank here when you don\'t use.',
+          'catalog.filter.tag_list': false,
+          'network.cross_domain': 'Use \'direct\' if you could, because it\'s quite light, but it doesn\'t work in almost of all environments.\n\'indirect\' usually works well and gives full functionality.\n\Or you can use \'GreaseMonkeyM\'s extension if your browser tend to close steps for cross domain when you connect over X-Frame-Options, but this doesn\'t provide localStorage/IDB features in remote domains.',
+          'debug_mode' : 'Debug mode.',
+          'show_tooltip' : 'Show this tooltip.',
+          'liveTag.rm_list_str': function(){return this.TagExLists();},
+          'liveTag.ex_list_str': function(){return this.TagExLists();},
+          'TagExLists': function(){return 'String, ...  or\n/RegularExpression/, ... or \nIdentifier:String, ... or \nIdentifier:/RegularExpression/, ...\n'+
+            '\nRegularExpression must be embraced by shashes, and accepts i flag(case insensitive).\n'+
+            'Identifier must be followed by :(colon). First colon is interpreted as a delimiter always. Put a colon at the head of line when you want to use colons in search strings for global search(without any identifiers)\n'+this.GeneralRules;},
+          'catalog_board_list_str': function(){return 'How to write \'Board groups\'.\n'+
+            '\nNameOfBoardGroup,[Identifier, ...,][Commands, ...]\n\n'+
+            'Each line becomes each board group, one line per one board group.\n'+
+            'First column is a name of board group. The name is shown in board selector and become a key for localStorage or statistics.\n'+
+            'Second or later columns are identifiers or commands.\n\n'+
+            this.GeneralRules+
+            'Commands: \n'+
+            '&emsp;#xx: include filter for the tag #xx\n'+
+            '&emsp;##xx: pickup and include filter for the tag #xx\n'+
+            '&emsp;!#xx: exclude filter for the tag #xx\n'+
+            '&emsp;!stats: take statistics if the function is enabled.\n'+
+            'Examples:\n'+
+            '&emsp;CC, lain/\u03bb/, #CatChan // load lain/\u03bb/ and filter by #CatChan, then shows a thread for CatChan in lain/\u03bb/.\n'+
+            '&emsp;lain#lainchan, lain, #lainchan // load all boards of lain and filter by #lainchan, then show all threads which have the tag(#lainchan).\n'+
+            '&emsp;#tech, ##tech // load all boards which have #tech from sites which are set in VirtualBoard, and filter by #tech, then show all threads which have the tag(#tech) from sites.\n';},
+          'GeneralRules': 'Comment:\n&emsp;Double slash(//) is a beginning of comment.\n'+
+            'Identifier:\n'+
+            '&emsp;Identifier is a string which contains domain, board and/or thread. Domain must be one of domain keywords; meguca, lain, 4chan, 8chan or KC. When you omit it, it will be the domain of the web page. Board must be enclosed by slashes, like /a/. Thread must be numeric. When some identifiers are omitted, it\'ll be interpreted as follows. Top has the priority.\n'+
+            '&emsp;domain/board/thread\n'+
+            '&emsp;/board/thread\n'+
+            '&emsp;domain/thread\n'+
+            '&emsp;thread\n'+
+            '&emsp;domain/board/\n'+
+            '&emsp;/board/\n'+
+            '&emsp;domain\n'+
+            '&emsp;When the identifier is a word, it\'ll be a thread if it is numeric, otherwise a domain. \n',
+          'catalog.style_general_list_str' : function(){return 'Identifier^Style_string\n'+
+            'Style_string is a string and set to its object.style.XXXX. Therefore you can use all of styles in CSS, which ranges from \'background\' or \'border\' to \'fontSize\', \'width\' or \'height\'\n'+ this.GeneralRules;},
+//            'About Identifier, see \'board group\'.',
+          'catalog.board.recommendation' : 'Scans \'board announcement\' and gets owner\'s recommendation. This recommendation must be start \'Recommendation: \', and the following part of the line is treated as a line of board groups. The recommendation can be seen in a last line of board groups.',
+          'overwrite_site2_eval_str' : 'For developers. This function is killed by security reason. If you want to use, you must uncomment the function \'pref_func.site2_eval\' by yourself.',
+//          'thread_reader.buttons.B' : 'Bookmark this thread to current catalog.',
+//          'thread_reader.buttons.UB': 'Unbookmark this thread from current catalog.',
+//          'thread_reader.buttons.X' : function(){return 'Kill this thread from parent catalog' + ((pref.thread_reader.triage_close)? ', and close.' : '.');},
+//          'thread_reader.buttons.v' : function(){return 'Hide this thread from parent catalog untill it gets new posts' + ((pref.thread_reader.triage_close)? ', and close.' : '.');},
+          'catalog_open_where' : 'this tab: open the thread in this tab, and catalog will be closed.\nnew tab always: this enables you to open a thread in multiple tabs.\nnamed tab: this prevents you from opening a thread in multiple tabs.\na fixed tab: this enables you to use a catalog window as a dashboard.',
+          'virtualBoard.scan_domains.*': 'None: Don\'t scan.\nBoard: Read boards.json and set them to boardlist, not scan threads at startup. Threads are scanned when you read them.\nThread: Scan all threads at startup.',
+          'scanBoard': 'Scan selected virtual boards.\nScan this physical board if no virtual board is selected.',
+          'scanSite': 'Scan all virtual boards.\nScan all boards in this site if no virtual board is selected.',
+          'style.fix.*': 'Write style strings.',
+          'style.copy.*': 'Write exact selectorText in CSS, then its styles are copied.',
+          debug_mode:['pipe','','removed threads from catalog'],
+          dummy: '',
+          archive: {kwd: null},
+          '#*': function(e, str){return liveTag.tooltip(e, str);},
+        };
+        str.archive.kwd = str.catalog.filter.kwd;
+        str['catalog.filter.tag_search.re'] = str.catalog.filter.kwd.re;
+//        Object.defineProperty(str,'catalog_triage_str',{value:str['catalog_triage_str'], enumerable:true, configurable:true, writable:false});
+        return {
+          add_root: function(elem){
+            elem.addEventListener('mouseover', show_0, false);
+            elem.addEventListener('mouseleave', hide2, false);
+          },
+          remove_root: function(elem){
+            elem.removeEventListener('mouseover', show_0, false);
+            elem.removeEventListener('mouseleave', hide2, false);
+          },
+          show: show,
+//          show_1: show_1,
+//          hide: hide,
+          str: str,
+          req_show:req_show,
+          hide2: hide2,
+          show_2: show_2,
+          hide: hide2,
+          hide_if: hide_if,
+        };
+  })();
+
   var Triage = site0.isStep? null : (function(){ // pref_func.tooltips for iframe
       var tooltips = {
         KILL: 'Hide this thread permanently, and set style',
@@ -18056,7 +18223,7 @@ if (!pref.test_mode['130']) {
         PMENU: 'Open post menu',
         PWATCH: 'Mark as I\'ve read all posts before this',
       };
-      pref_func.tooltips.str['triage'] = function(e){
+      Tooltips.str['triage'] = function(e){
         var cmd = e.target.getAttribute('data-cmd');
         var attr = e.target.getAttribute('data-attr');
         var style = ['NONE','ATTR','KILL','TIME'].indexOf(cmd)!==-1;
@@ -18114,9 +18281,9 @@ if (!pref.test_mode['130']) {
         this.pn  = pn;
         this.format_tgt = (format_tgt.length!==0)? format_tgt : null;
 //        this.brs = brs;
-        pref_func.tooltips.add_root(pn);
+        Tooltips.add_root(pn);
       };
-      Triage.prototype.destroy = function(){pref_func.tooltips.remove_root(this.pn);};
+      Triage.prototype.destroy = function(){Tooltips.remove_root(this.pn);};
       Triage.prototype.tooltips = tooltips;
       Triage.prototype.prep_func_onclick = function(func){
         return function(e){
@@ -18126,11 +18293,11 @@ if (!pref.test_mode['130']) {
       };
       Triage.prototype.howto = '3,How to describe triage:<br>'+
         '4,Each line will be each line of triage.<br>'+
-        '4,1st column : command<br>'+
+        '4,1st column: command<br>'+
         ['KILL','TIME','NONE','KILL_N','TIME_N','ATTR','WATCH','UNWATCH','STICKY','UNSTICKY','SHOW','UNSHOW','GO','UNDO','ARC1','ARC','UNARC','MERGEB','MERGE','MERGEOP','UNMERGE','SPC','MENU'].map(
-            function(v){return '5,'+v+' : '+tooltips[v]+(v==='UNDO'? '. Effective to commands above' : '') + '.<br>';}).join('')+
-        '4,2nd column : caption on the triage button.<br>'+
-        '4,3rd column : style applied to the thread.<br>'+
+            function(v){return '5,'+v+': '+tooltips[v]+(v==='UNDO'? '. Effective to commands above' : '') + '.<br>';}).join('')+
+        '4,2nd column: caption on the triage button.<br>'+
+        '4,3rd column: style applied to the thread.<br>'+
         '4,Repeat these as you wish.';
       Object.defineProperty(Triage.prototype, 'postMenu_html', {value:'<span class="'+pref.script_prefix+'_embeddedTriage" data-cmd="PMENU">\u25b6</span>', enumerable:true, configurable:true}); // writable:false for security.  // change pn_src in triage.embedded_onclick when it is changed to configurable
       Triage.prototype.postMenu = cnst.dom(Triage.prototype.postMenu_html);
@@ -19085,7 +19252,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
     return {
 //      mark_newer_posts: mark_newer_posts,
       destroy : function(){ // destroy
-        pref_func.tooltips.remove_root(btns_p);
+        Tooltips.remove_root(btns_p);
 //        base_thread.removeEventListener('DOMSubtreeModified',updated_buf,false);
 //        base_thread.removeEventListener('DOMNodeInserted',updated_buf,false);
         if (observer_IDinfo) observer_IDinfo.disconnect();
@@ -20507,14 +20674,14 @@ if (!pref.test_mode['24']) {
           pn.insertBefore(tack, pn.firstChild);
           pref_func.add_onchange(pn, onchange_funcs, oninput_funcs);
           pref_func.apply_prep(pn, false);
-          pref_func.tooltips.add_root(pn);
+          Tooltips.add_root(pn);
           liveTag.update_pn(true);
           return pn;
         },
         popup: function(){ // will be discarded
           if (liveTag.pn) return;
           var exit_func = function(){
-            pref_func.tooltips.remove_root(popup.pn);
+            Tooltips.remove_root(popup.pn);
             liveTag.pn = null;
             cnst.div_destroy(popup.pn, true);
           };
@@ -20522,7 +20689,7 @@ if (!pref.test_mode['24']) {
           popup.cn.innerHTML = pref_func.format_html_str(liveTag.popup_filter.html);
           pref_func.add_onchange(popup.cn,onchange_funcs, oninput_funcs);
           pref_func.apply_prep(popup.pn, false);
-          pref_func.tooltips.add_root(popup.pn);
+          Tooltips.add_root(popup.pn);
           liveTag.update_pn(true);
         },
       };
@@ -21665,6 +21832,7 @@ if (!pref.test_mode['66']) {
     var sub_callbacks = {};
     function acc(domain,board,no,key,obj, kind){
 //      var db_name = pref.script_prefix+'.'+domain+board;
+//      if (site2[domain].domain_IDB_check) domain = site2[domain].domain_IDB_check(board);
       if (domain===site.nickname) {
         var db_name = pref.script_prefix+'.'+board;
         var req_obj = {no:no, key:key, obj:obj, kind:kind};
@@ -23392,7 +23560,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             this.pn2_countdown = this.pn2.childNodes[0];
             this.pn2_hi = this.pn2.childNodes[1];
           }
-          if (!pref.healthIndicator.show) this.pn.style.display = 'none';
+          if (!pref.healthIndicator.show) this.pn_hi.style.display = 'none';
           his.push(this);
           this.elems = [];
         }
@@ -23454,16 +23622,18 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           report: function(obj){
             var stat = status[this.name];
             if (!stat) return; // when indicator was pruned.
-            var prog = stat.prog; // prepare for being overwritten.
+//            var prog = stat.prog; // prepare for being overwritten.
             if (obj) for (var i in obj) {
               if (i==='err_str') {
                 if (!stat.err_str) this.set('orange');
                 stat[i] = ((stat[i])? stat[i]+', ':'') + obj[i];
               } else stat[i] = obj[i];
-              if (i==='end') {
+              var prog = stat.prog;
+              if (i==='end') { // end must NOT come with prog.
                 if (prog) {
-                  stat.prog_str = (stat.prog.IDX)? prog.IDX+'/'+prog.tgts.length :
-                                                   prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+'/'+prog.max;
+                  stat.prog_str = make_prog_str(stat.prog);
+//                  stat.prog_str = (stat.prog.IDX)? prog.IDX+'/'+prog.tgts.length :
+//                                                   prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+'/'+prog.max;
                   stat.prog = null; // remove reference loop.
                 }
                 var result = (!stat.err_str || stat.initiator==='IDB')? '\u25cf' :
@@ -23475,10 +23645,14 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             if (src || pref.healthIndicator.expand_running) this.show_tooltip_delayed();
           },
         };
+        function make_prog_str(prog, running){
+          return (prog.IDX)? prog.IDX+'/'+prog.tgts.length
+                           : prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+(running?'/'+prog.idx:'')+'/'+prog.max;
+        }
         function mouseover(e){
           if (!pref.tooltips['info'].show) return;
           src = this;
-          pref_func.tooltips.req_show('info', e, show_tooltip);
+          Tooltips.req_show('info', e, show_tooltip, true);
 //          show_tooltip.call(this,e);
         }
         function show_tooltip(e){
@@ -23486,8 +23660,9 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var name = myself.name || myself.getAttribute('name');
           var stat = status[name];
           if (!stat) return; // retired already.
-          if (stat.prog) stat.prog_str = (stat.prog.IDX)? stat.prog.IDX+'/'+stat.prog.tgts.length+', ' + stat.tgt :
-                                                          stat.prog.found_threads+'/'+stat.prog.scanned+', '+stat.prog.found_boards+'/'+stat.prog.idx+'/'+stat.prog.max+', ' + stat.tgt;
+          if (stat.prog) stat.prog_str = make_prog_str(stat.prog, true) + ', ' + stat.tgt;
+//          if (stat.prog) stat.prog_str = (stat.prog.IDX)? stat.prog.IDX+'/'+stat.prog.tgts.length+', ' + stat.tgt :
+//                                                          stat.prog.found_threads+'/'+stat.prog.scanned+', '+stat.prog.found_boards+'/'+stat.prog.idx+'/'+stat.prog.max+', ' + stat.tgt;
           if (!e && pref.healthIndicator.expand_running && stat.start && !stat.end) myself.set(null,' :'+stat.prog_str);
           if (src && src.getAttribute('name')===name) {
             var cancel_button = !stat.end && !pref.healthIndicator.cancel;
@@ -23495,19 +23670,19 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                        ((cancel_button)? '<button type="button" name="'+name+'">Cancel</button>' : '')+ '<br>' +
                        ((stat.start)? 'Start: '+ new Date(stat.start).toLocaleTimeString()+'<br>' : '')+
                        ((stat.prog_str)? 'Progress: '+ stat.prog_str+'<br>' : '')+
-                      'Priority: '+ stat.priority+'<br>'+
+                       'Priority: '+ stat.priority+'<br>'+
                        ((stat.start && !stat.end && stat.prog)? 'Crawler: '+ stat.prog.crawler+'<br>' : '')+
                        ((stat.err_str)? '<span style="color:red">Errors: '+ stat.err_str+'</span><br>' : '')+
                        ((stat.abort_str)? '<span style="color:red">Abort: '+ stat.abort_str+'</span><br>' : '')+
                        ((stat.end)? 'End: '+ new Date(stat.end).toLocaleTimeString()+'<br>' : '');
             var retval = (!cancel_button)? html : {html:html, callback:tooltip_func}
-            if (!e) pref_func.tooltips.show_2(null, retval); // push
-            else return retval;
+            if (!e) Tooltips.show_2(null, retval); // push
+            else return retval; // for initial, pull
           }
         }
         function mouseout(e){
           src = null;
-          if (pref.tooltips['info'].show) pref_func.tooltips.hide2();
+          if (pref.tooltips['info'].show) Tooltips.hide2();
         }
         function tooltip_func(pn){
           pn.getElementsByTagName('button')[0].onclick = cancel_scan;
@@ -23517,7 +23692,9 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         }
         function cancel_scan(){
           var name = this.getAttribute('name');
-          if (status[name] && !status[name].end) cataLog.scan_boards.scan_abort(status[name].initiator);
+          var stat = status[name];
+          if (stat && !stat.end && stat.prog) stat.prog.ABORT = true; // NOT DEBUGGED YET!!!
+//          if (status[name] && !status[name].end) cataLog.scan_boards.scan_abort(status[name].initiator);
         }
         function show(){
           var disp = (pref.healthIndicator.show)? '' : 'none';
@@ -23634,8 +23811,8 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         get_clean_idx: function(){
           return this.realtime && this.real_ts!==this.timestamp? (this.real_ts = this.timestamp, 0) : this.clean_idx;
         },
-        update_without_updated_data: function(){
-          if (!this.realtime) return;
+        update_without_updated_data: function(page_info){
+          if (!this.realtime && (!page_info || !pref[this.mode_fmt].footer.page)) return;
           var ts_ref = this.real_ts; // real_ts is stored timestamp of last lazy_draw. // this.timestamp - 32;
           for (var name in this.threads) {
             var footer = this.threads[name][24];
@@ -23987,14 +24164,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           bd: function(pf){return (pf.board)?  function(){return lth.board;} : null;},
           no: function(pf){return (pf.no)?     function(){return lth.no;} : null;},
           sp: function(pf){return (pf.ns)?     function(){return lth.sg? lth.sg.size : '';} : null;},
-          IB: function(pf){return function(){return lth.th && lth.th.bumplimit? '<i>' : '';}},
-          Ib: function(pf){return function(){return lth.th && lth.th.bumplimit? '</i>' : '';}},
-          II: function(pf){return function(){return lth.th && lth.th.imagelimit? '<i>' : '';}},
-          Ii: function(pf){return function(){return lth.th && lth.th.imagelimit? '</i>' : '';}},
-          '<iB' : function(pf){return function(){return lth.th && lth.th.bumplimit? '<i' : '';}}, // test_mode['138']
-          '</iB': function(pf){return function(){return lth.th && lth.th.bumplimit? '</i' : '';}},
-          '<iI' : function(pf){return function(){return lth.th && lth.th.imagelimit? '<i' : '';}},
-          '</iI': function(pf){return function(){return lth.th && lth.th.imagelimit? '</i' : '';}},
           wrap: function(p,func,l){
             var str = func();
             return str!==''? p+str+l : '';
@@ -24016,9 +24185,60 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //            return str!==''? arr[0] + str + arr[arr.length-1] : '';
 //          },
           const: function(str){return function(){return str;}},
+          tag: function(tag_o0, tag_o1, tag_cl, arr){
+            var str = (arr.length>2)? funcs['concat'](arr) : arr[0];
+            var tag_open;
+            return (!str)? '' : (tag_open = tag_o0())? tag_open + tag_o1 + str + tag_cl : str;
+          },
         };
+        var funcs_and_tags = {
+          IB: function(pf){return function(){return lth.th && lth.th.bumplimit? '<i>' : '';}},
+          Ib: function(pf){return function(){return lth.th && lth.th.bumplimit? '</i>' : '';}},
+          II: function(pf){return function(){return lth.th && lth.th.imagelimit? '<i>' : '';}},
+          Ii: function(pf){return function(){return lth.th && lth.th.imagelimit? '</i>' : '';}},
+          '<iB' : function(pf){return function(){return lth.th && lth.th.bumplimit? '<i' : '';}}, // test_mode['138']
+          '</iB': function(pf){return function(){return lth.th && lth.th.bumplimit? '</i' : '';}}, // for NOT enclosed pair in ()
+          '<iI' : function(pf){return function(){return lth.th && lth.th.imagelimit? '<i' : '';}},
+          '</iI': function(pf){return function(){return lth.th && lth.th.imagelimit? '</i' : '';}}, // for NOT enclosed pair in ()
+          __proto__: funcs
+        };
+        function compile_tag(arr, tag_close){
+          tag_close = ((tag_close.search(/[BI]$/)!==-1)? tag_close.slice(0,-1) : tag_close) + '>';
+          var idx;
+          return (typeof(arr[0])!=='string')? (idx=arr[1].indexOf('>'), funcs['tag'].bind(null, arr[0], arr[1].slice(0,idx+1), tag_close, [arr[1].slice(idx+1)].concat(arr.slice(2))))
+            : (arr.length>=5)? (arr[arr.length-1] = arr[arr.length-1]+tag_close, funcs['concat'].bind(null, [arr[0]+arr[1]].concat(arr.slice(2))))
+            : funcs['wrap'].bind(null, arr[0]+arr[1], arr[2], arr[3] + tag_close);
+        }
+        function compile_rec(pf, tmp, j, end, result){
+          while (j<end) {
+            if (funcs_and_tags[tmp[j]]) {
+              var res = funcs_and_tags[tmp[j]](pf);
+              if (res) {
+                result.push(res, tmp[j+1]);
+                var tag_close = tmp[j][0]==='<' && '</'+tmp[j].slice(1);
+                if (tag_close) {
+                  var idx = tmp.indexOf(tag_close,j+1);
+                  if (idx>=0) {
+                    var arr_tag = (idx-4>=j)? result.splice(-2).concat(compile_rec(pf, tmp, j+2, idx, [])) : result.splice(-2);
+                    if (arr_tag.length>=4 || !(arr_tag.length===2 && idx-4>=j)) result.push(compile_tag(arr_tag, tag_close), '');
+                    j = idx;
+                  }
+                }
+              }
+            } else {
+              if (typeof(result[result.length-1])==='string') result[result.length-1] += tmp[j]+tmp[j+1];
+//              if (result.length===1) result[result.length-1] += tmp[j]+tmp[j+1];
+              else result.push(funcs['const'](tmp[j]+tmp[j+1]), '');
+//              var tag_prev = j-2>=0 && (tmp[j-2][0]==='<' || tmp[j-2][0]==='I') || tmp[j-1].indexOf('>')!==-1;
+//              if (result.length>0 && (j==1 || count<=1 && !tag_prev)) result[result.length-1] += tmp[j] + tmp[j+1];
+//              else result.push(funcs['const'](tmp[j]+tmp[j+1]), ''); // can't consolidate straight 2 tags, like <iI><b>im</b></iI>
+            }
+            j += 2;
+          }
+          return result;
+        }
         var fmts = {
-          native:    '(ar )(U: nm/nr / )(IB)R: (lp/)(RP)(*sp)(+dp)(Ib)( /II I: IMIi)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
+          native:    '(ar )(U: nm/nr / )(<iB>)R: (lp/)(RP)(*sp)(+dp)(</iB>)( /<iI> I: IM</iI>)( / P: pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
           condensed: '(ar )(nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr )(dn)(bd)(no) ',
           meguca:    '(ar )(dn)(bd)(no) (nm/)(nr/)(lp/)(rp)(*sp)(+dp)(/im)(/pg) (ni/nf )(ct )(cT )(bt )(bT )(pt )(pT )(pr ) ',
 //          get custom_str(){return pref[myself.mode].footer.custom_str;}, // patch for minify. This line hits a bug in minifier.
@@ -24028,10 +24248,11 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var fmt = (!pref.test_mode['138'])? (fmts[pf.design] || pf[pf.design] || '')
               // .split(/(\([^)]*?\))/).map(function(v,i){return i%2==0? ('('+v+')').replace('<',')(<').replace('>','>)(').replace(/\(\)/g,'') : v;}).join('') // add () to all
               : pref_func.sanitize(fmts[pf.design] || pf[pf.design] || ''); // '' for safety
-          var elems = 'ar|n[mrfio]|pg|rp|im|[lds]p|[cbp][tT]|pr|dn|bd|RP|IM|I[BbIi]|<\/?[bius][BI]*|<\/?span'; // don't use capture (), following code assumes it to use split function
+          var rx = /(ar|n[mrfio]|pg|rp|im|[lds]p|[cbp][tT]|pr|dn|bd|RP|IM|I[BbIi]|<\/?span|<\/?[bius][BI]*)/; // x|y is different from y|x, see https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Regular_Expressions
+//          var elems = 'ar|n[mrfio]|pg|rp|im|[lds]p|[cbp][tT]|pr|dn|bd|RP|IM|I[BbIi]|<\/?[bius][BI]*|<\/?span'; // don't use capture (), following code assumes it to use split function
           var arr = fmt.split(/(\([^)]*?\))/).filter(function(v){return v;}).map(function(v){return v[0]==='('? v.slice(1,-1) : v;});
 //          var arr = fmt.split(new RegExp('(\\(.*?(?:'+elems+').*?\\))')).filter(function(v){return v;});
-          var rx = new RegExp('('+elems+')');
+//          var rx = new RegExp('('+elems+')');
           var obj = {};
           var len = 0;
           var proto = {enumerable:true, configurable:true};
@@ -24042,24 +24263,36 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                 for (var j=1;j<tmp.length;j+=2) if (tmp[j][0]==='<' && tmp[j].indexOf('>')===-1) while (tmp[j+1].indexOf('>')===-1) tmp[j+1] += tmp.splice(j+2,2).join('');
                 for (var j=tmp.length-2;j>=-1;j-=2) {
                   if (j>=1 && tmp[j][0]==='<')
-                    if ((tmp[j]+tmp[j+1]).search(/^<\/?([bius][BI]*|span)(?: +style="[^&"<>\']*")?>/)===0) continue; // perfection check for security
+                    if ((tmp[j]+tmp[j+1]).search(/^<\/?(span|[bius][BI]*)(?: +style="[^&"<>\']*")?>/)===0) continue; // perfection check for security
                     else tmp[j] = pref_func.sanitize(tmp[j]);
                   tmp[j+1] = pref_func.sanitize(tmp[j+1]);
                 }
-                var count = tmp.filter(function(v,i){return i%2==1 && funcs[v] && funcs[v](pf)}).length;
+//                var count = tmp.filter(function(v,i){return i%2==1 && funcs[v] && funcs[v](pf)}).length;
               }
-              for (var j=1;j<tmp.length;j+=2) {
-                if (funcs[tmp[j]]) {
-                  tmp[j] = funcs[tmp[j]](pf);
-                  if (!tmp[j]) {tmp.splice(j,2); j-=2;} // !tmp[0] means parameters because head of tags always return functions. // delete following separator
-                } else {
-                  var tag_prev = j-2>=0 && (tmp[j-2][0]==='<' || tmp[j-2][0]==='I') || tmp[j-1].indexOf('>')!==-1;
-                  if (j==1 || count<=1 && !tag_prev) {tmp[j-1] += tmp.splice(j,2).join(''); j-=2;}
-                  else {tmp[j] = funcs.const(tmp[j]+tmp[j+1]); tmp[j+1] = '';} // can't consolidate straight 2 tags, like <iI><b>im</b></iI>
-                }
-              }
-//              for (var j=1;j<tmp.length;j+=2) tmp[j] = funcs[tmp[j]](pf); // working code. without test_mode['138]', just simple 2 lines.
-//              for (var j=tmp.length-3;j>=0;j-=2) if (!tmp[j+1]) tmp.splice(j,2); else if (j>0 && !tmp[j-1]) tmp[j]=''; // delete previous separator
+              var count_src   = tmp.filter(function(v,i){return i%2==1 && funcs[v]}).length;
+              var count_funcs = tmp.filter(function(v,i){return i%2==1 && funcs[v] && funcs[v](pf)}).length;
+              if (count_src>0 && count_funcs==0) continue;
+              tmp = compile_rec(pf, tmp, 1, tmp.length, [tmp[0]]);
+//              for (var j=2;j<tmp.length;j+=2) { // patch for the pattern '( /<iI> I: IM</iI>)', but 'I:' shows even at im===0.
+//                var idx = tmp[j].indexOf('>');
+//                if (idx!==-1 && idx!==tmp[j].length) {
+//                  tmp.splice(j+1, 0, tmp[j].slice(idx+1), '');
+//                  tmp[j] = tmp[j].slice(0,idx+1);
+//                  j += 2;
+//                }
+//              }
+//              for (var j=1;j<tmp.length;j+=2) { // working code, but can't handle '( /<iI> I: IM</iI>)' properly.
+//                if (funcs_and_tags[tmp[j]]) {
+//                  tmp[j] = funcs_and_tags[tmp[j]](pf);
+//                  if (!tmp[j]) {tmp.splice(j,2); j-=2;} // !tmp[0] means parameters because head of tags always return functions. // delete following separator
+//                } else {
+//                  var tag_prev = j-2>=0 && (tmp[j-2][0]==='<' || tmp[j-2][0]==='I') || tmp[j-1].indexOf('>')!==-1;
+//                  if (j==1 || count<=1 && !tag_prev) {tmp[j-1] += tmp.splice(j,2).join(''); j-=2;}
+//                  else {tmp[j] = funcs.const(tmp[j]+tmp[j+1]); tmp[j+1] = '';} // can't consolidate straight 2 tags, like <iI><b>im</b></iI>
+//                }
+//              }
+////              for (var j=1;j<tmp.length;j+=2) tmp[j] = funcs[tmp[j]](pf); // working code. without test_mode['138]', just simple 2 lines.
+////              for (var j=tmp.length-3;j>=0;j-=2) if (!tmp[j+1]) tmp.splice(j,2); else if (j>0 && !tmp[j-1]) tmp[j]=''; // delete previous separator
               if (tmp[1]) Object.defineProperty(obj, len++, {get: (tmp.length>=5)?    funcs['concat'].bind(null, tmp)
                                                                 : (tmp[0] || tmp[2])? funcs['wrap'].bind(null, tmp[0], tmp[1], tmp[2])
                                                                 :                     tmp[1], __proto__:proto});
@@ -24476,7 +24709,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 
       var pfai = pref.catalog.appearance.initial;
       var pn12 = cnst.init3({
-        func_str:embed_embed?'tb:embed':'left:'+pfai.left+'px:top:'+pfai.top+'px:tb:width:'+pfai.width+'px:height:'+pfai.height+'px:overflow:auto:Show:bottom_top:tb_press:'+pfai.state,
+        func_str:embed_embed?'tb:embed':'left:'+pfai.left+'px:top:'+pfai.top+'px:tb'+(pfai.width?':width:'+pfai.width+'px':'')+(pfai.height?':height:'+pfai.height+'px':'')+':overflow:auto:Show:bottom_top:tb_press:'+pfai.state,
 //        func_str:'left:'+pfai.left+'px:top:'+pfai.top+'px:resize:both:'+((embed_embed)? 'display:none:tb:embed':'tb')+':width:'+pfai.width+'px:height:'+pfai.height+'px:resize:both:overflow:auto'+
 //          ':Show'+(embed_embed?'':':bottom_top')+((embed_mode==='float')? ':tb_press:'+pfai.state:''),
 //        rolldown: function(){pn12_0_4.style.display='';},
@@ -24814,7 +25047,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 
   this.footer = (clgs.length!=0)? Footer.factory(this.mode, this.threads, this) : (Footer.clg = this, Footer);
 
-  pref_func.tooltips.add_root(pn12_0_4);
+  Tooltips.add_root(pn12_0_4);
   pref_func.apply_prep(pn12_0_4.childNodes[0], false, null, null, true, this.pref);
 //  pref_func.apply_prep(pn12_0_4,false, null, null, true, this.pref); // redundant, moved to 'load'
   cnst.auto_shrink_selector(this.components.ordering);
@@ -24841,7 +25074,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 
   this.Clgs.push(this);
 //  this.Clgs_pn.set(pn12,this);
-  Clg.prototype.Clgs_count++;
+  this.serialNo = Clg.prototype.Clgs_count++;
   if (site2[site.nickname].catalog_float_prep) site2[site.nickname].catalog_float_prep(this);
 
   if (clgs.length==2) this.hook_set({
@@ -25356,9 +25589,10 @@ var Clg = function(embed_embed, embed_mode, watcher){
 //                            : triage_parent.scrollTop + triage_parent.clientHeight * threshold;
           if (this.innerHeight===null) {
             this.scrollTop = this.mode==='float'? this.pppn.scrollTop + this.pppn.offsetTop : brwsr.document_body.scrollTop; // this causes inconsistency of this.drawn_y at this.mode==='float', but OK, because embed<->float change invokes 'show_catalog_delayed' and recalculate this.scrollTop always.
-            this.innerHeight = this.mode==='float'? this.pppn.clientHeight : window.innerHeight;
+            this.innerHeight = this.mode==='float'? (parseInt(this.pppn.style.height,10) || null) : window.innerHeight; // for auto
+//            this.innerHeight = this.mode==='float'? this.pppn.clientHeight : window.innerHeight;
           }
-          return this.scrollTop + this.innerHeight * threshold;
+          return (this.innerHeight===null)? NaN : this.scrollTop + this.innerHeight * threshold;
         },
         show_catalog_delayed: function(){
           this.innerHeight = null;
@@ -25534,21 +25768,20 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
             scan_boards_keyword_callback2(req.key2||'',value,[null,REQ]); // req.key2||'' for over limit error.
           },
           get_tgt_func: function(req){
-            if (req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads)) {
-              do {
-                var tgt = scan_boards_keyword_make_tgt(req,req.IDX++);
-              } while (req.IDX<req.max && (!tgt || (pref.catalog.board.ex_list && pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,null))));  // 'if (tgt)' is for tgts_iterator
-              if (req.IDX<=req.max) {
-                var archived = scan.list_nup.issued(tgt);
-                var dbt = common_func.name2dbt(tgt);
-                var url = site2[dbt[0]].make_url4(dbt);
-                var key2 = dbt.join(',');
-                return {REQ:req, url:url[0], responseType:(archived)? 'text' : (url[1]==='html')? 'document' : url[1], tgt:tgt, key2:key2, data_type:url[1], domain:dbt[0]};
-              }
+            if (!(req.IDX<req.max && (req.refresh || req.found_threads<req.max_threads))) {req.ABORT = true; req.UPPERLIMIT = true; return;}
+            do {
+              var tgt = scan_boards_keyword_make_tgt(req,req.IDX++);
+            } while (req.IDX<req.max && (!tgt || (pref.catalog.board.ex_list && pref_func.merge_obj5(tgt,pref.catalog.board.ex_list_obj2,null))));  // 'if (tgt)' is for tgts_iterator
+            if (req.IDX<=req.max) {
+              var archived = scan.list_nup.issued(tgt);
+              var dbt = common_func.name2dbt(tgt);
+              var url = site2[dbt[0]].make_url4(dbt);
+              var key2 = dbt.join(',');
+              return {REQ:req, url:url[0], responseType:(archived)? 'text' : (url[1]==='html')? 'document' : url[1], tgt:tgt, key2:key2, data_type:url[1], domain:dbt[0]};
             }
           },
           callback: function(req){
-            if (req.found_threads>=req.max_threads) req.INDICATOR.report({err_str:'Aborted.(Reached upper limit)'});
+            if (req.ABORT) req.INDICATOR.report({err_str:'Aborted.'+(req.UPPERLIMIT? '(Reached upper limit)':'')});
             delete scan_boards.args[req.key];
             if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
             if (req.callback2) req.callback2(req.callback_args);
@@ -26229,7 +26462,8 @@ if (pref.test_mode['133']) {
   //          if (pref.catalog.filter.tag_scan_auto) scan_tags();
 } else {
             if (!sb.native_prep) for (var i=0;i<gClg.Clgs.length;i++)
-              if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) if (refresh===gClg.Clgs[i]) gClg.Clgs[i].footer.update_without_updated_data();
+              if (gClg.Clgs[i].dirty) if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) gClg.Clgs[i].footer.update_without_updated_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html');
+//              if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) if (refresh===gClg.Clgs[i]) gClg.Clgs[i].footer.update_without_updated_data();
             if (sb.key==='mergeAuto' && gGEH.time_jumped) for (var i=0;i<ths.length;i++) jump_to_time(ths[i], gGEH.time_jumped); // this has racing condition, see receive_message
 }
   
@@ -26375,6 +26609,7 @@ if (!pref.test_mode['31'])
               if (tgt_th) {
                 if (th.page) tgt_th[14] = th.page;
                 this.footer.update(th.key, th.country && post_updated, (tgt_th_status!==undefined)? tag_updated : th.tags, order_new);
+                this.dirty = true;
               }
 //              if (tgt_th) insert_footer3(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags, th);
 //              if (pref.liveTag.use && i===0) scan.list_nup.add_board(th.domain+th.board, (th.type_source==='catalog')? value.date : null);
@@ -26774,6 +27009,7 @@ if (!pref.test_mode['31'])
       var triage_merge_base = null;
       Clg.prototype.triage_event = function(key_base,cmd,attr, datetime){ // , expanded){
         var name = (typeof(key_base)==='string')? key_base : key_base.keys[0];
+        if (cmd==='SPC') {return;}
         if (cmd==='GO') {this.click_thread(name, 'force'); return;}
         if (cmd==='MERGEB') {triage_merge_base = name; return;}
         var hist = cmd!=='MERGE' && cmd!=='UNMERGE' && cmd!=='MERGEOP';
@@ -26838,7 +27074,7 @@ if (!pref.test_mode['31'])
           if (!from_auto && (tri_str_ex!=='TRACK' || this.mode!=='thread')) clgs[i].triage_exe_view(changed.name, changed); // changed.name for undo // TRACK trips child->catalog->child
           changed_watch |= changed.watch;
         }
-        pref_func.tooltips.hide();
+        Tooltips.hide();
         if (!stop_loop) if (changed_watch && pref.common.consolidated_watch_list && pref.common.sync_watch_list) gClg.Sync_watch_save([name,tri_str_ex,tri_str_attr,hist,datetime], merged_broadcast); // Array.prototype.slice.call(arguments));
         if (tri_str_ex==='WATCH' && pref.archive.store_watched && this.threads && this.threads[name]) { // checking this.threads for triage_exe_pipe, which calls through gClg.
           var lth = liveTag.mems.getFromName(name);
@@ -26853,9 +27089,10 @@ if (!pref.test_mode['31'])
 //          changed.ex = false;
 //          changed.watch = false;
 //        }
+        if (changed.watch && !this.threads[name] && this.pref[this.mode].refresh_src!=='bg') this.clone_thread_1(name);
         if (this.threads[name]) { // threads[name] might not exist at undo
           if (changed.attr) this.view_attr_set(name); // may be reorderd here
-          if (changed.ex) this.filter_dirtify(this.threads[name]);
+          if (changed.ex || changed.watch && this.pref[this.mode].hide_unwatched) this.filter_dirtify(this.threads[name]);
           if (changed.watch) {
             this.idx_reorder(name);
             if (this.pref[this.mode].mark_new_posts) this.view_time_filter_changed(name);
@@ -26863,7 +27100,7 @@ if (!pref.test_mode['31'])
           }
           if (changed.ex || changed.watch) this.show_catalog(name, true, true); // {this.show_catalog(name); triage.off();}
           triage.off();
-        }
+        } // else if (changed.watch) {} // when the thread is added to watch list now. THIS SHOULD BE IMPLEMENTED, now watch list requres to refresh to appear the thread.
 //        return changed;
 //        if (broadcast===false) {
 //          if (triage.get_trg().format_tgt) triage.format_buttons(changed.name);
@@ -27210,7 +27447,7 @@ if (!pref.test_mode['31'])
               triaged_name = null;
               trg_now = null;
             }
-            pref_func.tooltips.hide_if(trg_now);
+            Tooltips.hide_if(trg_now);
           }
           function thread_out2(e){
             triaged_pn = null;
@@ -27268,7 +27505,7 @@ if (!pref.test_mode['31'])
         function triage_wheel(e){ // patch
           if (triaged_catalog.mode!=='float') return;
           on_off.off();
-          pref_func.tooltips.hide();
+          Tooltips.hide();
   //        triage_parent.dispatchEvent(e); // copy is required.
           e.preventDefault();
           var evt = document.createEvent('MouseEvents');
@@ -28357,21 +28594,21 @@ if (site.nickname!=='4chan' && !pref.test_mode['140']) if (init_new && insert_th
             var base = this.merge_bases.bases[th.key];
             var mark_time = !base? (this.threads[th.key][19][0]&0x000c0000) && this.get_mark_time(th.key)
               : base.lths.map(function(lth){return lth.watched && this.get_mark_time(lth.key);},this).reduce(function(a,c){return c>a? c : a;});
-            if (mark_time>0) site2[site.nickname].mark_newer_posts2(th.posts, mark_time, this.view==='thread', true);
+            if (mark_time>0) site2[th.domain].mark_newer_posts2(th.posts, mark_time, this.view==='thread', true);
           }
         },
         view_update_draw: function(name, posts) { // , pn, th){
           if (this.pref[this.mode].mark_new_posts && (this.threads[name][19][0]&0x000c0000)) {// draw only
             var mark_time = this.get_mark_time(name);
             if (mark_time===0 && this.view==='thread') mark_time = site2['DEFAULT'].check_reply.get_checked_time(this.threads[name][19]);
-            if (mark_time>0) site2[this.threads[name][16].domain_html].mark_newer_posts2(posts, mark_time, this.view==='thread', true);
+            if (mark_time>0) site2[this.threads[name][16].domain].mark_newer_posts2(posts, mark_time, this.view==='thread', true);
           }
         },
         view_update: function(name){ // draw and ERASE.
           if (!this.threads[name][16].posts) return;
           var date = (this.pref[this.mode].mark_new_posts && (this.threads[name][19][0]&0x000c0000))? this.get_mark_time(name) : 0;
           if (date===0) date = Infinity; // to erase mark
-          site2[this.threads[name][16].domain_html].mark_newer_posts2(this.threads[name][16].posts, date, this.view==='thread', false);
+          site2[this.threads[name][16].domain].mark_newer_posts2(this.threads[name][16].posts, date, this.view==='thread', false);
         },
         view_time_filter_changed: function(name){ // draw and ERASE.
           if (this.view==='page' || this.view==='thread')
@@ -29408,6 +29645,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         var footer_clean_idx = this.footer.get_clean_idx();
         var try_all = (draw_on_demand && !pref.test_mode['132']) || tgts===undefined; // test_mode['132'] causes problem at merge mode, see func_track_shown
 //        var i_start = (draw_on_demand && drawn_idx!==true)? drawn_idx : 0;
+        var retval = false;
         while (i<this.idxs.length) {
 //console.log(this.drawn_y+', '+triage_parent.scrollTop+', '+triage_parent.clientHeight*1.5+', '+ref_height);
           var name = this.idxs[i];
@@ -29424,7 +29662,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
               if (mode_merge_tails===null) mode_merge_tails = i + 1; // be true
               if (!this.merge_bases.isShownForTails(name)) {i++;continue;}
             }
-            if (tgts_count===0 && mode_merge_tails===false) break;
+            if (tgts_count===0 && mode_merge_tails===false) {retval = true; break;}
             if (i>=i_start) {
               if (i%lazy_step===0) lazy_check = true;
               if (try_all || tgts===undefined || name in tgts) {
@@ -29520,6 +29758,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         if (mode_merge) this.func_lazy_draw();
         if (this.observer_myself) this.observer_myself.observe(); 
         if (common_obj.thread_reader && common_obj.thread_reader.observer_IDinfo) common_obj.thread_reader.observer_IDinfo.observe();
+        this.dirty = false;
 //        if (this.drawn_idx_mb!=-1) this.restore_mb_state();
 //        if (appeared.length!=0 && sound) notifier.appeared(appeared,threads);
 //var str_debug = '';
@@ -29544,7 +29783,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
             } else {
               tgt = this.ppn.childNodes[pref[embed_mode].env.disp_offset + d_count++];
               tgt_bt = (embed_mode==='page')? '/' + tgt.getAttribute('data-board') + '/' + tgt.id.substr(7) :
-                                              tgt.getElementsByTagName('a')[0].getAttribute('href').replace('res/','').replace('.html','').replace(/.*lainchan.org/,'').replace(/.*8ch.net/,'').replace('thread/','').replace(/.*4chan.org/,'').replace(/.*meguca.org/,'').replace(/.*krautchan.net/,'').replace(/thread\-/,'');
+                                              tgt.getElementsByTagName('a')[0].getAttribute('href').replace('res/','').replace('.html','').replace(/.*lainchan.org/,'').replace(/.*8kun.top/,'').replace('thread/','').replace(/.*4chan.org/,'').replace(/.*meguca.org/,'').replace(/.*krautchan.net/,'').replace(/thread\-/,'');
               if (dbt[0]==='4chan' && embed_mode==='catalog') tgt_bt = tgt_bt.substr(0,tgt_bt.lastIndexOf('/'));
             }
             if (dbt[1]+dbt[2]!==tgt_bt) {
@@ -29588,6 +29827,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
               'first_dirty_footer: '+this.idxs[i]+', offsetTop: '+(footer0 && footer0[0].parentNode.offsetTop);
           }
         }
+        return retval;
       },
       func_show: function(name,ref){
         this.ppn.insertBefore(this.threads[name][0],(ref && ref.parentNode===this.ppn)? ref : null); // if many threads are removed, ref refers horizontal splitter.
@@ -29632,6 +29872,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       drawn_y: -1, // for floating catalog
       ref_count: 0,
       ref_count_init: 0,
+      dirty: true,
 //      drawn_idx_mb: -1,
 //      ref_count_mb: 0,
     };
@@ -30427,12 +30668,12 @@ if (!pref.test_mode['49'] && posts_active && th) {
             site2[th.domain].popups_prep(lth); // lth instead of th, but ok
             for (var i=0;i<th.posts.length;i++) th.posts[i] = Object.create(th.posts[i]); // wrap for re-assining pn, otherwise this causes a problem when popupX in embed_mode===page.
             var pn_result = site2[site.nickname].page_json2html3(th, kwd, {});
+            site2['DEFAULT'].check_reply.set_own_posts(th); // must before add_you in prepare_html_post
             for (var i=0;i<th.posts.length;i++) cataLog.format_html.prepare_html_post(th, th.posts[i], lth.q);
 //            if (!pref.test_mode['98'] && pref[embed_mode].popup) format_html.prep_anchor_links(pn_result, th);
 //            if (!pref.test_mode['98'] && pref[embed_mode].popup) site2[th.domain].popups_add(th.posts, th, !kwd); // !kwd for test_mode['121'] // make backlink data beforehand. This prepares html for thq[no] in vain, but acceptable. This is required after prep_anchor_links and before format_pn, because internal function popups_href2dbtp requires thread.no in href, and the function backlink() in format_pn will add backlinks according to the data which is generated by popups_add.
 //            if ((search_result || kind==='dp') && th.posts[0].search_result===false) site2[th.domain_html].update_posts0_class(th.posts[0].pn, th.posts[0].search_result);
 //            for (var i=0;i<th.posts.length;i++) site2[th.domain_html].format_pn(th.posts[i].pn, lth && lth.q && lth.q[th.posts[i].no], null, th.posts[i], th); // SHOULD CHANGE TO USE prepare_html_post to mark editing and consolidate control flow.
-            site2['DEFAULT'].check_reply.set_own_posts(th);
             if (pref[embed_mode].mark_new_posts) this.view_update_draw_merged(th);
 //            if (!pref.test_mode['98'] && pref[embed_mode].popup) site2[th.domain].popups_add(th.posts, th, false, false, !kwd); // !kwd for test_mode['121']
             if (kwd && !th.posts[0].search_result) Array.prototype.forEach.call(pn_result.getElementsByClassName('CatChan_search_miss'), function(v){v.style.display = 'none';});
@@ -30769,7 +31010,7 @@ if (!pref.test_mode['49'] && posts_active && th) {
 //        gClg.footer.refresh_start();
         if (!pref.test_mode['67'] && !embed_init) archiver.refresh_start();
         if (!from_switch && !embed_init && pref.catalog.auto_save_filter_at_refresh) this.onchange_funcs['save']();
-        var result = this.refresh_1(embed_mode, refresh && this, embed_init, from_auto, 'refresh', this.pref[this.mode].board_list_sel, pref.catalog.filter.bookmark_list_str, false, undefined, from_switch);
+        var result = this.refresh_1(embed_mode, refresh && this, embed_init, from_auto, 'refresh_'+this.serialNo, this.pref[this.mode].board_list_sel, pref.catalog.filter.bookmark_list_str, false, undefined, from_switch);
         if (typeof(result)==='function') result(function(){catalog_refresh(refresh, embed_init, from_auto);});
         else this.refresh_tgts = result;
       }
@@ -31779,7 +32020,7 @@ if (pref.test_mode['0']) {
             if (clg.view==='catalog' && (isThumbnail || pref[clg.view].click_area==='entire') || clg.view==='headline' && et.className!==pref.script_prefix+'_tag') { // this['.'] check for popup
               e.preventDefault();
               var key = gGEH.get_key_recursive(e.target, e.currentTarget);
-              if (typeof(key)!=='string') key = key.lths[0].key;
+//              if (typeof(key)!=='string') key = key.lths[0].key;
               if (key) clg.click_thread(key, null);
 //              var tgt = GEH.prototype.geh.recSearch_thread(e.target, e.currentTarget);
 //              if (tgt) click_thread(tgt.name);
@@ -31880,12 +32121,12 @@ if (pref.test_mode['0']) {
           var et = e.target;
           site2['DEFAULT'].popups_posts.over(e, force);
           if (pref.liveTag.info && pref.tooltips['info'].show)
-            if (et.className===pref.script_prefix+'_tag') pref_func.tooltips.req_show('info', e, liveTag.tag_onmouseover); // mouseover only for faster execution. mouseleave is needed strictly.
-            else pref_func.tooltips.hide2();
+            if (et.className===pref.script_prefix+'_tag') Tooltips.req_show('info', e, liveTag.tag_onmouseover); // mouseover only for faster execution. mouseleave is needed strictly.
+            else Tooltips.hide_if(e.currentTarget); // hide2();
           
         },
         mouseleave_bl: function(e){
-          if (pref.liveTag.info) pref_func.tooltips.hide2();
+          if (pref.liveTag.info) Tooltips.hide_if(e.currentTarget); // hide2();
         },
         drag_sx: 0,
         drag_sy: 0,
@@ -31939,6 +32180,12 @@ if (pref.test_mode['0']) {
       }
       function clone_thread(clg, name){
         if (!clg.threads[name]) {
+          clg.clone_thread_1(name);
+          clg.view_attr_set(name, null, true);
+        }
+        clg.idx_reorder(name);
+      }
+      Clg.prototype.clone_thread_1 = function(name){
 //          var max_txt = 500;
           var lth = liveTag.mems.getFromName(name);
 //          var pn = document.createElement('div');
@@ -31951,19 +32198,17 @@ if (pref.test_mode['0']) {
 //          if (sub_com.length>=sub_com_max) sub_com = sub_com.slice(0, sub_com_max) + '...';
 //          pn.innerHTML = '<span></span> '+sub_com;
 //          clg.view_attr_set(name,pn);
-          var pth = pClg.threads[name];
+          var pth = gClg.AllThreads[name]; // pClg.threads[name];
           var keys = Object.keys(pth[16]);
           var tgt16 = {th:{pn:null, __proto__:lth.th}, __proto__:tgt_th16_proto};
           var nocopy = ['th', 'icon_sticky', 'icon_show_always', 'show_always', 'clg', 'threads'];
           for (var i=0;i<keys.length;i++) if (nocopy.indexOf(keys[i])==-1) tgt16[keys[i]] = pth[16][keys[i]];
-          clg.threads[name] = {0:false, 1:false, 9:[null,0,null,0], 16:tgt16, 20:pth[20], 22:null, 24:null, __proto__:pth};
+          this.threads[name] = {0:false, 1:false, 9:[null,0,null,0], 16:tgt16, 20:pth[20], 22:null, 24:null, __proto__:pth};
 //          clg.threads[name] = {0:false, 1:false, 9:[null,0,null,0], 16:{th:{pn:null, __proto__:lth.th}, __proto__:pClg.threads[name][16]}, 22:null, 24:null, __proto__:pClg.threads[name]};
 //          clg.threads[name] = {0:pn, 1:false, 9:[null,0,null,0], 16:{__proto__:pClg.threads[name][16]}, 22:null, 24:[pn.firstChild, null,null,null,0x06], __proto__:pClg.threads[name]};
-          clg.view_attr_set(name, null, true);
-        }
-        clg.idx_reorder(name);
       }
       window.addEventListener('storage', Clg.prototype.Sync_watch_load, false); // debug
+      if (pClg.mode!=='float' && pref.float.auto_launch) setTimeout(make_watcher,1000); // 1000 for dummy, this works without delay.
       
       if (stats && pref.stats.auto_acquisition_scan && site.whereami!=='archive') setTimeout(stats.auto_acquisition_init, pref.stats.auto_acquisition_scan_delay*1000);
       return {
@@ -31990,8 +32235,8 @@ if (pref.test_mode['0']) {
 //          pref_func.tooltips.remove_hier(pn12_triage);
           triage.destroy();
 //          pref_func.tooltips.remove_hier(pn12_0_4);
-          pref_func.tooltips.remove_root(pn12_0_4);
-          pref_func.tooltips.hide();
+          Tooltips.remove_root(pn12_0_4);
+          Tooltips.hide();
 //          clearTimeout(auto_update_timer);
 //          auto_update.stop_if_running();
           pn12.parentNode.removeChild(pn12);
@@ -32029,7 +32274,7 @@ if (pref.test_mode['0']) {
     }
   }
 
-  var stats = (pref3.stats.use)? (function(){
+  var stats = (pref3.stats.use && !site0.isStep)? (function(){
     var tree_404 = {};
     function thread_removed(dbt){
       var lth = liveTag.mems[dbt[0]][dbt[1]][dbt[2]];
@@ -34305,7 +34550,7 @@ if (pref.test_mode['17']) {
     }
   })() : null;
 
-  (function(){
+  if (!site0.isStep) (function(){
     var key = 'CatChan_archive_'+window.name;
     var func_invoke = (pref.catalog.embed_page && site.whereami==='page' && sessionStorage && sessionStorage[key])? function(){
       catalog_obj.show_hide();
