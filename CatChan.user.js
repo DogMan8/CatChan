@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.09.13.0
+// @version 2020.09.27.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3551,7 +3551,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           html_funcs.features_domains();},
       function(html_funcs){
         return 'CatChan<br>'+
-          'Version 2020.09.13.0<br>'+
+          'Version 2020.09.27.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -8155,8 +8155,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         var mb = this.merge_bases;
         var tgt_th = this.threads[key];
         var base_0 = mb.bases[key];
-        if (pref.test_mode['148'] && base_0) base_0.reorder_req = true; // base_0.reorder(key, this); // causes chattering
         var base = base_0 || !tgt_th[1] && mb.query(key, tgt_th, null, false, this); // for usual case -> all cases
+//        if (pref.test_mode['148'] && base) base.reorder_req = true; // base.reorder(key, this); // causes chattering // moved to insert in idx_xxxx because this invokes reorder always.
         if (!base || base_0 && merge_tail) return idx_now; // merge_tail for short cut, ignores return value // base_0 check is for additional auto merge by pref.*.merge_op_auto
 //        var base = mb.bases[key];
         var idx = this.idxs.indexOf(base.top_key); // idx===-1 means base.top_key===null
@@ -16811,6 +16811,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         if (pref.test_mode['154'] && req.data_type==='html' && site2[req.domain].HTMLParser) { // DOMParser causes massive leak particular in BBC, see https://stackoverflow.com/questions/56451731/dom-parser-chrome-extension-memory-leak
           value.response = new site2[req.domain].HTMLParser(value.responseText);
 //          for (var i=0;i<100;i++) value.response = new DOMParser().parseFromString(value.responseText, 'text/'+req.data_type); // for test
+        } else if (pref.test_mode['154'] && req.data_type==='xml' && site2[req.domain].XMLParser) {
+          value.response = site2[req.domain].XMLParser(value.responseText);
         } else if (req.data_type==='html' || req.data_type==='xml') value.response = new DOMParser().parseFromString(value.responseText, 'text/'+req.data_type); // causes massive leak on chrome50
         else if (req.data_type==='json') value.response = JSON.parse(value.responseText);
       }
@@ -24910,6 +24912,14 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
               if (funcs_and_tags[tmp[j]]) {
                 var res = funcs_and_tags[tmp[j]](pf);
                 if (res) {
+                  if (result.length==1 && typeof(result[result.length-1])==='string') { // patch for (<span style="opacity:0.6">+dp</span>)
+                    var idx_l = result[result.length-1].lastIndexOf('>')+1;
+                    var str = (idx_l>0)? result[result.length-1].slice(idx_l) : '';
+                    if (str) {
+                      result[result.length-1] = result[result.length-1].slice(0,idx_l);
+                      res = paste_wrap.bind(null, str, res, '');
+                    }
+                  }
                   result.push(res, tmp[j+1]);
                   var tag_close = tmp[j][0]==='<' && '</'+tmp[j].slice(1);
                   if (tag_close) {
@@ -27792,7 +27802,7 @@ if (!pref.test_mode['31'])
             if (pf.mark_new_posts) this.view_time_filter_changed(name);
             if (this.view==='page') tgt_th[16].check_and_expand(tgt_th[16].posts,true);
           }
-          if (changed.ex || changed.watch) this.show_catalog(name, true, true); // {this.show_catalog(name); triage.off();}
+          if (changed.ex || changed.watch) this.show_catalog(name, true, true, true); // redraw all tags to change color of them when threads are opened. // {this.show_catalog(name); triage.off();}
           triage.off();
         } // else if (changed.watch) {} // when the thread is added to watch list now. THIS SHOULD BE IMPLEMENTED, now watch list requres to refresh to appear the thread.
 //        return changed;
@@ -28556,7 +28566,7 @@ if (pref.test_mode['27']) {
         var init_new = false;
         var tgt_th = this.threads[name];
         var date = [th.time_bumped, th.time_created, th.nof_posts, th.nof_files, th.time_posted];
-        if (tgt_th && tgt_th[16].missing_info && tgt_th[16].missing_info>=(th.missing_info||0)) { // greater EQUAL for BBC; updates the same article.
+        if (tgt_th && tgt_th[16].missing_info && (tgt_th[16].missing_info>((th.missing_info||0) - (site2[th.domain].revise_thread? 1:0)))) { // revise thread for BBC
           if (!th.page && tgt_th[7]) th.page = tgt_th[7].page;
           this.remove_thread(name, true);
           tgt_th = undefined;
@@ -29449,6 +29459,10 @@ if (site.nickname!=='4chan' && !pref.test_mode['140']) if (init_new && insert_th
           if (ref==idxs.length) idxs[idxs.length] = name;
           else idxs.splice(ref,0,name);
   //        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
+          if (pref.test_mode['148']) { // base may not exist here because base is generated in show_catalog, but the thread will be appended at the case and order won't broken.
+            var base = clg.merge_bases.bases[name];
+            if (base) base.reorder_req = true; // base.reorder(key, clg); // causes chattering
+          }
           return ref;
         }
         return {
@@ -31018,7 +31032,7 @@ function threads_idx_debug(idx,y,count, threads_idx){
         var val = null;
         if (pf.attr_list) {
           var wlc;
-          if (pref.common.blur_404 && (wlc=pf.watch_list_obj2[name]) && (wlc=wlc.cmd) && wlc['PRUNED'] && this.view!=='thread' && !this.noBlur) val = {style:{opacity:0.4}}; // CAUTION: obj2 is accessed directly.
+          if (pref.common.blur_404 && (wlc=pf.watch_list_obj2[name]) && (wlc=wlc.cmd) && wlc['PRUNED'] && this.mode!=='thread' && !this.noBlur) val = {style:{opacity:0.4}}; // view is one of catalog, headline and page, never 'thread' // CAUTION: obj2 is accessed directly.
           if (pref.catalog.style_general_list) val = pref_func.merge_obj5(name,pref.catalog.style_general_list_obj2,val);
           if (pf.attr_list) val = pref_func.merge_obj5(name,pf.attr_list_obj2,val);
         }
