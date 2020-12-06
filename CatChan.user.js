@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.11.22.0
+// @version 2020.12.06.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -693,7 +693,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         order: {reply_to_me:true, reply:true, watch:'dont_care', sticky:'first', ordering:0},
         view: 'headline', hide_unwatched:false, refresh_src:'wl', catalog_size: 0, catalog_teaser: 0,
         disable_kwd_filter_at_initial: true, 
-        auto_launch: false,
+        auto_launch: false, clone:true,
         appearance: {titleBar:{__proto__:proto.appearance.titleBar}, expand:{__proto__:proto.appearance.expand}, __proto__:proto.appearance},
         safety: {__proto__:proto.safety},
         __proto__: proto},
@@ -2901,6 +2901,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           },
           save_idx_promiscuous: function(mode){
             return '2,<IC"'+mode+'.save_board_list_sel">Save board group index<br>'+
+              (mode==='float'? '2,<IC"'+mode+'.clone">Clone threads at initial if others refer the same board group<br>' : '')+
               '2,<IC"'+mode+'.accept_others_refresh">Sync with others which refer the same board group<br>'+
               '2,<IC"'+mode+'.promiscuous">Show all fetched threads<br>';
           },
@@ -3723,7 +3724,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2020.11.22.0<br>'+
+          'Version 2020.12.06.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -3890,7 +3891,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //                  tgt.style.display = '';
 //                  e.target.parentNode.style.display = 'none';
 //                },
-                SHOW2_I: function(e){var etp = e.target.previousSibling; etp.onclick({target:etp, currentTarget:etp});},
+                SHOW2_I: function(e){var etp = e.target.previousSibling; if (etp.onclick) etp.onclick({target:etp, currentTarget:etp});},
     //            SHOW: function(e){
     //              e.target.style.display = 'none';
     //              e.target.nextSibling.style.display = '';
@@ -3939,8 +3940,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //                    : (dir[i]==='L')? pn.lastChild : pn;
                   return pn;
                 },
-                SHOW_PN: function(e){this.TOGGLE(e.target,'HIDE_PN','',null,e.target.parentNode.nextSibling);},
-                HIDE_PN: function(e){this.TOGGLE(e.target,'SHOW_PN','none',null,e.target.parentNode.nextSibling);},
+//                SHOW_PN: function(e){this.TOGGLE(e.target,'HIDE_PN','',null,e.target.parentNode.nextSibling);},
+//                HIDE_PN: function(e){this.TOGGLE(e.target,'SHOW_PN','none',null,e.target.parentNode.nextSibling);},
               };
               for (var i in obj) obj[i] = obj[i].bind(obj);
               return obj;
@@ -4375,7 +4376,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'recovery.comment' : function(){recovery.setup();},
           '*.scroll_lock': function(){cataLog.general_event_handler.setup();},
           'button_test': function(){
-//            site2['meguca'].catalog_native_prep(Date.now(), cataLog.components.pn12_0_4, cataLog.components.pn12_0, cataLog.embed_mode==='catalog');
+//            site2['meguca'].catalog_native_prep(cataLog.components.pn12_0_4, cataLog.components.pn12_0, cataLog.embed_mode==='catalog');
             function callback(domain, board, no, result){
               console.log(result);
             }
@@ -4705,7 +4706,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         html = html.replace(/<IR"([\w\.]+),([^"]+)"([^>]*)>/g,'<input type="radio" name="$1" value="$2"$3>');
         html = html.replace(/<SSV("[\w\.]+")>/g,'<span data-class="show_value" style="font-weight:bold" name=$1></span>');
 //        html = html.replace(/<BTN"([\w.]+),([^"]+)"([^>]*)>/g,'<button type="button" name="$1"$3>$2</button>');
-        html = html.replace(/<BTN"([\w.]+)(,[^"]+)*"([^>]*)>/g,function(m,name,cap,others){return '<button type="button" name="'+name+'"'+others+'>'+(cap? cap.slice(1) : name.split('.').pop())+'</button>';});
+        html = html.replace(/<BTN"([\w.\s]+)(,[^"]+)*"([^>]*)>/g,function(m,name,cap,others){return '<button type="button" name="'+name+'"'+others+'>'+(cap? cap.slice(1) : name.split('.').pop())+'</button>';});
         html = html.replace(/<IF"/g,'<input type="file" name="');
         return html.replace(/<input type="(checkbox|radio)[^>]+>[^<]+/g,'<label>$&</label>');
       },
@@ -8116,7 +8117,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         return map;
       },
       reorder_bases: function(clg){
-        for (var b in this.bases) if (this.bases[b].reorder_req) this.bases[b].reorder_all(clg);
+        for (var b in this.bases) if (this.bases[b].reorder_req)
+          if (this.bases[b].reorder_req>=4) this.bases[b].reorder_all(clg); else this.bases[b].re_style(clg);
       },
       initialized: false,
       query: function(key, tgt_th, th, isShown, clg){
@@ -8279,7 +8281,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
               var domain_html = tgt_th[16].domain_html;
               if (clg.view==='headline') site2[domain_html].headline_reorder(tgt_th[3], this, clg, i);
             }
-            this.reorder_req = false;
+            this.re_style(clg);
           },
 //          reorder(key, clg){
 //            var keys = this.keys;
@@ -8294,6 +8296,19 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 //            var domain_html = tgt_th[16].domain_html;
 //            if (clg.view==='headline') site2[domain_html].headline_reorder(tgt_th[3], this, clg, idx_new);
 //          },
+          re_style: function(clg){
+            var attr_obj = clg.pref.filter.attr_list_obj2;
+            var lths = this.lths;
+            var force = this.reorder_req&0x02;
+            if (force) clg.view_attr_set(lths[0].key, true);
+            var i=0;
+            while (i<lths.length) if (attr_obj[lths[i].key] && attr_obj[lths[i].key].style) { // SLOW!!!
+              if (!force) clg.view_attr_set(lths[0].key, true);
+              if (i!==0) clg.view_attr_set(lths[i].key, true);
+              break;
+            } else i++;
+            this.reorder_req = 0;
+          },
         };
         return function(key, tgt_th, th, isShown, clg){
           var merge = {
@@ -8304,7 +8319,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             tgt_ths:[],
             lths:[],
             footer: null,
-            reorder_req: false,
+            reorder_req: 0,
             __proto__:base_proto
           };
           if (clg.view==='catalog') {
@@ -8356,15 +8371,16 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           merge.lths.splice(idx,1);
           clg.footer.draw_merge(tgt_th,key,null); // update both footers.
           if (--merge.isShown===1) gGEH.pns_all_keys.set(merge.pn, merge.lths[0].key);
-          else if (merge.isShown!==0 && idx===0) {
-            clg.view_attr_set(key, true, true, merge.pn, true);
-            clg.view_attr_set(merge.lths[0].key, null, true, merge.pn); // calls idx_reorder and changes order of clg.idxs here
-          }
-//          if (--merge.isShown!==0 && merge.key===key) {
-//            merge.key = merge.lths[0].key;
-//            gGEH.pns_all_keys.set(merge.pn, merge.key);
-//            clg.view_attr_set(merge.key, null, true); // calls idx_reorder and changes order of clg.idxs here
+          else if (merge.isShown!==0) merge.reorder_req |= (idx===0)? 0x03 : 0x01;
+//          else if (merge.isShown!==0 && idx===0) {
+//            clg.view_attr_set(key, true, true, merge.pn, true);
+//            clg.view_attr_set(merge.lths[0].key, null, true, merge.pn); // calls idx_reorder and changes order of clg.idxs here
 //          }
+////          if (--merge.isShown!==0 && merge.key===key) {
+////            merge.key = merge.lths[0].key;
+////            gGEH.pns_all_keys.set(merge.pn, merge.key);
+////            clg.view_attr_set(merge.key, null, true); // calls idx_reorder and changes order of clg.idxs here
+////          }
           if (merge.top_key===key) merge.top_key = null; // thread is overrated
           delete this.bases[key];
         }
@@ -8386,14 +8402,16 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (merge.isShown===2) {
           gGEH.pns_all_keys.set(merge.pn,merge);
           gGEH.pns_all_keys.set(merge.footer[0], merge);
-          if (clg.view==='headline') {
-            var attr_obj = clg.pref.filter.attr_list_obj2;
-            var key0 = merge.lths[0].key;
-            var attr_key = attr_obj[key0]? key0 : attr_obj[key]? key : key0;
-            clg.view_attr_set(attr_key, null, true, merge.pn);
-          }
         }
-        if (pref.test_mode['148'] && merge.isShown>=2) merge.reorder_req = true;
+//        if (merge.isShown>=2) {
+//          if (clg.view==='headline') {
+//            var attr_obj = clg.pref.filter.attr_list_obj2;
+//            var key0 = merge.lths[0].key;
+//            var attr_key = (merge.isShown===2 && attr_obj[key0])? key0 : attr_obj[key]? key : key0;
+//            if (attr_key) clg.view_attr_set(attr_key, null, true, merge.pn);
+//          }
+//        }
+        if (pref.test_mode['148'] && merge.isShown>=2) merge.reorder_req |= (merge.isShown===2)? 7 : 5;
         gGEH.pns_all_keys.set(tgt_th[24][0],key);
       },
       remove_th_page: function(th, remove, merge, clg){
@@ -9251,7 +9269,7 @@ if (!pref.test_mode['140']) {
         var mems = cnst.dom('<div class="'+pref.script_prefix+'_mergedMembers"'+(truncated?' style="display:none"':'')+'></div>');
         mems.appendChild(pn0);
         merge.footer = [clg.footer.add_menu(cnst.dom('<span class="'+pref.script_prefix+'_footer"></span>'))]; // dependant on tagname of footer
-        var summary = this.headline_prep_summary(cnst.dom('<div></div>'), pn0, merge.footer[0], cnst.dom('<a class="'+pref.script_prefix+'_button" name="'+(truncated?'SHOW':'HIDE')+'_PN" data-str="'+(truncated?'[\u25b2]">[\u25bc]':'[\u25bc]">[\u25b2]')+'</a>')); // to remove style, use cnst.dom instead of cloneNode // not to add class to through th_pn search
+        var summary = this.headline_prep_summary(cnst.dom('<div></div>'), pn0, merge.footer[0], cnst.dom('<a class="'+pref.script_prefix+'_button" name="'+(truncated?'SHOW_T':'HIDE_T')+'" data-trav="Pn" data-str="'+(truncated?'[\u25b2]">[\u25bc]':'[\u25bc]">[\u25b2]')+'</a>')); // to remove style, use cnst.dom instead of cloneNode // not to add class to through th_pn search
         merge.pn.appendChild(summary);
         merge.pn.appendChild(mems);
       }
@@ -10633,7 +10651,7 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
 ////      }
 ////      http_req.get('catalog',site.nickname+site.board,site.protocol+'//8chan.co'+site.board+'catalog.json',site2['8chan'].catalog_from_json,false,false,[threads,callback,null,site.board]);
 //    },
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi){
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
       var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('threads')[0]
                                                 : document.getElementsByName('postcontrols')[0];
@@ -11936,7 +11954,7 @@ if (pref.test_mode['28']) {
 ////////    thread2headline : function(doc){
 ////////      return site2.common.thread2headline(doc,'KC');
 ////////    },
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi){
       var node_ref = (site.whereami==='catalog')? document.getElementsByClassName('catalog')[0]
                                                 : document.querySelector('form[action="/delete"]');
 //      var node_ref = (site.whereami==='catalog')? document.getElementById('settings')
@@ -13025,7 +13043,8 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
       qf_ctrl.addEventListener('click',func,false);
       qf_clear.addEventListener('click',func,false);
     },
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi, clg){
+    catalog_native_prep_watcher: true,
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi, clg){
       var node_ref = (clg.mode==='catalog')? document.getElementById('ctrl') :
                                              document.getElementById('ctrl-top');
       if (clg.mode!=='float') {
@@ -14502,7 +14521,7 @@ if (pref.features.domains['meguca']) {
       return (site.whereami==='catalog')? document.getElementById('catalog') :
                                           document.getElementsByName('postcontrols')[0];
     },
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi){
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
       var node_ref = (site.whereami==='catalog')? document.getElementsByTagName('threads')[0].getElementsByTagName('aside')[0] :
                                                   document.getElementsByName('postcontrols')[0];
@@ -14913,7 +14932,7 @@ if (pref.features.domains['meguca']) {
          ) setTimeout(function(){this.catalog_native_prep_wait_loop(whereami,callback);}.bind(this),1000);
       else callback();
     },
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi){
 //      var node_ref = document.getElementsByClassName('catalog_search')[0].nextSibling;  // FF doesn't work.
 //      var node_ref = (site.whereami==='catalog')? document.getElementById('threads').getElementsByTagName('aside')[0] :
       var node_ref = (site.whereami==='catalog')? document.getElementsByName('sortMode')[0]
@@ -14959,7 +14978,7 @@ if (pref.features.domains['meguca']) {
               cataLog.general_event_handler = new cataLog.GEH(cataLog.parent);
               cataLog.general_event_handler.init();
               redraw();
-              site2['meguca'].catalog_native_prep(null, pn_filter, pn_tb);
+              site2['meguca'].catalog_native_prep(pn_filter, pn_tb);
 //              blur_tap();
             }
 
@@ -14999,7 +15018,7 @@ if (pref.features.domains['meguca']) {
                   cataLog.general_event_handler.init();
 //                  if (!pref.test_mode['90']) {
                   if ((site.whereami==='catalog' || site.whereami==='page') && !pref.test_mode['90']) redraw();
-                  site2['meguca'].catalog_native_prep(null, pn_filter, pn_tb);
+                  site2['meguca'].catalog_native_prep(pn_filter, pn_tb);
 //                  reentry_tap(); // WILL call show_catalog here, from pref3.filter.kwd.clear()
                 } // else cataLog.catalog_obj2.masked = true;
                 recovery.reentry();
@@ -15937,7 +15956,7 @@ if (pref.features.domains['lain'] || pref.features.domains['lainjp']) {
 //      return (site2['lain'].all_boards.indexOf(dbt[1])!=-1 && dbt[3]!=='catalog_html')? undefined : this.__proto__.make_url4.call(this,dbt); // cause error from lainjp
     },
 
-    catalog_native_prep: function(date,pn_filter,pn_tb,pn_hi){
+    catalog_native_prep: function(pn_filter,pn_tb,pn_hi){
         if (this.nickname==='lain') {
           styleSheet.add_to_watch(document.getElementById('stylesheet'));
           styleSheet.add_to_watch(document.getElementById('code_stylesheet'));
@@ -17798,12 +17817,12 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
           else this.rollup(options);
         }
       },
-      roll_if_auto: function(e, from_start){
+      roll_if_auto: function(e, from_start, on_tb){
         var options = TbInfoStore.get(e.currentTarget);
         if (!options) return; // for popup
         if (from_start) {
-          if (options.auto_roll && options.cn.style.display!=='none') {
-            if (from_start) {
+          if (options.auto_roll && options.cn.style.display!=='none' && options.cn.offsetHeight>window.innerHeight) {
+            if (!on_tb) {
               options.auto_unroll = [options.cn.parentNode.style.height];
               options.cn.parentNode.style.height = options.cn.parentNode.offsetHeight+'px';
             } else options.auto_unroll = true;
@@ -17815,15 +17834,15 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
           options.auto_unroll = false;
         }
       },
-      rolldown: function(options){
-        options.tb.style.width = '';
-        options.cn.style.display = ''; // for dollchan
-//        if (options.rolldown) options.rolldown.call(options.this_obj);
+      rolldown: function(tbInfo){
+        tbInfo.tb.style.width = '';
+        tbInfo.cn.style.display = ''; // for dollchan
+        if (tbInfo.onrolldown) tbInfo.onrolldown.call(tbInfo.this_obj);
       },
-      rollup: function(options){
-        options.tb.style.width = options.tb.offsetWidth + 'px'; // for dollchan
-        options.cn.style.display = 'none'; // for dollchan
-//        if (options.rollup) options.rollup.call(options.this_obj);
+      rollup: function(tbInfo){
+        tbInfo.tb.style.width = tbInfo.tb.offsetWidth + 'px'; // for dollchan
+        tbInfo.cn.style.display = 'none'; // for dollchan
+        if (tbInfo.onrollup) tbInfo.onrollup.call(tbInfo.this_obj);
       },
       top: function(e, options){
         this.maximize_internal(options.pn, options.tb, options.cn, e.target.name, options, e.target);
@@ -18020,18 +18039,21 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       resize_tlbr = null;
     }
     function tb_mousedown(e){
-      prep_drag(e, e.currentTarget.parentNode);
+      var pn = e.currentTarget.parentNode;
+      if (prep_drag(e, pn)!==false) tb_funcs.roll_if_auto({currentTarget:pn}, true, true);
     }
     function prep_drag(e, pn){
+      e.stopPropagation();
+      if (pn.style.position!=='fixed') return false;
       pn.draggable = true;
       pn.addEventListener('dragstart', div_dragstart_dynamic, false);
       pn.addEventListener('mouseup', div_mouseup, false);
-      e.stopPropagation();
     }
     function div_mouseup(e){
       e.currentTarget.removeEventListener('dragstart', div_dragstart_dynamic, false);
       e.currentTarget.removeEventListener('mouseup', div_mouseup, false);
       e.currentTarget.draggable = false;
+      tb_funcs.roll_if_auto(e, false);
     }
     function mouse_cursor_on_text(e){
       if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='SELECT') return true;
@@ -18076,34 +18098,35 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
 //      drag_opacity_back = cT.style.opacity;
 //      cT.style.opacity = 0.4;
 ////      div_dragend_caller = this;
-      gGEH.drag.started(e, (dynamic)? div_dragend_dynamic : null, 'move', true);
+      gGEH.drag.started(e, (dynamic)? div_mouseup : null, 'move', true); // mouseup isn't called after dragend
+//      gGEH.drag.started(e, (dynamic)? div_dragend_dynamic : null, 'move', true);
 //      cT.addEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
 //      root_body.addEventListener('dragover',div_dragover,false);
     }
-//    function div_dragover(e){ // http://www.html5rocks.com/ja/tutorials/dnd/basics/
-//      e.preventDefault();
-//      e.dataTransfer.dropEffect = 'move';
+////    function div_dragover(e){ // http://www.html5rocks.com/ja/tutorials/dnd/basics/
+////      e.preventDefault();
+////      e.dataTransfer.dropEffect = 'move';
+////    }
+//////    var div_dragend_caller;
+//    function div_dragend_dynamic(e){
+////      div_dragend(e, true);
+//      tb_funcs.roll_if_auto(e, false);
+//      div_mouseup(e); // mouseup isn't called after dragend
 //    }
-////    var div_dragend_caller;
-    function div_dragend_dynamic(e){
-//      div_dragend(e, true);
-      tb_funcs.roll_if_auto(e, false);
-      div_mouseup(e); // mouseup isn't called after dragend
-    }
-//    function div_dragend(e, dynamic){
-//      root_body.removeEventListener('dragover',div_dragover,false);
-//      var cT = e.currentTarget;
-//      var s = cT.style;
-//      cT.removeEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
-//      if (s.left) s.left  = (parseInt(s.left ,10) + e.screenX - drag_sx) + 'px';
-//      else        s.right = (parseInt(s.right,10) - e.screenX + drag_sx) + 'px';
-//      if (s.bottom) s.bottom = (parseInt(s.bottom,10) - e.screenY + drag_sy) + 'px';
-//      else          s.top =    (parseInt(s.top   ,10) + e.screenY - drag_sy) + 'px';
-////      if (div_dragend_caller.dragend) div_dragend_caller.dragend.call(div_dragend_caller.this_obj,e); // isn't used anymore.
-////      div_dragend_caller = null;
-//      s.opacity = drag_opacity_back;
-//      if (dragStopProp.has(cT)) e.stopPropagation();
-//    }
+////    function div_dragend(e, dynamic){
+////      root_body.removeEventListener('dragover',div_dragover,false);
+////      var cT = e.currentTarget;
+////      var s = cT.style;
+////      cT.removeEventListener('dragend', (dynamic)? div_dragend_dynamic : div_dragend, false);
+////      if (s.left) s.left  = (parseInt(s.left ,10) + e.screenX - drag_sx) + 'px';
+////      else        s.right = (parseInt(s.right,10) - e.screenX + drag_sx) + 'px';
+////      if (s.bottom) s.bottom = (parseInt(s.bottom,10) - e.screenY + drag_sy) + 'px';
+////      else          s.top =    (parseInt(s.top   ,10) + e.screenY - drag_sy) + 'px';
+//////      if (div_dragend_caller.dragend) div_dragend_caller.dragend.call(div_dragend_caller.this_obj,e); // isn't used anymore.
+//////      div_dragend_caller = null;
+////      s.opacity = drag_opacity_back;
+////      if (dragStopProp.has(cT)) e.stopPropagation();
+////    }
     function div_scroll(e){
       var val = (!brwsr.ff)? e.wheelDelta : -e.detail*40;
       var s = e.currentTarget.style;
@@ -18127,8 +18150,8 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       init: function(func_str,rolldown_func,rollup_func,exit_func,maximize_func,site_settings, optsobj){
         var optsobj_is_given = (optsobj!==undefined);
         if (optsobj===undefined) optsobj = { // optsobj WILL BE this.
-          rolldown: rolldown_func,
-          rollup: rollup_func,
+//          rolldown: rolldown_func, // changed to onXXX
+//          rollup: rollup_func,
           exit: exit_func,
           maximize: maximize_func,
         };
@@ -25649,6 +25672,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         '*.hide_unwatched': 'float.order.*',
         '*.auto_update' : function(){this['.'].auto_update.set()},
         '*.auto_update_period' : '*.auto_update',
+        'Drop now': function(){this['.'].show_catalog(-1);},
         'clear_threads'       : function(){this['.'].clear_threads(0); this['.'].show_catalog();},
         'clear_filters': function(e){this['load'](e, null, true);},
         'load': function(e, init, clearOnly){
@@ -25957,8 +25981,8 @@ var Clg = function(embed_embed, embed_mode, watcher){
         func_str:embed_embed?'etb:embed':'left:'+pfai.left+'px:top:'+pfai.top+'px:tb'+(pfai.width?':width:'+pfai.width+'px':'')+(pfai.height?':height:'+pfai.height+'px':'')+':overflow:auto:Show:bottom_top:tb_press:'+pfai.state,
 //        func_str:'left:'+pfai.left+'px:top:'+pfai.top+'px:resize:both:'+((embed_embed)? 'display:none:tb:embed':'tb')+':width:'+pfai.width+'px:height:'+pfai.height+'px:resize:both:overflow:auto'+
 //          ':Show'+(embed_embed?'':':bottom_top')+((embed_mode==='float')? ':tb_press:'+pfai.state:''),
-//        rolldown: function(){pn12_0_4.style.display='';},
-//        rollup: function(){pn12_0_4.style.display='none';},
+        onrolldown: this.onrolldown,
+        onrollup: this.onrollup,
         exit: (pref.test_mode['114'])? show_hide : this.destroy.bind(this),
 //        exit: (!watcher)? show_hide : this.destroy.bind(this),
         maximize: this.show_catalog_cont,
@@ -26053,7 +26077,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 //            '<input type="checkbox" name="catalog_snoop_refresh" checked> Snoop update<br>'+
 //            '&emsp;<input type="checkbox" name="catalog_promiscuous"> Promiscuous<br>'+
 //            '<select name="'+embed_mode+'.view"><option>Headline</option><option>Catalog</option><option>Page</option></select> :View<br>'+
-              '1,<IC"INST.safety.hide">Auto drop threads temporarily for light feeling<br>'+
+              '1,<IC"INST.safety.hide">Auto drop threads temporarily for light feeling <BTN"Drop now"><br>'+
               '1,<IC"INST.safety.remove">Auto remove threads latter than <ITBN5"INST.safety.max">th<br>'+
               '<BTN"clear_threads,Clear all threads">','',true))+
             html_funcs.design_of_fc('INST', 1)+'<br name="PLACEHOLDER_NATIVE_SIZE">'+
@@ -26407,7 +26431,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
   if (clgs.length===1) cataLog.auto_update = this.auto_update;
   if (site.whereami!=='archive') this.auto_update.set();
 
-  if (pref.test_mode['160'] && clgs.length===1) site2[site.nickname].catalog_native_prep(Date.now(),this.pn12_0_4,this.pn12_0, this.health_indicator.pn2, this);
+  if (pref.test_mode['160'] && clgs.length===1) site2[site.nickname].catalog_native_prep(this.pn12_0_4,this.pn12_0, this.health_indicator.pn2, this);
   if (clgs.length>=2) this.onchange_funcs['*.board_list_sel'](null,true, true); // invoke all, call from clgs[0] is left later for safty.
   if (Clg.prototype.Clgs_count!==1 && clgs.length===1) reentry_0_patch(this);
   this.show_catalog_scroll_lock = this.show_catalog_scroll_lock_factory(this);
@@ -26415,6 +26439,8 @@ var Clg = function(embed_embed, embed_mode, watcher){
 };
       
       Clg.prototype = {
+        onrolldown: function(){var val_old = this.rolledup; this.rolledup = 0; if (val_old>1) this.show_catalog();},
+        onrollup: function(){this.rolledup++;},
         Clgs: [],
         AllThreads: null, // contains tgt_th(s) which have the most numbers of posts to show.
         UnsyncedTriages: {}, // unsynced triages; catalog data is delayed from thread sometimes, triage through pipe may hit this in 4chan.
@@ -27094,7 +27120,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
               var dbt = common_func.name2dbt(tgt);
               var url = site2[dbt[0]].make_url4(dbt);
               var key2 = dbt.join(',');
-              return {REQ:req, url:url[0], responseType:(archived)? 'text' : (url[1]==='html')? 'document' : url[1], tgt:tgt, key2:key2, data_type:url[1], domain:dbt[0]};
+              return {REQ:req, url:url[0], responseType:(pref.test_mode['165'] || archived)? 'text' : (url[1]==='html')? 'document' : url[1], tgt:tgt, key2:key2, data_type:url[1], domain:dbt[0]};
             }
           },
           callback: function(req){
@@ -28431,6 +28457,7 @@ if (!pref.test_mode['31'])
 //        pClg.triage_exe_broadcast(name,tri_str_ex,tri_str_attr,hist,datetime);
 //      };
       Clg.prototype.triage_exe_broadcast = function(name,cmd,attr,hist,datetime, stop_loop, from_auto, merged_broadcast, pn){
+        if (cmd==='NONE_M') {var cmd_org = cmd; cmd = 'NONE';}
         if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base, name, this); triage.off(); if (attr) cmd='ATTR'; else return;}
         if (cmd==='UNMERGE') {this.merge_bases.add_to_list_1(null, name, this); triage.off(); return;}
         if (cmd==='MERGEOP') {this.merge_cross_links_in_op_manually(name); triage.off(); return;}
@@ -28440,13 +28467,14 @@ if (!pref.test_mode['31'])
         }
         if (!datetime && cmd==='WATCH' && pref.common.consolidated_watch_list) datetime = this.threads[name] && (this.threads[name][8][4] || this.threads[name][8][0]) || gClg.AllThreads[name] && (gClg.AllThreads[name][8][4] || gClg.AllThreads[name][8][0]); // this.thread has priority.
         var changed_watch = false;
-        var clgs = gClg.Clgs;
-        for (var i=0;i<clgs.length;i++) {
-          var broadcast = clgs.length==1 || this===clgs[i]? false : this===gClg? true : this.pref[this.mode].board_list_sel==clgs[i].pref[clgs[i].mode].board_list_sel? 0 : true;
-//          var broadcast = this!==clgs[i] && this.pref[this.mode].board_list_sel!=clgs[i].pref[clgs[i].mode].board_list_sel);
-          var changed = clgs[i].triage_exe(name,cmd,attr,hist,datetime, broadcast, stop_loop); // , from_pipe, stop_loop);
-          if (!from_auto && (cmd!=='TRACK' || this.mode!=='thread')) clgs[i].triage_exe_view(changed.name, changed, broadcast===false? pn : undefined); // changed.name for undo // TRACK trips child->catalog->child
+        for (var i=0;i<gClg.Clgs.length;i++) {
+          var clg = gClg.Clgs[i];
+          var broadcast = gClg.Clgs.length==1 || this===clg? false : this===gClg? true : this.pref[this.mode].board_list_sel==clg.pref[clg.mode].board_list_sel? 0 : true;
+//          var broadcast = this!==clg && this.pref[this.mode].board_list_sel!=clg.pref[clg.mode].board_list_sel);
+          var changed = clg.triage_exe(name,cmd,attr,hist,datetime, broadcast, stop_loop); // , from_pipe, stop_loop);
+          if (!from_auto && (cmd!=='TRACK' || this.mode!=='thread')) clg.triage_exe_view(changed.name, changed, broadcast===false? pn : undefined); // changed.name for undo // TRACK trips child->catalog->child
           changed_watch |= changed.watch;
+          if (cmd_org==='NONE_M') if (clg.view==='headline') if (clg.merge_bases.bases[name]) clg.view_attr_set(name, true, true, clg.threads[name][3]); // TEST
         }
         Tooltips.hide();
         if (!stop_loop) if (changed_watch && pref.common.consolidated_watch_list && pref.common.sync_watch_list) gClg.Sync_watch_save([name,cmd,attr,hist,datetime], merged_broadcast); // Array.prototype.slice.call(arguments));
@@ -29511,7 +29539,7 @@ if (pref.test_mode['19']) { // stability test.
 //        if (th.domain==='meguca' && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = th.lastUpdated || ((th.lth.ed_p)? null : undefined); // lastUpdated may be undefined.
 //        if (th.parse_funcs.has_editing && tgt_th[16].needs_update!==true) tgt_th[16].needs_update = (th.lth.ed_p)? 1 : null;
         }
-        if (!pref.test_mode['114'] && Clg.prototype.Clgs.length>=2 && pref.test_mode['133']) for (var i=1;i<Clg.prototype.Clgs.length;i++) clone_thread(Clg.prototype.Clgs[i],name);
+//        if (!pref.test_mode['114'] && Clg.prototype.Clgs.length>=2 && pref.test_mode['133']) for (var i=1;i<Clg.prototype.Clgs.length;i++) clone_thread(Clg.prototype.Clgs[i],name);
       };
       Clg.prototype.apply_auto_list_filter = function(th, obj){
         for (var i=0;i<obj.length;i++) {
@@ -29876,8 +29904,8 @@ if (pref.test_mode['19']) { // stability test.
 //          site2[th.domain].wrap_to_parse.posts(th);
 //          if (th.parse_funcs.posts_full) th.parse_funcs.posts_full(th);
           var mimic_force = th.domain!==site.nickname && th.type_data==='html'; // && th.domain_html!==site.nickname; // must be added this for consistency. // prioritize cloning is for popups_add_1's being called from popups_fetched_1 in advance. This is observable when thread+watcher is used, backlinks will be added to lth.q.pn, this way can track single entity, but can't track multiple entities.
-          var mimic = !th.pn || ((th.domain!==site.nickname || site.whereami+'_html'!==th.type_mimic) && pref.catalog.mimic_base_site) || mode==='float'; // !th.pn for reentry from unmerge with catalog_html data
           var mimic_tgt = view==='thread'? 'page' : view; // (mode==='float' || pref.test_mode['144'] && mode!=='thread')? view : (mode==='page' || mode==='thread')? 'page' : 'catalog';
+          var mimic = !th.pn || ((th.domain!==site.nickname || mimic_tgt+'_html'!==th.type_mimic) && pref.catalog.mimic_base_site) || mode==='float'; // !th.pn for reentry from unmerge with catalog_html data
           if (pref.test_mode['92']) mimic_tgt = 'catalog'; // for 4chan-X catalog.
 //          if (init_new || !mimic)
 //            if (mimic_tgt==='page' && th.type_data==='html') this.prepare_html_extract_params(th); // for popup2, always wrapping is required.
@@ -30244,7 +30272,7 @@ if (pref.test_mode['19']) { // stability test.
   //        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
           if (pref.test_mode['148']) { // base may not exist here because base is generated in show_catalog, but the thread will be appended at the case and order won't broken.
             var base = clg.merge_bases.bases[name];
-            if (base) base.reorder_req = true; // base.reorder(key, clg); // causes chattering
+            if (base) base.reorder_req |= 5; // base.reorder(key, clg); // direct call causes chattering
           }
           return ref;
         }
@@ -31278,7 +31306,9 @@ if (pref.test_mode['163'] && pref[embed_mode].thumbnail.inline.stopHover && site
 var debug_str2;
 //      function show_catalog(tgts_in,sound){
     var catalog_obj2_proto = {
+      rolledup: 0,
       show_catalog: function(tgts_in, force_all_named, may_bump_down, force_all_footer){
+        if (this.rolledup) {this.rolledup = 2; return;}
 //        force_all_named |= this.force_all_named;
         if (tgts_in===0 || tgts_in===-1) {var hide_tails = tgts_in===-1; this.drawn_idx = 0; tgts_in=undefined;}
 //        if (this.masked) {this.updated_but_masked = true; return;} // test patch for meguca.
@@ -31292,7 +31322,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         if (draw_on_demand) {
           var ref_height = this.get_ref_height((pref[cataLog.embed_mode].merge)? 4 : (this.disp_th20)? 0.2 : (this.disp_th100)? 1 : 1.5);
           if (this.drawn_idx!==0 && this.drawn_y>=ref_height)
-            if (this.ppn.offsetTop + this.ppn.offsetHeight<this.drawn_y) this.drawn_y = -1; // for expanding posts or images.
+            if (this.ppn.offsetTop + this.ppn.offsetHeight<this.drawn_y) this.drawn_y = -1; // for expanding posts or images. // (this.ppn.offsetHeight||this.ppn.getBoundingClientRect().height) is required to scale <small> in 2ch.
 //            if (this.ppn.offsetHeight<this.drawn_y) this.drawn_idx = 0; // for expanding posts or images.
           else if (tgts_in===undefined) return true;
 //          if (drawn_idx!==0 && this.drawn_y>=ref_height) return;
@@ -32972,7 +33002,7 @@ if (!pref.test_mode['49'] && posts_active && th) {
       var exe_embed = function(){
 //          cnst.tb_prep_for_embed(pn12_0);
           pn12_0.appendChild(pn12_0_4); // for simplest catalog_native_prep
-if (!pref.test_mode['160']) site2[site.nickname].catalog_native_prep(Date.now(),pn12_0_4,pn12_0, pClg.health_indicator.pn2, pClg);
+if (!pref.test_mode['160']) site2[site.nickname].catalog_native_prep(pn12_0_4,pn12_0, pClg.health_indicator.pn2, pClg);
         var ths = insert_myself(null,null, true);
         if (pClg.pref.filter.kwd.post) {pref4.search_posts_active_once = false; pClg.pref.filter.kwd.posts_active = false; pClg.filter_kwd_active({target:{name:'filter.kwd.post'}});} // patch for posts scan
 //          if (site.whereami==='catalog') site2[site.nickname].clean_up_LS(ths);
@@ -33915,22 +33945,26 @@ if (pref.test_mode['0']) {
       function make_watcher(){
 //        var pn_test = document.createElement('div');
         var clg = new Clg(false,'float', true);
-        if (pref.test_mode['133']) for (var name in pClg.threads) clone_thread(clg, name);
+        if (pref.float.clone) {
+          var clone_clg = Clg.prototype.Clgs.filter(function(v){return clg.pref.float.board_list_sel===v.pref[v.mode].board_list_sel;})[0];
+          if (clone_clg) clg.clone_threads(clone_clg);
+        }
+//        if (pref.test_mode['133']) for (var name in pClg.threads) clg.clone_thread(name);
 //        clg.ppn.setAttribute('style','white-space:nowrap');
 //        clg.ppn.setAttribute('style','text-overflow:ellipsis;white-space:nowrap;width:100%');
         clg.GEH = new GEH(clg);
-        if (pref.test_mode['145']) {
-          site2[site.nickname].catalog_native_prep(Date.now(),clg.components.pn12_0_4, clg.components.pn12_0, clg.health_indicator.pn2, clg);
+        if (site2[site.nickname].catalog_native_prep_watcher) {
+          site2[site.nickname].catalog_native_prep(clg.components.pn12_0_4, clg.components.pn12_0, clg.health_indicator.pn2, clg);
           if (clg.native.viewChanged) clg.native.viewChanged();
         }
         clg.show_catalog();
       }
-      function clone_thread(clg, name){
-        if (!clg.threads[name]) {
-          clg.clone_thread_1(name);
-          clg.view_attr_set(name, null, true);
+      Clg.prototype.clone_threads = function(clg){
+        for (var name in clg.threads) if (!this.threads[name]) {
+          this.clone_thread_1(name);
+          this.view_attr_set(name, null, true);
+          this.idx_reorder(name);
         }
-        clg.idx_reorder(name);
       }
       Clg.prototype.clone_thread_1 = function(name){
 //          var max_txt = 500;
