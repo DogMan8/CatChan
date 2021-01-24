@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2020.12.27.0
+// @version 2021.01.24.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -392,7 +392,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //      popupTrip: {popup_delay:500, popdown_delay:500, popdown:'delay', popup_mMove:true, popup_zIndex:101},
       open_spoiler_text: false,
       open_spoiler_image: false,
-      merge: false, merge_list: false, merge_list_str: '', merge_list_obj6: null, merge_first: true, merge_truncated: false,
+      merge: false, merge_list: false, merge_list_str: '', merge_list_obj6: null, merge_truncated: false,
       merge_lv:true, merge_lv_str:'', merge_lv_obj6:null,
       merge_auto_list:false, merge_auto_list_lv:2, merge_auto_list_lv_add:true,
       merge_op_auto:false, merge_op_lv:2, merge_op_lv_add:true, merge_op_auto_hop:1, merge_op_lv_inc:true, merge_op_attr:false, merge_op_list:false,
@@ -1273,7 +1273,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 ////    catalog_refresh_watch: null,
     format_html: null,
     show_catalog: null,
-//    show_catalog_cont: null,
     get_ref_height: null,
     catalog_obj2: null,
     healthIndicator: null,
@@ -3746,7 +3745,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2020.12.27.0<br>'+
+          'Version 2021.01.24.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -8209,7 +8208,6 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             if (idx>=this.lazy.length) this.lazy[idx] = true; // all are not initialized.
             else this.lazy.splice(idx,0,true);
             if (this.lazy_idx>idx) this.lazy_idx = idx;
-//            cataLog.show_catalog_cont();
           },
           remove: function(idx){
             this.posts.splice(idx,1);
@@ -8541,7 +8539,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             top = idx;
             base.top_key = key;
           }}
-        if (top===i) mb.shown.delete(base); // to bump in func_show
+//        if (top===i) mb.shown.delete(base); // to bump in func_show
       },
       func_show: function(name,ref, with_hr){ // this refers catalog_obj2
         var mb = this.merge_bases;
@@ -8559,7 +8557,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (base) {
 //          if (base.isShown!=0) cataLog.catalog_obj2.func_hide_org(name);
 //          if (base.isShown==0) base.isShown++;
-          if (!mb.shown.has(base)) this.func_show_org(name,ref, with_hr); // bump if this thread is the top of merged threads.
+          if (base.top_key===name) this.func_show_org(name,ref, with_hr); // bump if this thread is the top of merged threads.
+//          if (!mb.shown.has(base)) this.func_show_org(name,ref, with_hr); // bump if this thread is the top of merged threads.
           return true;
         } else return this.func_show_org(name,ref, with_hr);
       },
@@ -8607,7 +8606,8 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           if (!mb.shown.has(base)) {
 //          var pn = base.pn;
 //          if (!mb.shown.has(pn) || mb.shown.get(pn)===name) { // ===name for reentry.
-            var retval = this.func_track_shown_org(name, !pf_merge && update_drawn_y);
+            var retval = true;
+            this.func_track_shown_org(name, !pf_merge && update_drawn_y);
             mb.shown.set(base, idx); // track first idx to remove indexOf in func_search_ref_idx // cant' be used in test_mode['132']
             if (pref.test_mode['179']) base.top_key = name;
 //            mb.shown.add(base); // set(base, name); // track first name, but this causes BUG at test_mode['132'] // trial patch 'func_check_reorder was given.
@@ -8619,7 +8619,10 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             if (++this.post_count%step==0) this.drawn_y = this.threads[name][16].posts[0].pn.offsetTop;
           }
           return retval;
-        } else return this.func_track_shown_org(name, update_drawn_y);
+        } else {
+          this.func_track_shown_org(name, update_drawn_y);
+          return false;
+        }
       },
       shown: new Map(), // base -> idx of first shown member
 //      shown: new Set(), // Map(), // base -> name of first shown pair for search_ref
@@ -8727,7 +8730,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             pref_func.apply_prep(clg.components.merge, false, true, clg.mode!=='float');
           }
         } else {
-          this.add_to_list_1(key_dst, name, clg);
+          this.add_to_list_1(key_dst, name, clg, null, true);
 //        var str = pref.proto.merge_list_str.replace(/\s*\+/g,',+'); // working code
 //        var dst_arr = this.base_arr(key_dst);
 //        var src_arr = this.base_arr(name);
@@ -8765,7 +8768,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         if (this.base_arr(name)) clg.onchange_funcs['*w/.merge_lv_str'](null, clg.mode, name);
 //        /*if (!dom)*/ clg.onchange_funcs['*w/.merge_lv_str']();
       },
-      add_to_list_1: function(dst, name, clg, prep_only){
+      add_to_list_1: function(dst, name, clg, prep_only, merge){
         var arr = this.base_arr(name);
         if (dst && name && arr && (prep_only || arr===this.base_arr(dst))) return;
 //        this.add_to_list_2(name, null, clg); // erase
@@ -8776,7 +8779,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 //        var dom = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['proto.merge_list_str'];
 //        pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_list_str"></textarea>'), false, null, null, true); // make obj
         var tgts = common_func.Array_toObj((arr||[]).concat(this.base_arr(name)||[]), null); // arr was made from obj2_old at this time.
-        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, tgts, prep_only);
+        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, tgts, prep_only, true, merge);
       },
       add_to_list_2: function(tgt, name, clg){
         var str = pref.proto.merge_list_str;
@@ -8824,35 +8827,38 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 //        pref3.proto.merge_list_obj2_old = null;
         clg.func_track_reset();
         if (!this.initialized) this.setup_hook(clg);
-        return Object.keys(tgts).length;
+        return tgts; // Object.keys(tgts).length;
       },
       onchange_funcs: common_func.Object_defProps(pref_func.settings.onchange_funcs, { // dummy prop; this property itself is not used.
-        '*w/.merge_list_str': function(e,name, tgts, prep_only){
+        '*w/.merge_list_str': function(e,name, tgts, prep_only, no_dirtify, merge){
 //          var clg = this['.'];
 /*          if (!clg)*/ gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_list_str_1'], arguments); // broadcast always
 //          else this['*w/.merge_list_str_1'](e, name, prep_only);
           pref3.proto.merge_list_obj2_old = null;
         },
-        '*w/.merge_list_str_1': function(e,name, tgts, prep_only){
+        '*w/.merge_list_str_1': function(e,name, tgts, prep_only, no_dirtify, merge){
           var clg = this['.'];
           if (!clg.pref[clg.mode].merge_list) return;
-          var redraw = clg.merge_bases.hide_merge_tgts(clg, function(name){
+          var tgts_draw = clg.merge_bases.hide_merge_tgts(clg, function(name){
             var now = this.base_arr(name);
             var old = this.base_arr_old(name);
-            return (now)? (!old || now.join()!==old.join() && this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name]) : old;}, tgts); // now.join()!==old.join() may be redundant.
+            return (now)? (!old || now.join()!==old.join() && (!merge || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged.
 //            return (now)? (!old || now.join()!==old.join()) : old;});
-          if (!prep_only && redraw) clg.show_catalog();
+          if (!no_dirtify) clg.dirty |= 0x10;
+          if (!prep_only && Object.keys(tgts_draw).length) clg.show_catalog(tgts_draw);
         },
         '*w/.merge_list': function(e, name){
           var clg = this['.'];
           if (!clg) {gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_list'], arguments); return;}
           clg.merge_bases.hide_merge_tgts(clg, function(name){return this.base_arr(name) || this.base_arr_old(name);});
-          clg.show_catalog();
+          clg.dirty |= 0x10;
+          clg.show_catalog(0);
         },
         '*w/.merge': function(e, name){
           var clg = this['.'];
           if (!clg) {gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge'], arguments); return;}
           clg.merge_bases.hide_merge_tgts(clg, function(){return true;});
+          clg.dirty |= 0x10;
           if (clg.pref[clg.mode].merge) clg.order.ordering_old = clg.order.ordering;
           clg.components.ordering.onfocus();
           clg.order.ordering = (clg.pref[clg.mode].merge)? clg.idx_idxMergeAll : clg.order.ordering_old || 0; // default value for all merge valid at initial
@@ -24974,7 +24980,10 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         clean_idx: 0,
         timestamp_set: function(){
 //          if (this.timestamp) {
-          this.timestamp += 32; // dirtify all // 16 and 32 is the magic number here, search it. This is used in literal forms in all cases for update timestamp
+          if (this.realtime) {
+            this.timestamp += 32; // dirtify all // 16 and 32 is the magic number here, search it. This is used in literal forms in all cases for update timestamp
+            this.clean_idx = 0;
+          }
 //            this.clg.drawn_idx = 0;
 //            this.clg.show_catalog(); // update footers, this is too heavy, but required.
 ////            this.update_all_lazy(null, true);
@@ -25012,46 +25021,46 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         update_force: function(name,flags,tags, merge_consolidate){
           var tgt_th = this.threads[name];
           var footer = tgt_th[24];
-          if (footer && tgt_th[1]) this.insert_footer3(footer, name, 0x10, flags, tags, merge_consolidate); // keep force_network_update flag
+          if (footer && tgt_th[1]) this.insert_footer3(footer, name, /*0x10,*/ flags, tags, merge_consolidate); // keep force_network_update flag
         },
         update: function(name,flags,tags){ // , idx){ // from network only
           var footer = this.threads[name][24];
           if (!footer) return;
-          if (this.threads[name][1] && (footer[4]&0x10)) { // 0x10 is mark for force_network_update, which is used by mode==='thread' and triage_rewind_watch
-//          if (this.threads[name][1] && (footer[4]>=this.timestamp || force)) { // BUG, this should be footer[4]>=this.timestamp_TRIAL to track clean area.
-            this.insert_footer3(footer, name, 0, flags, tags); // clear flag for force_network_update
-//            footer[4] &= 0xfffffff0; // keep timestamp
-          } else {
+//          if (this.threads[name][1] && (footer[4]&0x10)) { // 0x10 is mark for force_network_update, which is used by mode==='thread' and triage_rewind_watch
+////          if (this.threads[name][1] && (footer[4]>=this.timestamp || force)) { // BUG, this should be footer[4]>=this.timestamp_TRIAL to track clean area.
+//            this.insert_footer3(footer, name, 0, flags, tags); // clear flag for force_network_update
+////            footer[4] &= 0xfffffff0; // keep timestamp
+//          } else {
             footer[4] |= (flags? 0x01 : 0) | (tags? 0x04 : 0) | 0x08; // | (page? 0x02 : 0); // 0x08 is dirty mark
-//            if (this.clean_idx>idx) this.clean_idx = idx;
-          }
-        },
-        queue_update_force: function(name){
-          var footer = this.threads[name][24];
-          if (footer) footer[4] |= 0x10; // 0x10 is mark for force_network_update
-        },
-        seek_clean_idx: function(idxs, idx){
-          var ts = this.timestamp;
-          if (idx===0 || this.realtime && this.real_ts!==ts) {this.real_ts = ts; return 0;}
-          var i = idx;
-          while (--i>=0) {
-            var footer = this.threads[idxs[i]][24];
-            if (footer && footer[4]!==ts) idx = i;
-          }
-          return idx;
-//          return this.realtime && this.real_ts!==this.timestamp? (this.real_ts = this.timestamp, 0) : this.clean_idx;
-        },
-        query_update_without_data: function(page_info){ // working code
-          return this.realtime || page_info && pref[this.mode_fmt].footer.page;
-        },
-//        update_without_updated_data: function(page_info){ // working code
-//          if (!this.realtime && (!page_info || !pref[this.mode_fmt].footer.page)) return;
-//          var ts_ref = this.real_ts; // real_ts is stored timestamp of last lazy_draw. // this.timestamp - 32;
-//          for (var name in this.threads) {
-//            var footer = this.threads[name][24];
-//            if (footer && this.threads[name][1] && footer[4]>=ts_ref) this.insert_footer3(footer, name, 0x10, null, null, true); // keep force_network_update flag
+////            if (this.clean_idx>idx) this.clean_idx = idx;
 //          }
+        },
+//        queue_update_force: function(name){ // working code
+//          var footer = this.threads[name][24];
+//          if (footer) footer[4] |= 0x10; // 0x10 is mark for force_network_update
 //        },
+//        seek_clean_idx: function(idxs, idx){ // working code
+//          var ts = this.timestamp;
+//          if (idx===0 || this.realtime && this.real_ts!==ts) {this.real_ts = ts; return 0;}
+//          var i = idx;
+//          while (--i>=0) {
+//            var footer = this.threads[idxs[i]][24];
+//            if (footer && footer[4]!==ts) idx = i;
+//          }
+//          return idx;
+////          return this.realtime && this.real_ts!==this.timestamp? (this.real_ts = this.timestamp, 0) : this.clean_idx;
+//        },
+//        query_update_without_data: function(page_info){ // working code
+//          return this.realtime || page_info && pref[this.mode_fmt].footer.page;
+//        },
+////        update_without_updated_data: function(page_info){ // working code
+////          if (!this.realtime && (!page_info || !pref[this.mode_fmt].footer.page)) return;
+////          var ts_ref = this.real_ts; // real_ts is stored timestamp of last lazy_draw. // this.timestamp - 32;
+////          for (var name in this.threads) {
+////            var footer = this.threads[name][24];
+////            if (footer && this.threads[name][1] && footer[4]>=ts_ref) this.insert_footer3(footer, name, 0x10, null, null, true); // keep force_network_update flag
+////          }
+////        },
         try_dirtifying_tag: function(name){
           var footer = this.threads[name][24];
           if (!footer) true;
@@ -25068,15 +25077,15 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var footer = tgt_th[24];
 //          var footer = this.threads[name][24];
 //          if (!footer) return;
-          if (footer[4]!==this.timestamp) this.insert_footer3(footer, name, 0x10); // keep force_network_update flag
+          if (footer[4]!==this.timestamp) this.insert_footer3(footer, name); // , 0x10); // keep force_network_update flag
 //          if (footer[4] & 0x0f) this.insert_footer3(footer, name);
 //          footer[4] = this.timestamp_trial; // keep updating while lazy drawing is not completed, but this is too much.
         },
         draw_merge: function(tgt_th, name, merge){ // update both footers in both cases.
           var footer = tgt_th[24];
-          if (!merge) this.insert_footer3(footer, name, 0x10, null, true); // for unmerge, update both footers.
+          if (!merge) this.insert_footer3(footer, name, /*0x10,*/ null, true); // for unmerge, update both footers.
           footer[6] = merge;
-          if ( merge) this.insert_footer3(footer, name, 0x10, null, true); // for merge, update both footers.
+          if ( merge) this.insert_footer3(footer, name, /*0x10,*/ null, true); // for merge, update both footers.
         },
         factory: function(mode, threads, clg){
           var retval = {
@@ -25088,7 +25097,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             clean_idx: 0,
             clg: clg,
             realtime: false,
-            real_ts: 0,
+//            real_ts: 0,
             pn_menu: null,
             pn_triage: null,
             __proto__: this
@@ -25247,7 +25256,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           footer[0].removeChild(footer[idx]);
           footer[idx] = null;
         },
-        insert_footer3: function(footer, name, ts_mask, flags, tags, merge_consolidate){
+        insert_footer3: function(footer, name, /*ts_mask,*/ flags, tags, merge_consolidate){
           var tgt_th = this.threads[name];
           var lth = liveTag.mems.getFromName(name);
           flags = flags || (footer[4]&0x01);
@@ -25255,7 +25264,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           this.draw_exe_1(footer, name, flags, tags, tgt_th, lth);
           if (footer[5]) this.draw_exe_1(footer[5], name, flags, tags, tgt_th, lth);
           if (footer[6] && footer[6].footer) if (!merge_consolidate || footer[6].lths[0]===lth) this.draw_exe_1(footer[6].footer, name, null, tags, footer[6], footer[6]); // tricky, see site2['DEFAULT'].update_posts_merge_bases.base_factory
-          footer[4] = this.timestamp + (footer[4]&ts_mask); // ts_mask: 0x10 for keeping flag for force_network_update, 0 for clearing it.
+          footer[4] = this.timestamp; //  + (footer[4]&ts_mask); // ts_mask: 0x10 for keeping flag for force_network_update, 0 for clearing it.
         },
         draw_exe_1: function(footer, name, flags, tags, tgt_th, lth){
           var pf = pref[this.mode_fmt].footer;
@@ -25526,7 +25535,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           obj.length = len;
           this.formatted_arr = obj;
           this.realtime = pf.prate || pf.rptime || pf.rbtime || pf.rctime;
-          this.real_ts = 0;
+//          this.real_ts = 0;
           this.timestamp = (this.realtime? 32 : 0) + (this.mode==='thread' || pref.test_mode['131']? 16 : 0);
           this.pn_menu = (pf.use && pf.menu)? new Triage(pf.menu_str, {embed:true, child_class:'embeddedTriage'}).pn : null;
           this.pn_triage = (pf.use && pf.triage)? new Triage(pf.triage_str, {embed:true, child_class:'embeddedTriage'}).pn : null;
@@ -26043,6 +26052,8 @@ var Clg = function(embed_embed, embed_mode, watcher){
   this.mode = embed_mode;
   this.view = embed_mode==='float'? pref.float.view : /*embed_mode==='thread'? 'page' :*/ embed_mode;
   this.show_catalog_cont = new DelayBuffer(this.show_catalog_delayed.bind(this), 200).get_bound_func();
+  this.show_catalog_resize = this.show_catalog_resize.bind(this);
+  this.show_catalog_scroll = this.show_catalog_scroll.bind(this);
 
   var clgs = Clg.prototype.Clgs
   var pf_original = clgs.length==0 || clgs.length==1 && clgs[0].mode!=='float';
@@ -26074,7 +26085,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
         onrollup: this.onrollup,
         exit: (pref.test_mode['114'])? show_hide : this.destroy.bind(this),
 //        exit: (!watcher)? show_hide : this.destroy.bind(this),
-        maximize: this.show_catalog_cont,
+        maximize: this.show_catalog_resize,
         get auto_roll(){return pref.catalog_auto_rollup_when_moving;},
         autoHeight: function(e){
           var height = e.target.dataset.height || 'auto';
@@ -26395,7 +26406,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 //  this.ppn.className = pref.script_prefix+'_catalog';
   this.pppn = this.ppn.parentNode; // pppn!==pn12, because patched.
   this.pppn_window = this.mode==='float'? this.pppn : window;
-  gGEH.pns_resize.set(this.pn12, this.show_catalog_cont);
+  gGEH.pns_resize.set(this.pn12, this.show_catalog_resize);
   var comps_0_4 = pn12_0_4.getElementsByTagName('*');
   this.components = {
     ordering: comps_0_4[(this.mode==='float'? 'float' : 'catalog')+'.order.ordering'],
@@ -26447,9 +26458,9 @@ var Clg = function(embed_embed, embed_mode, watcher){
   if (clgs.length==0) cataLog.event_func = event_func;
   this.scrollTop = 0;
   this.innerHeight = null;
-  this.pppn_window.addEventListener('scroll', this.show_catalog_cont, false);
-  if (!pref.test_mode['96'] || this.mode!=='catalog') this.pppn_window.addEventListener('resize', this.show_catalog_cont, false); // BUG, DOM ELEMENT CAN'T TAKE resize EVENT, this doesn't work // https://stackoverflow.com/questions/6492683/how-to-detect-divs-dimension-changed
-  if (this.mode==='float') this.ppn.addEventListener('scroll', this.show_catalog_cont, false); // Element: scroll event is not bubbles. // https://developer.mozilla.org/en-US/docs/Web/API/Element/scroll_event
+  this.pppn_window.addEventListener('scroll', this.show_catalog_scroll, false);
+////  if (!pref.test_mode['96'] || this.mode!=='catalog') this.pppn_window.addEventListener('resize', this.show_catalog_cont, false); // BUG, DOM ELEMENT CAN'T TAKE resize EVENT, this doesn't work // https://stackoverflow.com/questions/6492683/how-to-detect-divs-dimension-changed
+  if (this.mode==='float') this.ppn.addEventListener('scroll', this.show_catalog_scroll, false); // Element: scroll event is not bubbles. // https://developer.mozilla.org/en-US/docs/Web/API/Element/scroll_event
 
 //  this.filter_kwd_prep_init(null,true); // prep kwd.rexps // redundant, called in this.onchange_funcs['*.board_list_sel']
   this.Setup_liveTag(pref.liveTag.NC);
@@ -26468,12 +26479,12 @@ var Clg = function(embed_embed, embed_mode, watcher){
   if (site2[site.nickname].catalog_float_prep) site2[site.nickname].catalog_float_prep(this);
 
   if (clgs.length==2) this.hook_set({
-    set drawn_idx(v){this.Clgs.forEach(function(c){c.drawn_idx = v;});}, // temporal
+//    set drawn_idx(v){this.Clgs.forEach(function(c){c.drawn_idx = v;});}, // temporal
     footer: {
-      update: function(name,flags,tags, force){ // will be discarded by test_mode['133']
-        var clgs = Clg.prototype.Clgs;
-        for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.update(name,flags,tags, force);
-      },
+//      update: function(name,flags,tags, force){ // will be discarded by test_mode['133']
+//        var clgs = Clg.prototype.Clgs;
+//        for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.update(name,flags,tags, force);
+//      },
       update_force: function(name,flags,tags){
         var clgs = Clg.prototype.Clgs;
         for (var i=0;i<clgs.length;i++) if (clgs[i].threads[name]) clgs[i].footer.update_force(name,flags && clgs[i].pref[clgs[i].footer.mode_fmt].footer.flags,tags);
@@ -26529,7 +26540,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 };
       
       Clg.prototype = {
-        onrolldown: function(){var val_old = this.rolledup; this.rolledup = 0; if (val_old>1) this.show_catalog();},
+        onrolldown: function(){var val_old = this.rolledup; this.rolledup = 0; if (val_old>1) this.show_catalog(0);},
         onrollup: function(){this.rolledup++;},
         Clgs: [],
         AllThreads: null, // contains tgt_th(s) which have the most numbers of posts to show.
@@ -26546,9 +26557,9 @@ var Clg = function(embed_embed, embed_mode, watcher){
           clg.footer = null; // cut reference loop.
           clg.liveTag = null; // cut reference loop.
           clg.auto_update = null; // cut reference loop.
-          clg.pppn_window.removeEventListener('scroll', clg.show_catalog_cont, false);
-          clg.pppn_window.removeEventListener('resize', clg.show_catalog_cont, false);
-          if (clg.mode==='float') clg.ppn.removeEventListener('scroll', clg.show_catalog_cont, false);
+          clg.pppn_window.removeEventListener('scroll', clg.show_catalog_scroll, false);
+          clg.pppn_window.removeEventListener('resize', clg.show_catalog_resize, false);
+          if (clg.mode==='float') clg.ppn.removeEventListener('scroll', clg.show_catalog_scroll, false);
           clg.GEH.destroy();
           if (Clg.prototype.Clgs.length==1) Clg.prototype.hook_set(Clg.prototype.Clgs[0]);
         },
@@ -27030,13 +27041,22 @@ if (force_clear || site.nickname==='meguca') this.kwd_clear(); // just NOT teste
           return (this.innerHeight===null)? NaN : this.scrollTop + this.innerHeight * threshold;
         },
         show_catalog_delayed: function(){
-          this.innerHeight = null;
           if (this.drawn_idx!==true) this.show_catalog();
           else if (this.func_lazy_draw) this.func_lazy_draw();
           if (this===pClg) { // patch
             cataLog.DIH.expand_thumbnail_on_demand_kick();
           }
-        }
+        },
+        show_catalog_scroll: function(e){
+          var y_new = e.currentTarget.scrollTop || window.scrollY;
+          var y_old = this.scrollTop;
+          this.scrollTop = y_new;
+          if (y_old<y_new) this.show_catalog_cont();
+        },
+        show_catalog_resize: function(e){
+          this.innerHeight = null;
+          this.show_catalog_cont();
+        },
       };
       pClg = new Clg(embed_embed, embed_mode); // primary catalog
       var pn12 = pClg.pn12;
@@ -27645,6 +27665,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             }
             var sb_merge = sb.key==='mergeUI' || sb.key==='mergeAuto';
             var pf_notify_new_thread = sb.from_auto && (pref.notify.desktop.notify && pref.notify.desktop.new_thread || pref.notify.sound.notify && pref.notify.sound.new_thread);
+            var has_page = sb_source!=='thread';
             var clgs_args = [];
             for (var j=0;j<gClg.Clgs.length;j++) {
               var clg = gClg.Clgs[j];
@@ -27655,7 +27676,8 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
                          clg.pref[clg.mode].promiscuous,
                 ALL_agg: pref[embed_mode].storePosts==='ALL_agg', // CAUTION: embed_mode is used intentionally. // this.pref[this.mode];
                 pf_fKwd: clg.pref.filter.kwd.active && clg.pref.filter.kwd,
-                pf_fTag: clg.pref.filter.tag && clg.liveTag.active.in};
+                pf_fTag: clg.pref.filter.tag && clg.liveTag.active.in,
+                pf_foPg: has_page && clg.pref[clg.footer.mode_fmt].footer.page};
             }
             for (var i=0;i<ths.length;i++) {
               var th = ths[i];
@@ -27913,7 +27935,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //////              if (th.tags.q && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th); // stored AFTER modifying pn. // BUT, posts are deleted sometimes.
 ////}
 //              sb.found_threads++;
-              if (tgt_th && gClg.UnsyncedTriages[th.key]) triage_exe_pipe(gClg.UnsyncedTriages[th.key]); // temporarily patch
+              if (post_updated && gClg.UnsyncedTriages[th.key]) triage_exe_pipe(gClg.UnsyncedTriages[th.key]); // temporarily patch
 ////if (!pref.test_mode['133']) {
 ////  ths_info[ths_info.length] = [th, lth, post_updated, tag_updated, insert_thread_from_native_1];
 ////}
@@ -27952,7 +27974,8 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////  //          if (pref.filter.tag_scan_auto) scan_tags();
 ////} else {
             if (!sb.native_prep) for (var i=0;i<gClg.Clgs.length;i++)
-              if (gClg.Clgs[i].dirty) gClg.Clgs[i].show_catalog(undefined, null, null, gClg.Clgs[i].footer.query_update_without_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html')); // call even if tgts[i] is vacant
+              if (gClg.Clgs[i].dirty) gClg.Clgs[i].show_catalog();
+//              if (gClg.Clgs[i].dirty) gClg.Clgs[i].show_catalog(undefined, null, null, gClg.Clgs[i].footer.query_update_without_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html')); // call even if tgts[i] is vacant
 //              if (gClg.Clgs[i].dirty) if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) gClg.Clgs[i].footer.update_without_updated_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html');
 //              if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) if (refresh===gClg.Clgs[i]) gClg.Clgs[i].footer.update_without_updated_data();
             if (sb.key==='mergeAuto' && gGEH.time_jumped) for (var i=0;i<ths.length;i++) jump_to_time(ths[i], gGEH.time_jumped); // this has racing condition, see receive_message
@@ -28055,6 +28078,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //          var pfcm = this.pref[this.mode];
           var th_key = th.key;
           var tgt_th = this.threads[th_key];
+          var new_th = tgt_th===undefined;
 //          var undo = (th_key in this.ths_undo);
 //          if (undo) delete this.ths_undo[th_key];
           var refresh_or_search = clg_args.refresh || this.refresh_tgts[th.domain+th.board]===null ||
@@ -28082,15 +28106,15 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //              if (post_updated===null && tgt_th) { // && refresh_or_search) {
 //              if (post_updated===null && tgt_th && (refresh || picked_up_by_filter)) {
 ////                if (post_updated===null && tgt_th) {
-              var tgt_th8 = tgt_th[8];
+              var tgt_th8 = tgt_th[8]; // must be sonsolidated to lth
               post_updated = !((((tgt_th8[0]>tgt_th8[4])? tgt_th8[0] : (tgt_th8[4] || tgt_th8[0])) >= ((th.time_bumped > th.time_posted)? th.time_bumped : (th.time_posted || th.time_bumped))) && // vichan has inconsistency in time between catalog.json and thread.json.
                                tgt_th8[2]==th.nof_posts && tgt_th8[3]==th.nof_files); // || th.type_source==='thread'; // pass thread to revise all of tgt_th[8] // <- should use missing_info
             }
             if (!post_updated) {
               var tgt_th16 = tgt_th[16];
-              post_updated |= tgt_th16.expand_posts || tgt_th16.missing_info && tgt_th16.missing_info>(th.missing_info|0) || lth.ed_u<th.replyTime;
+              post_updated |= tgt_th16.expand_posts || tgt_th16.missing_info && tgt_th16.missing_info>(th.missing_info|0) || lth.ed_u<th.replyTime; // ed_u msut be consolidated to missing_info or tgt_th8[4]
             }
-          } else tag_updated = true; // force update tags at initial
+          }
           if (tgt_th && post_updated || !tgt_th && refresh_or_search) {
 //              if (post_updated && (tgt_th || pfcm.promiscuous) || (refresh || picked_up_by_filter) && !tgt_th || force_update) { // stop merging at preparing cross-thread popup
 ////              if (post_updated || (refresh || picked_up_by_filter) && !tgt_th || force_update) {
@@ -28101,8 +28125,9 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////                    if (pf_store_1!==pf_store_th_2) archiver.store_th_to_mem(value, th,lth, pf_store_th_2, null);
 ////                }
                 /*if (pfm.scroll_lock) this.show_catalog_scroll_lock.set();*/
+//            this.idx_reorder(th_key, tgt_th? 0x03 : 0x01); // will be moved to here after removing pref_test.mode['169']
             tgt_th = this.insert_thread(th, value.date, sb_merge, nos); // insert_thread_from_native && ths[i].pn); // '&& ths[i].pn' for reentry.
-                /*var order_new =*/ this.idx_reorder(th_key, true);
+            /*var order_new =*/ this.idx_reorder(th_key, new_th); // true);
                 /*tgts[th.key] = true;*/
 ////                tgt_th = this.threads[th.key];
 //                if (!tgt_th_g && gClg.AllThreads[th_key]===undefined) {
@@ -28121,9 +28146,11 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //              if (tgt_th_status!==undefined && tgt_th[16].expand_posts) insert_thread_format_html(th,th.key,false,false,th.type_data==='json'); // format_html.update_posts_in_page(th, th.key, true);
           if (tgt_th) {
             if (th.page) tgt_th[14] = th.page;
-            this.footer.update(th_key, post_updated && th.country, tag_updated); // , order_new);
+            if (post_updated || new_th || clg_args.pf_foPg) {
+              this.footer.update(th_key, post_updated && th.country, tag_updated || new_th); // , order_new);
 //                this.footer.update(th_key, post_updated && th.country, (tgt_th_status!==undefined)? tag_updated : th.tags); // , order_new);
-            this.dirty |= 0x01;
+              this.dirty |= 0x01;
+            }
           }
           return tgt_th;
 //              if (tgt_th) insert_footer3(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags, th);
@@ -28612,7 +28639,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //      };
       Clg.prototype.triage_exe_broadcast = function(name,cmd,attr,hist,datetime, stop_loop, from_auto, merged_broadcast, pn){
         if (cmd==='NONE_M') {var cmd_org = cmd; cmd = 'NONE';}
-        if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base, name, this); triage.off(); if (attr) cmd='ATTR'; else return;}
+        if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base, name, this, null, true); triage.off(); if (attr) cmd='ATTR'; else return;}
         if (cmd==='UNMERGE') {this.merge_bases.add_to_list_1(null, name, this); triage.off(); return;}
         if (cmd==='MERGEOP') {this.merge_cross_links_in_op_manually(name); triage.off(); return;}
         if (['ARC','ARC1','UNARC'].indexOf(cmd)!=-1) {
@@ -28837,14 +28864,17 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             else site2['DEFAULT'].check_reply.set_unwatch(lth_wt);
             if (i!==0) this.triage_exe_view(name, changed);
             this.idx_reorder(name); // slightly redundant because the first case will be executed in triage_exe_view, while no good way to avoid it because of following splice.
-            this.footer.queue_update_force(name);
-//            this.ths_undo[name] = null; // too heavy, calling redundant idx_reorder is the better.
+//            this.footer.queue_update_force(name);
+//            this.ths_undo[name] = null; // too heavy in insert_thread_1, calling redundant idx_reorder is the better.
           } else names.splice(i,1);
         }
         if (names.length!=0) scan_boards.scan_init('triage_undo', names, {refresh:this, priority:8, callback:this.triage_undo_callback.bind(this,names)});
       };
-      Clg.prototype.triage_undo_callback = function(names){ // Undo can't rewind number of unread posts, so scan is needed. But it doesn't call idx_reorder if there is no updates.(usual case)
-        for (var i=0;i<names.length;i++) this.idx_reorder(names[i]);
+      Clg.prototype.triage_undo_callback = function(names){ // Undo can't rewind number of unread posts, so scan is needed. But it doesn't call idx_reorder and footer.update when there is no updates.(usual case)
+        for (var i=0;i<names.length;i++) {
+          this.idx_reorder(names[i]);
+          this.footer.update_force(names[i]); // rewinds num of unread posts
+        }
         this.show_catalog(0);
       };
       
@@ -29636,7 +29666,7 @@ if (pref.test_mode['19']) { // stability test.
 //////              (t2h_num_of_posts===false)? th.posts.length-1 : t2h_num_of_posts + ((t2h_num_of_posts==='unread' || t2h_num_of_posts==='N_unread')? th.lth.pd.length : 0), true);
 ////        }
         if (!th.page && tgt_th[16].th) th.page = tgt_th[16].th.page;
-        if (!init_new && th.parse_funcs.has_posts) tgt_th[16].th = th;
+        if (!init_new && th.parse_funcs.has_posts && (this.view==='page' || this.view==='thread')) tgt_th[16].th = th;
         if ((!pref.test_mode['49'] && pref[embed_mode].t2h_sel!=='no' || site2[site.nickname].historyAPI) && (!tgt_th[7] || th.parse_funcs.has_posts)) tgt_th[7] = th; // patch for reentry
 ////        if (!pref.test_mode['49'] && pref[embed_mode].t2h_sel!=='no') tgt_th[7] = th;
 //        if (pref.test_mode['135']) if (pref[embed_mode].t2h_sel==='no') th.posts = th.posts.slice(0,1); // don't change th.posts itself, some other catalog may grep that. // moved to 'update_posts_in_page'
@@ -29672,7 +29702,7 @@ if (pref.test_mode['19']) { // stability test.
                 if (nos && link[0]===th.domain && link[1]===th.board && !(link[2] in nos)) continue;
                 var tgt = link.slice(0,3).join('');
                 if (pref.proto.merge_btn_lv_add) this.merge_bases.add_to_lv_list(tgt, pref[this.mode].merge_btn_lv, this); // levelize old one, instead of new one.
-                this.merge_bases.add_to_list_1(tgt, th.key, this, true); // merge new one to old one to cascade.
+                this.merge_bases.add_to_list_1(tgt, th.key, this, true, true); // merge new one to old one to cascade.
 //              this.force_all_named = true;
                 if (pfm.merge_op_attr || pfm.merge_op_list) {
                   var attr = (pfm.merge_op_attr)? this.view_attr_get_str(tgt) : null;
@@ -29984,7 +30014,7 @@ if (pref.test_mode['19']) { // stability test.
         var tgts = quotes && quotes.filter(function(v){return v[0]!==lth.q;}).map(function(v){return v[0].key;}).filter(function(v){return this.threads[v];},this);
         if (tgts && tgts.length!=0) {
           this.merge_tgts(tgts, lth.mh || 0);
-          for (var i=0;i<tgts.length;i++) this.merge_bases.add_to_list_1(name, tgts[i], this);
+          for (var i=0;i<tgts.length;i++) this.merge_bases.add_to_list_1(name, tgts[i], this, null, true);
         }
       };
 //      Clg.prototype.insert_thread_format_html_add_events = function(th, posts_used, insert_thread_from_native){ // removed code for static(test_mode['104']) and simplified, Changed to format_html.prep_blacklist_click_tn
@@ -30918,14 +30948,18 @@ if (pref.test_mode['19']) { // stability test.
             if (this.idxs_req.size===0) return; //  && !this.idxs_rm_queue) return;
             if (pref.test_mode['173']) var idxs_old = this.idxs; // .slice(0, this.drawn_idx===true? undefined : this.drawn_idx); // this.idxs is NOT changed, sort will be executed in a shallow copied array.
             var names_unique = [];
-            var names_dic = {};
+            var created_dic = {};
+            var names_dic = Object.create(created_dic);
             var rm_dic = Object.create(pref.test_mode['173']? null : names_dic);
             var idxs_req = this.idxs_req;
-            for (var i of idxs_req.keys()) // too slow, overspec.
-              if (idxs_req.get(i)===1) {
-                names_dic[i] = null;
+            for (var i of idxs_req.keys()) { // too slow, overspec.
+              var val = idxs_req.get(i);
+              if (val>0) {
                 names_unique[names_unique.length] = i;
+                if (val>1) created_dic[i] = null;
+                else names_dic[i] = null;
               } else rm_dic[i] = null;
+            }
 //            for (var i of this.idxs_req.keys()) names_unique[names_unique.length] = i;
 //            var names_dic = names_unique.reduce(dic_null,{});
 //            var names_unique = (this.dirty&0x08)? Object.keys(names_dic) : reqs; // this.idxs_req;
@@ -30938,11 +30972,11 @@ if (pref.test_mode['19']) { // stability test.
             if (pref.test_mode['169']) this.idxs_bulk = null;
             if (names_unique.length===0) return [idx_top, null];
             if (!pref.test_mode['169']) this.idxs = idxs;
-            if (!pref.test_mode['173']) return [retval_first_idx, names_dic];
+            if (!pref.test_mode['173']) return [retval_first_idx, names_dic, created_dic];
             var old_clean = this.drawn_idx===true? idxs_old.length : this.drawn_idx;
             var has_posts = this.view==='page' || this.view==='thread';
             for (var i=0;i<old_clean;i++) if (idxs_old[i]!==idxs[i] || has_posts && (idxs[i] in rm_dic)) break;
-            return [i, names_dic];
+            return [i, names_dic, created_dic];
 //            if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread')) // this line can't be implemented.
 //              && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
           },
@@ -30958,14 +30992,17 @@ if (pref.test_mode['19']) { // stability test.
 ////            if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread')) // this line can't be implemented.
 ////              && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
 //          },
-          idx_reorder: function(name, bulk){
+          idx_reorder: function(name, new_th, bulk){
             if (this.pref[this.mode].hide_unwatched && !this.threads[name][16].lth.watched_p) return;
             if (pref.test_mode['168']) {
               if (pref.test_mode['169'] && !this.idxs_bulk) this.idxs_bulk = this.idxs.slice();
-              if (this.idxs_req.has(name)) this.idxs_req.delete(name); // keep order
-              this.idxs_req.set(name,1);
+              var val_old = this.idxs_req.get(name);
+              if (val_old!==undefined) this.idxs_req.delete(name); // keep order
+              this.idxs_req.set(name, val_old | (new_th? 3:1));
+//              if (this.idxs_req.has(name)) this.idxs_req.delete(name); // keep order
+//              this.idxs_req.set(name, 1);
 //              this.idxs_req[this.idxs_req.length] = name;
-              this.dirty |= !bulk? 0x0a : 0x02;
+              this.dirty |= 0x02; // !bulk? 0x0a : 0x02;
               if (!pref.test_mode['169'] /*|| this.idxs_rm_queue*/) return this.idxs.length; // dummy
             }
             if (!pref.test_mode['168'] || pref.test_mode['169']) {
@@ -31996,19 +32033,23 @@ var debug_str2;
 //      function show_catalog(tgts_in,sound){
     var catalog_obj2_proto = {
       rolledup: 0,
-      show_catalog: function(tgts_in, force_all_named, may_bump_down, force_all_footer){
+      show_catalog: function(tgts_in, force_all_named, may_bump_down){ // , force_all_footer){
+        var drawn_idx_old = this.drawn_idx;
+var debug_count = 0;
         if (this.dirty) {
           if (this.dirty&0x06) {
             var retvals_idx = this.idx_rm_reorder_exe(); // (this.dirty&0x02)? this.idx_rm_reorder_exe() : this.idx_remove_exe();
             if (retvals_idx[0]<this.drawn_idx) this.func_track_reset();
             var tgts_from_idx = retvals_idx[1];
+            var created_from_idx = this.dirty&0x10? null : Object.keys(retvals_idx[2]);
+//            var created_from_idx = this.dirty&0x10? null : (cr_keys_from_idx = Object.keys(retvals_idx[2])).length==0? true : pref.test_mode['184']? cr_keys_from_idx : retvals_idx[2];
           }
           if (this.dirty&0x01) {
-            var footer_clean_idx = this.footer.seek_clean_idx(this.drawn_idx);
-            this.footer.clean_idx = footer_clean_idx;
-            if (this.drawn_idx<footer_clean_idx) this.func_track_reset();
+            this.footer.clean_idx = 0; // footer.draw checks footer.timestamp, I don't have to check them here.
+//            this.footer.clean_idx = this.footer.seek_clean_idx(this.drawn_idx);
+//            if (this.drawn_idx<this.footer.clean_idx) this.func_track_reset();
           }
-          this.dirty = 0;
+          this.dirty &= ~0x0f; // 0x10 is kept as a flag for a case of being rolled up.
 //          if (this.dirty&0x04) if (this.drawn_idx>this.idx_remove_exe()) this.func_track_reset();
 //          if (this.dirty&0x02) if (this.drawn_idx>this.idx_reorder_exe()) this.func_track_reset();
         }
@@ -32026,7 +32067,8 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
           if (this.drawn_idx!==0 && this.drawn_y>=ref_height)
             if (this.ppn.offsetTop + this.ppn.offsetHeight<this.drawn_y) this.drawn_y = -1; // for expanding posts or images. // (this.ppn.offsetHeight||this.ppn.getBoundingClientRect().height) is required to scale <small> in 2ch.
 //            if (this.ppn.offsetHeight<this.drawn_y) this.drawn_idx = 0; // for expanding posts or images.
-          else if (tgts_in===undefined) return true;
+            else if (tgts_in===undefined && created_from_idx===undefined) return true;
+//            else if (tgts_in===undefined) return true;
 //          if (drawn_idx!==0 && this.drawn_y>=ref_height) return;
         }
         var draw_adaptive = draw_on_demand && pref.network.adaptive;
@@ -32055,9 +32097,13 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
         if (tgts!==undefined) for (var i=0;i<this.drawn_idx;i++) if (this.idxs[i] in tgts) {this.drawn_idx = i; this.drawn_y = -1; break;}
         this.ref_count_init = pref[embed_mode].env.disp_offset;
         if (catalog_expand_with_hr) this.ref_count_init = show_catalog_skip_hs(this.ref_count_init);
-        var try_all = !draw_on_demand || tgts===undefined || !pref.test_mode['132'] && (!pref.test_mode['151'] || tgts_count!==1); // test_mode['132'] causes problem at merge mode, see func_track_shown
-        if (try_all || this.drawn_idx===0 || this.drawn_idx===true) {
+        var mode_merge = this.func_lazy_draw;
+        var mode_merge_tails = (mode_merge && this.pref[this.mode].merge_list && !this.pref[this.mode].merge)? null : false;
+        var merge_tails = mode_merge_tails===null && (!pref.test_mode['183'] || (this.dirty&0x10) /*|| tgts_count>=0*/ || may_bump_down);
+        var try_all = tgts===undefined || !draw_on_demand || !pref.test_mode['132'] && (!pref.test_mode['151'] || tgts_count!==1); // test_mode['132'] causes problem at merge mode, see func_track_shown // test_mode['151'] doesn't work if redraw request comes from 'MERGE' triage.
+        if (tgts!==undefined && try_all || this.drawn_idx===0 || this.drawn_idx===true) {
           this.func_track_reset(); // called with drawn_idx===true from 'release_draw'.
+          if (mode_merge) try_all = true; // tracking info about merge was cleared by func_track_reset
 //          cataLog.Footer.timestamp_trial_prep();
         }
         var shown_count = 0;
@@ -32068,12 +32114,10 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
 //for (var d=0;d<threads_idx.length;d++) if (threads_idx[d]!=='ODL:' && threads[threads_idx[d]][9][0]) debug += threads_idx[d] + ', ';
 //console.log(debug);
         var i_start = this.drawn_idx;
-        var mode_merge = this.func_lazy_draw;
-        var mode_merge_tails = (this.pref[this.mode].merge_list && (pref.proto.merge_first || may_bump_down) && !this.pref[this.mode].merge)? null : false;
         var lazy_step = this.view==='catalog'? pref.proto.lazyDraw.step : pref.proto.lazyDraw.merge_step; // pref[cataLog.embed_mode].lazyDraw.step;
         var lazy_next = Math.floor(ref_height*this.lazy_avgSizeInv) + lazy_step;
 //        var lazy_check = lazy_step <= i_start;
-        if (footer_clean_idx===undefined) footer_clean_idx = this.footer.clean_idx;
+        var footer_clean_idx = this.footer.clean_idx;
 //        var i_start = (draw_on_demand && drawn_idx!==true)? drawn_idx : 0;
 //        var retval = false;
         var i=-1;
@@ -32089,24 +32133,46 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
             }
           } else {
             if (draw_on_demand && this.drawn_y>=ref_height && (!force_all_named || tgts_count<=0)) {
-              if (!mode_merge || mode_merge_tails===false) {
+              if (mode_merge_tails===false || !merge_tails) {
                 if (!hide_tails) break; // {cataLog.Footer.timestamp_inc(); break;}
                 if (tgt_th[1]) if (this.func_hide(name,catalog_expand_with_hr)) tgt_th[1] = false;
                 continue;
               }
               if (mode_merge_tails===null) {
+//                if (pref.test_mode['183'] && created_from_idx===true) break;
+                if (pref.test_mode['183'] && created_from_idx) {
+                  if (created_from_idx.length===0) break;
+                  if (i + created_from_idx.length>=this.idxs.length) created_from_idx = null;
+                  else {
+                    var i_merge_tails = i;
+                    var merge_tails_idx = created_from_idx.length;
+                  }
+                }
                 mode_merge_tails = i + 1; // be true
                 draw_adaptive = false;
               }
+              if (pref.test_mode['183'] && created_from_idx) {
+//                if (pref.test_mode['184']) {
+                if (merge_tails_idx<=0) break;
+                i = i_merge_tails; // keep looping
+                name = created_from_idx[--merge_tails_idx];
+//                } else if (!(name in created_from_idx)) {
+//                  while (++i<this.idxs.length && !(this.idxs[i] in created_from_idx));
+//                  name = this.idxs[i];
+//                }
+                tgt_th = this.threads[name];
+              }
+debug_count++;
               if (!this.merge_bases.isShownForTails(name)) {
                 if (hide_tails && tgt_th[1]) if (this.func_hide(name,catalog_expand_with_hr)) tgt_th[1] = false;
                 continue;
               }
-            } else if (tgts_count===0 && !force_all_footer) break;
+            } // else if (tgts_count===0 && !force_all_footer) break; // can't keep valid area clean if the thread is chenged NOT to be shown using MERGE or KILL.
 //            if (tgts_count===0 && mode_merge_tails===false) {retval = true; break;}
             if (i>=i_start) {
 //              if (i%lazy_step===0) lazy_check = true;
-              if (try_all || tgts_count!==0 && (name in tgts) || mode_merge_tails) {
+              if (try_all || tgts_count===0 || (name in tgts) || mode_merge_tails) {
+//              if (try_all || tgts_count!==0 && (name in tgts) || mode_merge_tails) {
                 var to_show = this.filter_test(name, tgt_th); // use differentAPI===true if wrapped posts are required
                 if (to_show && (this.view==='page' || this.view==='thread') && !pref.test_mode['52']) to_show = format_html.replace_posts_by_search(tgt_th); // may change tgt_th[9][0]
                 if (to_show) {
@@ -32161,7 +32227,9 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
 //                  if (this.lazy_draw) this.lazy_draw(name);
 //                  if (this.lazy_draw) if (this.lazy_draw(name, get_ref_height(4)) this.backup_mb_state(i);
                   if (tgt_th[1]) {
-                    if (this.func_track_shown(name, draw_on_demand && try_all && (this.drawn_y<ref_height) && (shown_count>=lazy_next), i)) { // check for merge // try_all should be removed???
+                    var update_y = draw_on_demand && try_all && (this.drawn_y<ref_height) && (shown_count>=lazy_next); // try_all should be removed???
+                    merge_tails |= this.func_track_shown(name, update_y, i);
+                    if (update_y) { // check for merge
                       lazy_next += lazy_step;
                       if (try_all && pref.test_mode['150']) {
                         this.lazy_avgSizeInv = this.drawn_y>0? shown_count/this.drawn_y : 0;
@@ -32205,11 +32273,13 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
 //          if (triage_thread===name) triage_thread = null;
         }
         if (mode_merge_tails) i = mode_merge_tails -1;
-        if (try_all) this.drawn_idx = (!draw_on_demand || i==this.idxs.length)? true : (i<i_start)? i_start : i;
+        if (try_all || tgts_count==0 && drawn_idx_old<i) this.drawn_idx = (!draw_on_demand || i==this.idxs.length)? true : (i<i_start)? i_start : i;
         this.footer.clean_idx = i;
         if (mode_merge) this.func_lazy_draw();
         if (this.observer_myself) this.observer_myself.observe(); 
         if (common_obj.thread_reader && common_obj.thread_reader.observer_IDinfo) common_obj.thread_reader.observer_IDinfo.observe();
+        this.dirty = 0;
+        if (pref.test_mode['184']) console.log('show_catalog: '+debug_count+'/'+(created_from_idx && created_from_idx.length)+' at '+i_merge_tails+'/'+this.idxs.length)
 //        this.force_all_named = false;
 //        if (this.drawn_idx_mb!=-1) this.restore_mb_state();
 //        if (appeared.length!=0 && sound) notifier.appeared(appeared,threads);
@@ -32307,7 +32377,7 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       func_track_shown: function(name, update_drawn_y){
         if (update_drawn_y) this.drawn_y = this.threads[name][0].offsetTop; // - this.pppn.offsetTop; // for consistency of this.drawn_y, but slow, so this is handled in 'get_ref_height' // for faster execution. DOM function is too heavy.
         this.ref_count += this.ref_step;
-        return update_drawn_y;
+//        return update_drawn_y;
       },
       func_track_reset: function(){
         this.ref_count = this.ref_count_init;
@@ -32330,43 +32400,43 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
       drawn_y: -1, // for floating catalog
       ref_count: 0,
       ref_count_init: 0,
-      dirty: 1, // [0]:updated(footer), [1]:reordered, [2]:removed, [3]:may contain duplicated entries.
+      dirty: 0x11, // [0]:updated(footer), [1]:reordered, [2]:removed, [3]:may contain duplicated entries, [4]: merge_list was changed.
       lazy_avgSizeInv: 0,
 //      drawn_idx_mb: -1,
 //      ref_count_mb: 0,
     };
     common_func.Object_defProps(Clg.prototype, catalog_obj2_proto);
 
-      if (pref.test_mode['96'] && embed_mode==='catalog') { // test for faster execution, removes redundant queries of offsetTop
-        catalog_obj2_proto = {
-          func_track_shown: (function(func_org){
-            return function(name, update_drawn_y){
-              var y_old = this.drawn_y;
-              var check_y = this.od_count%this.od_width==0;
-              var retval = func_org.call(this, name, update_drawn_y && check_y);
-              if (check_y && y_old==this.drawn_y) this.od_width++;
-              this.od_count++;
-              return retval;
-            }
-          })(catalog_obj2_proto.func_track_shown),
-          func_track_reset: (function(func_org){
-            return function(){
-              func_org.call(this);
-              this.od_count = 0;
-            };
-          })(catalog_obj2_proto.func_track_reset),
-          func_od_reset: function(){
-            this.od_width = 1;
-            this.show_catalog_cont();
-          },
-          od_width: 1, // on_demand_mode
-          od_count: 0,
-          __proto__: catalog_obj2_proto
-        };
-      }
-//      scroll_event_src.addEventListener('scroll', show_catalog_cont, false);
-      if (pref.test_mode['96'] && embed_mode==='catalog') window.addEventListener('resize', catalog_obj2_proto.func_od_reset.bind(catalog_obj2_proto), false);
-//      window.addEventListener('resize', (pref.test_mode['96'] && embed_mode==='catalog')? catalog_obj2_proto.func_od_reset.bind(catalog_obj2_proto) : show_catalog_cont, false);
+////      if (pref.test_mode['96'] && embed_mode==='catalog') { // test for faster execution, removes redundant queries of offsetTop // working code
+////        catalog_obj2_proto = {
+////          func_track_shown: (function(func_org){
+////            return function(name, update_drawn_y){
+////              var y_old = this.drawn_y;
+////              var check_y = this.od_count%this.od_width==0;
+////              var retval = func_org.call(this, name, update_drawn_y && check_y);
+////              if (check_y && y_old==this.drawn_y) this.od_width++;
+////              this.od_count++;
+////              return retval;
+////            }
+////          })(catalog_obj2_proto.func_track_shown),
+////          func_track_reset: (function(func_org){
+////            return function(){
+////              func_org.call(this);
+////              this.od_count = 0;
+////            };
+////          })(catalog_obj2_proto.func_track_reset),
+////          func_od_reset: function(){
+////            this.od_width = 1;
+////            this.show_catalog_cont();
+////          },
+////          od_width: 1, // on_demand_mode
+////          od_count: 0,
+////          __proto__: catalog_obj2_proto
+////        };
+////      }
+//////      scroll_event_src.addEventListener('scroll', show_catalog_cont, false);
+////      if (pref.test_mode['96'] && embed_mode==='catalog') window.addEventListener('resize', catalog_obj2_proto.func_od_reset.bind(catalog_obj2_proto), false);
+//////      window.addEventListener('resize', (pref.test_mode['96'] && embed_mode==='catalog')? catalog_obj2_proto.func_od_reset.bind(catalog_obj2_proto) : show_catalog_cont, false);
       var catalog_obj2 = catalog_obj2_proto;
       if (embed_mode==='page' && site2[site.nickname].all_boards && site2[site.nickname].all_boards.indexOf(site.board)!=-1) { // PATCH
         catalog_obj2 = {
@@ -32486,9 +32556,9 @@ if (pref.debug_mode['11'] && embed_mode!=='thread' && !pref[embed_mode].merge) {
             return true;
           },
           func_track_shown: function(name, update_drawn_y){
-            var retval = this.__proto__.func_track_shown.call(this, name, update_drawn_y);
+            this.__proto__.func_track_shown.call(this, name, update_drawn_y);
             this.ref_count = show_catalog_skip_hs(this.ref_count);
-            return retval;
+//            return retval;
           },
           __proto__: catalog_obj2_proto
         }
@@ -33445,7 +33515,8 @@ if (!pref.test_mode['49'] && posts_active && th) {
       Clg.prototype.refresh = function(refresh, embed_init, from_auto, from_switch) {
         pref4.refresh.count++;
         Footer.refresh_start();
-        this.footer.timestamp_set();
+        for (var j=0;j<gClg.Clgs.length;j++) gClg.Clgs[j].footer.timestamp_set();
+//        this.footer.timestamp_set();
         for (var j=0;j<gClg.Clgs.length;j++) gClg.Clgs[j].idx_refresh(this); // update timestamps in footer
 //        this.idx_refresh(this);
 //        gClg.footer.refresh_start();
@@ -34740,12 +34811,6 @@ if (pref.test_mode['0']) {
 //          auto_update.stop_if_running();
           pn12.parentNode.removeChild(pn12);
           window.removeEventListener('storage', site2[site.nickname].prep_own_posts_event, false); // debug
-//          scroll_event_src.removeEventListener('scroll', show_catalog_cont, false);
-//          window.removeEventListener('resize', show_catalog_cont, false);
-//          pn12.removeEventListener('dragstart', auto_hide_catalog, false);
-//          pn12.removeEventListener('dragend'  , auto_hide_catalog, false);
-//          pn12_triage.removeEventListener('mouseover', catalog_triage_out_clear, false);
-//          pn12_triage.removeEventListener('mouseout' , catalog_triage_out_delay, false);
           pn12 = null;
           liveTag.pn = null;
           for (var i in cataLog) cataLog[i] = null;
