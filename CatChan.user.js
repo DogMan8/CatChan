@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2021.03.28.0
+// @version 2021.05.02.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3751,7 +3751,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2021.03.28.0<br>'+
+          'Version 2021.05.02.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5763,7 +5763,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         time_watch:{},
 //        time_track:{},
 //        check: function(th, watch, make_pn){
-        check: function(th, watch, notify, ext_posts, passive){ // watch[0]>0 && watch[3]>0 : usual check,
+        check: function(th, lth, watch, notify, ext_posts, passive){ // watch[0]>0 && watch[3]>0 : usual check,
           // watch[0]>0 && watch[3]<0 : retag, initialize tag but doesn't show new replies. (watch[3] must retain its value), and entry
           // watch[0]<0 && watch[3]>0 : watchtime is updated. rescan new replies and show them. (watch[0] can be destroyed), BUG, can't entry.
           // watch[0]<0 && watch[3]<0 : not used.
@@ -5838,7 +5838,7 @@ if (!passive) {
           if (watching || extracted_tags) prep_check_1(th);
           if (watching) {
             if (remake_own_posts) this.make_own_posts();
-            liveTag.mems[th.domain][th.board].nr = -1; // mark as dirty.
+//            liveTag.mems[th.domain][th.board].nr = -1; // mark as dirty. // moved to out to include case of passive.
             prep_check_1(th);
             this.set_own_posts(th);
             while (i>=0 && th.posts[i].time>time_watch) check_1(th.posts[i--], watch, extracted_tags, ext_posts); // extracting tags in op is redundant, because they are ALWAYS extracted.
@@ -5863,9 +5863,13 @@ if (!passive) {
 //          if (pref3.stats.use && stats) stats.aggregate_passive(th, passive, date); // moved to outside of this function.
 }
           if (extracted_tags && extracted_tags.length!=0) var tags = liveTag.extract_tags(th, extracted_tags, null, !tag_init); // 'check_update_tags_color' is called in this.
-          else if (pref.liveTag.style.use && watching) {
-            var ur = liveTag.generate_ur(watch[1]);
-            if (ur_old!=ur) liveTag.update_ur(th.key,ur,ur_old!=0 && watchtime_changed); // can choose faster function if ur==0.
+//          else if (pref.liveTag.style.use && watching) {
+          if (watching) {
+            liveTag.dirtify_ur(th); // mark as dirty.
+            if (pref.liveTag.style.use) {
+              var ur = liveTag.generate_ur(watch[1]);
+              if (ur_old!=ur) liveTag.update_ur(lth,ur,ur_old!=0 && watchtime_changed); // can choose faster function if ur==0.
+            }
           }
           watch[0] = (watch[0]&0xfff90000) + th.nof_posts;
 //console.log('end:   '+dbt[0]+dbt[1]+dbt[2]);
@@ -5874,11 +5878,11 @@ if (!passive) {
 //////////            if (!cataLog.threads[th.key][9][0]) cataLog.threads[th.key][9] = cataLog.catalog_filter_query(th.key); // doesn't work because threads[name][8] is NOT updated.
 ////////            cataLog.insert_footer3(th.key,null,th.page,tags);
 ////////          }
-          if (notify && (watch[0]&0x000c0000)) {
+          if (notify && (watch[0]&0x040c0000)) {
 //            if (ext_posts.length!=0 && pref.notify.desktop.notify && th.parse_funcs.add_op_img_url) th.parse_funcs.add_op_img_url(ext_posts,th.board,th.domain); // can't get 'com' if 'meguca'
             if (pref.notify.desktop.notify) {
               if (ext_posts.length!=0) site2[th.domain].wrap_to_parse.posts({posts:ext_posts, __proto__:th});
-              else if (passive) ext_posts[ext_posts.length] = {com: passive==1? 'a new reply.' : passive+' of new replies.', time:date};
+              else if (passive) ext_posts[ext_posts.length] = {com: passive==1? 'a new reply.' : passive+' of new replies.', time:watch[2]};
             }
             notifier.changed(th, ext_posts); // time_track? [] : ext_posts);
           }
@@ -21261,7 +21265,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       }
       CountNR.prototype = {
         count: function(th){
-          if (th[0]&0x000c0000) {
+          if (th[0]&0x040c0000) { // includes passive
             var nr = th[1]&0x0000ffff;
             if (nr) {
               this.nrtm += th[1]>>16;
@@ -21286,10 +21290,11 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
       }
       return CountNR;
     })(),
-    update_ur: function(name,ur,all_case){
-      var dbt = common_func.fullname2dbt(name);
-      this.mems[dbt[0]][dbt[1]].nr = -1; // mark as dirty
-      var tags = this.mems[dbt[0]][dbt[1]][dbt[2]].tags;
+    dirtify_ur: function(th){
+      this.mems[th.domain][th.board].nr = -1; // mark as dirty
+    },
+    update_ur: function(lth,ur,all_case){
+      var tags = lth.tags;
       for (var i=0;i<tags.length;i++)
         if (!all_case) {if (this.tags[tags[i]]) this.check_update_tags_color(tags[i],ur);}
         else this.update_ur_1(tags[i]);
@@ -27811,7 +27816,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //                    (th.parse_funcs.has_posts && th.last_replies && th.last_replies.length>=th.nof_posts-lth.nof_posts) ||
                     (th.parse_funcs.has_posts && th.posts.length>th.nof_posts-lth.nof_posts && (lth.ta || pref[embed_mode].deleted_posts.detect.indexOf('full')!==0)) ||
                     (th.nof_posts===1 && th.posts[0].time>=0 && !th.parse_funcs.dont_have_com)) {
-                  updated = site2[th.domain].check_reply.check(th, watch, tgt_th /*|| (refresh && 1)*/ , sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'. // update lth.nof_posts here
+                  updated = site2[th.domain].check_reply.check(th, lth, watch, tgt_th /*|| (refresh && 1)*/ , sb.ext_posts || []); // dive in at the first time if page_html contains all posts. sb.ext_posts for embed_mode==='thread'. // update lth.nof_posts here
                   lth.lastNo = lastNo; // for deletion
                   if (updated.posts.length!==0) post_updated = true;
 //                  if (gClg.UnsyncedTriages[lth.key]) triage_exe_pipe(gClg.UnsyncedTriages[lth.key]); // should be here, but tgt_th[8] is not updated here.
@@ -27849,7 +27854,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////                  if(!th.parse_funcs.has_editing || th.parse_funcs.has_posts || embed_mode==='catalog') lth.nof_posts = th.nof_posts; // to get updated in next loop. // BUG, REDUNDANT.
                 var nof_new_posts = th.nof_posts - lth.nof_posts;
                 if (nof_new_posts) {
-                  site2[th.domain].check_reply.check(th, watch, tgt_th, sb.ext_posts || [], nof_new_posts);
+                  site2[th.domain].check_reply.check(th, lth, watch, tgt_th, sb.ext_posts || [], nof_new_posts);
                   if (pref3.stats.use && stats) stats.aggregate_passive(th, nof_new_posts, value.date);
 //                  if (lth.watched_p) lth.nr += nof_new_posts - (lth.nof_posts===0? watch[2] : 0);
                   post_updated = true;
@@ -28937,9 +28942,10 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           var name = names[i];
           if (this.threads[name]) {
             var watch_time = this.get_watch_time_of_a_thread(name,this.threads[name][8][1], null, true);
-            var lth_wt = liveTag.mems.getFromName(name).wt;
-            if (watch_time) site2['DEFAULT'].check_reply.set_watch_time(lth_wt, watch_time, name);
-            else site2['DEFAULT'].check_reply.set_unwatch(lth_wt);
+            var lth = liveTag.mems.getFromName(name);
+            if (watch_time) site2['DEFAULT'].check_reply.set_watch_time(lth.wt, watch_time, name);
+            else site2['DEFAULT'].check_reply.set_unwatch(lth.wt);
+            liveTag.dirtify_ur(lth);
             if (i!==0) this.triage_exe_view(name, changed);
             this.idx_reorder(name); // slightly redundant because the first case will be executed in triage_exe_view, while no good way to avoid it because of following splice.
 //            this.footer.queue_update_force(name);
@@ -29823,19 +29829,19 @@ if (pref.test_mode['19']) { // stability test.
           }
         }
       };
-      function set_watch_time_thread(name, embed_mode, time_created, time_posted, th, watch){
+      cataLog.set_watch_time_thread = function(name, embed_mode, time_created, time_posted, th, watch){
         var time_watch = pClg.get_watch_time_of_a_thread(name,time_created,time_posted, true);
         if (time_watch===0 && embed_mode==='thread' && pref.catalog.auto_watch && name===site.key) time_watch = time_posted || time_created;; // name===site.key for archive, which has a mode of store_watched
         if (time_watch>0) site2['DEFAULT'].check_reply.set_watch_time(watch, time_watch, name);
 //        else if (time_watch===0 && embed_mode==='thread' && pref.catalog.auto_watch && name===site.key) site2['DEFAULT'].check_reply.set_watched_to_last(watch, time_posted || time_created, name); // name===site.key for archive, which has a mode of store_watched
         else site2['DEFAULT'].check_reply.set_unwatch(watch);
+        // dirtify_ur() is not required here because this function is called only in initialization.
       }
 //      function set_watch_time_thread(name, embed_mode, time_created, time_posted, th, tgt_th19){
 //        var time_watch = get_watch_time_of_a_thread(name,time_created,time_posted, true);
 //        if (time_watch===0 && embed_mode==='thread' && pref.catalog.auto_watch) time_watch = (th.posts[th.posts.length-1].time || th.time);
 //        site2[th.domain].check_reply.set_watch_time(tgt_th19, time_watch);
 //      }
-      cataLog.set_watch_time_thread = set_watch_time_thread;
 
       Clg.prototype.insert_thread_prepare_html_lazy = function(tgt_th, init_new, insert_thread_from_native, from_lazy, th){
 //        var embed_mode_old = embed_mode;
@@ -32004,9 +32010,11 @@ if (pref.test_mode['163'] && pref[embed_mode].thumbnail.inline.stopHover && site
         }
       }
       Clg.prototype.mark_read_thread = function(name,time, track){
-        if (time!==null) site2['DEFAULT'].check_reply.set_watched_to_last(this.threads[name][19], time, name, track);
-        else site2['DEFAULT'].check_reply.set_unwatch(this.threads[name][19]);
-        if (pref.liveTag.style.use) liveTag.update_ur(name,0,true);
+        var lth = liveTag.mems.getFromName(name);
+        if (time!==null) site2['DEFAULT'].check_reply.set_watched_to_last(lth.wt, time, name, track);
+        else site2['DEFAULT'].check_reply.set_unwatch(lth.wt);
+        liveTag.dirtify_ur(lth);
+        if (pref.liveTag.style.use) liveTag.update_ur(lth,0,true);
 //        site2[cnst.name2domainboardthread(name,true)[0]].insert_footer2(threads[name][0],threads[name][18],threads[name][19],threads[name][8]);
         this.footer.update_force(name, this.pref[this.mode].footer.flag);
 //        gClg.footer.update_force(name, gClg.Clgs.length==1? pref.catalog.footer.flag : true);
