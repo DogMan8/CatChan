@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2021.05.02.0
+// @version 2021.06.06.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3751,7 +3751,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2021.05.02.0<br>'+
+          'Version 2021.06.06.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -8635,12 +8635,12 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 //        }
 //        pref.proto.merge_list_str = str.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,'');
 //      },
-      hide_merge_tgts: function(clg, check_func, srcs){
+      hide_merge_tgts: function(clg, check_func, srcs, merge){
         if (!srcs) srcs = clg.threads;
         var tgts = {};
         for (var name in srcs) {
           var tgt_th = clg.threads[name];
-          if (tgt_th && tgt_th[1] && check_func.call(this,name)) tgts[name] = tgt_th;
+          if (tgt_th && (tgt_th[1]||merge) && check_func.call(this,name)) tgts[name] = tgt_th; // '||merge" for merging with not shown threads by MERGEN/MERGEC triage
 //            if (clg.func_hide(name)) tgt_th[1] = false; // BUG. can't give catalog_expand_with_hr, see show_catalog
         }
         clg.func_hide_all(tgts);
@@ -8662,7 +8662,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           var tgts_draw = clg.merge_bases.hide_merge_tgts(clg, function(name){
             var now = this.base_arr(name);
             var old = this.base_arr_old(name);
-            return (now)? (!old || now.join()!==old.join() && (!merge || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged.
+            return (now)? (!old || now.join()!==old.join() && (!merge || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts, merge); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged.
 //            return (now)? (!old || now.join()!==old.join()) : old;});
           if (!no_dirtify) clg.dirty |= 0x10;
           if (!prep_only && Object.keys(tgts_draw).length) clg.show_catalog(tgts_draw);
@@ -13726,6 +13726,9 @@ if (pref.features.domains['4chan'] || pref.features.domains['meguca']) {
 //        get pn_name(){return this.exe_sub('pn_name');},
         get tFlag(){return this.exe_sub('tFlag');},
       },
+      'json_template': { // for test_mode['121']
+        get country(){return this.board_flag || this.exe_sub('country');},
+      },
     },
     popups_posts_class_hlt: 'highlight',
     popups_href2dbtp: function(href){ //, src, th){
@@ -14018,7 +14021,8 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       ((desktop)? '</span> ' : '<br></span>');
     },
     post_flag2html: function(post){
-      return post.troll_country? '<img src="//s.4cdn.org/image/country/troll/'+post.troll_country.toLowerCase()+'.gif" alt="'+post.troll_country+'" title="'+post.country_name+'" class="countryFlag">'
+      return post.board_flag? '<span title="'+post.flag_name+'" class="bfl bfl-'+post.board_flag.toLowerCase()+'"></span>'
+//      return post.troll_country? '<img src="//s.4cdn.org/image/country/troll/'+post.troll_country.toLowerCase()+'.gif" alt="'+post.troll_country+'" title="'+post.country_name+'" class="countryFlag">'
         : post.country? '<span '+(post.country_name? 'title="'+post.country_name+'" ':'')+'class="flag flag-'+post.country.toLowerCase()+'"></span>' : ''; // post.flag? post.flag.outerHTML : '';
 
     },
@@ -19473,6 +19477,8 @@ if (site.nickname==='4chan') {
         MERGEB: 'Mark as marge base',
         MERGE: 'Merge this thread with merge base',
         MERGEOP: 'Merge all threads in OP',
+//        MERGEN: 'Merge with near thread',
+//        MERGEC: 'Issue merge command',
         UNMERGE: 'Unmerge this thread',
         UNDOMERGE: 'UNDO last merge operation',
         SPC: 'Spacer for caption. Nothing happen',
@@ -19513,7 +19519,7 @@ if (site.nickname==='4chan') {
             if (str[j]==='EXPAND') {pn = cnst.doms_insertBefore(pn,'<a class="CatChan_button" name="SHOW" data-str="'+str[j+2]+'">'+str[j+1]+'</a><span style="display:none"></span>',null); continue;}
             var btn = args.embed? document.createElement('a') : cnst.dom('<button name="triage" type="button"></button>');
             btn.textContent = str[j+1];
-            if (!args.embed) btn.setAttribute('style','pointer-events:auto;'+(args.child_style || '')+str[j+2]);
+            if (!args.embed && str[j]!=='MERGEC') btn.setAttribute('style','pointer-events:auto;'+(args.child_style || '')+str[j+2]);
             if (args.child_class) btn.setAttribute('class',pref.script_prefix+'_'+args.child_class);
             btn.setAttribute('data-cmd',str[j]);
             if (str[j+2]) btn.setAttribute('data-attr',str[j+2]);
@@ -19557,8 +19563,9 @@ if (site.nickname==='4chan') {
       };
       Triage.prototype.prep_func_onclick = function(func){
         return function(e){
+          e.stopPropagation();
           var tr = Triage.prototype.et2tr(e.target);
-          if (tr.cmd && tr.cmd!=='SPC') func(tr.cmd, tr.attr);
+          if (tr.cmd && tr.cmd!=='SPC') func(tr.cmd, tr.attr, e.target);
         };
       };
       Triage.prototype.howto = 'How to describe triage:\n\n'+
@@ -28633,6 +28640,15 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           } else if (cmd==='REMOVET') {this.remove_thread(tgt); return;}
           else cmd = cmd.slice(0,-1);
         }
+        if (cmd==='MERGEN') {
+          var th = liveTag.mems.getFromName(name).th;
+          if (th.parse_funcs.near_threads) {
+            var args = th.parse_funcs.near_threads(th, this.idxs).map(function(v){return 'MERGEC,'+v.sub.replace(/,/g,'')+','+v.tgt+'+'+name+',MERGEC,\u25c0,'+name+'+'+v.tgt;}).join('\n') || 'SPC,NONE,';
+//            var args = th.parse_funcs.near_threads(th, this.idxs).join('\nMERGEC,') || 'NONE';
+            triage.add_submenu(et.parentNode, args); // 'MERGEC,'+args+',');
+          }
+          return;
+        }
         if (cmd==='MERGEB') {
           this.set_merge_base(name, attr, pn);
 //          var pn_old = triage_merge_base && this.threads[triage_merge_base] && this.threads[triage_merge_base][0]; // pn of previous trial refers mergee itself at new merge of two.
@@ -28720,6 +28736,12 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
       }
       Clg.prototype.triage_exe_broadcast = function(name,cmd,attr,hist,datetime, stop_loop, from_auto, merged_broadcast, pn){
         if (cmd==='NONE_M') {var cmd_org = cmd; cmd = 'NONE';}
+        if (cmd==='MERGEC') {
+          var tgts = attr.split('+');
+          if (tgts.length>1) this.merge_bases.add_to_list_1(tgts[0], tgts[1], this, null, true);
+          triage.off();
+          return;
+        }
         if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base.name, name, this, null, true); triage.off(); if (attr) cmd='ATTR'; else return;}
         if (cmd==='UNMERGE') {this.merge_bases.add_to_list_1(null, name, this); triage.off(); return;}
         if (cmd==='MERGEOP') {this.merge_cross_links_in_op_manually(name); triage.off(); return;}
@@ -28967,6 +28989,8 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         var trg_menu = null;
         var trg_pMenu = null;
         var trg_now = null;
+        var trg_submenu_root = null;
+        var trg_submenu_leaf = null;
         function format_buttons(name, trg, clg){ // , expanded){
           var tgt = trg.format_tgt;
 //          var tgt_th = clg.threads[name]; // get_clg().threads[name];
@@ -29127,6 +29151,10 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           function triage_off(){
             Tooltips.hide_if(trg_now);
             if (triaged_name) {
+              if (trg_submenu_root) {
+                trg_submenu_root.remove();
+                trg_submenu_root = null;
+              }
               if (mode) trg_now.pn.parentNode.removeChild(trg_now.pn); // for reentry, triage_parent wasn't updated when !pref[embed_mode].embed, for example, catalog -> thread -> catalog wiil cause an error.
 //              if (mode) trg_now = triage_parent.removeChild(trg_now);
               else trg_now.pn.style.display = 'none';
@@ -29214,9 +29242,9 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
                      e.button, e.relatedTarget);
           triaged_catalog.ppn.dispatchEvent(evt);
         };
-        function triage_onclick(cmd,attr){
-          triage_event(triaged_catalog, triaged_name, cmd, attr);
-          on_off.off();
+        function triage_onclick(cmd,attr, et){
+          triage_event(triaged_catalog, triaged_name, cmd, attr, et);
+          if (cmd!=='MERGEN') on_off.off();
         }
         function triage_event(clg, key, cmd, attr, et, pn_th){
           if (cmd==='MENU' || cmd==='PMENU') {
@@ -29294,6 +29322,12 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             while (!(et.getAttribute && (href = et.getAttribute('href')))) et = et.previousSibling;
             var domain = site2['DEFAULT'].popups_posts.href2domain(href);
             return site2[domain].popups_href2dbtp(href).slice(0,3).join('');
+          },
+          add_submenu(ppn, args){
+            var pn = make_1(args, {onclick:triage_onclick, onmousewheel:triage_wheel, style:'pointer-events:auto;position:absolute;top:0px;left:'+(ppn.offsetWidth-5)+'px;width:500px'}).pn; // width is temporarily
+            ppn.appendChild(pn);
+            trg_submenu_leaf = pn;
+            if (!trg_submenu_root) trg_submenu_root = pn;
           },
         };
       })();
@@ -32238,8 +32272,9 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
               }
               if (mode_merge_tails===null) {
 //                if (pref.test_mode['183'] && created_from_idx===true) break;
-                if (pref.test_mode['183'] && created_from_idx) {
-                  if (created_from_idx.length===0) break;
+                if (pref.test_mode['183'] && created_from_idx && created_from_idx.length>=0) {
+//                if (pref.test_mode['183'] && created_from_idx) {
+//                  if (created_from_idx.length===0) break; // can't merge with threads in other boards
                   if (i + created_from_idx.length>=this.idxs.length) created_from_idx = null;
                   else {
                     var i_merge_tails = i;
@@ -32249,11 +32284,12 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
                 mode_merge_tails = i + 1; // be true
                 draw_adaptive = false;
               }
-              if (pref.test_mode['183'] && created_from_idx) {
-//                if (pref.test_mode['184']) {
-                if (merge_tails_idx<=0) break;
+              if (pref.test_mode['183'] && merge_tails_idx>=0) {
+//              if (pref.test_mode['183'] && created_from_idx) {
+////                if (pref.test_mode['184']) {
+//                if (merge_tails_idx<=0) break; // can't merge with threads in other boards
                 i = i_merge_tails; // keep looping
-                name = created_from_idx[--merge_tails_idx];
+                name = --merge_tails_idx>=0? created_from_idx[merge_tails_idx] : this.idxs[i];
 //                } else if (!(name in created_from_idx)) {
 //                  while (++i<this.idxs.length && !(this.idxs[i] in created_from_idx));
 //                  name = this.idxs[i];
