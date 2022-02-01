@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2021.07.18.0
+// @version 2021.07.18.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3894,7 +3894,7 @@ if (!pref.test_mode['192']) {
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2021.07.18.0<br>'+
+          'Version 2021.07.18.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -32392,11 +32392,11 @@ if (pref.test_mode['163'] && pref[embed_mode].thumbnail.inline.stopHover && site
           send_message_emu.push(message);
         }
         if (pref.catalog.auto_watch) {
-          if (!pref.catalog.auto_watch_override) clg.triage_event(name,'WATCH','',true);
+          if (!pref.catalog.auto_watch_override) clg.triage_event(name,'WATCH',''); // ,true);
           else {
             var triages = pref.catalog.auto_watch_override_str.split(',');
             while (triages.length>0) {
-              if (triages[0]) clg.triage_event(name,triages[0], triages[2]||'', triages.length<4);
+              if (triages[0]) clg.triage_event(name,triages[0], triages[2]||''); // , triages.length<4);
               triages.splice(0,3);
             }
           }
