@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2021.07.18.1
+// @version 2021.07.18.3
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3693,7 +3693,7 @@ if (!pref.test_mode['192']) {
               '4,num of transactions: <ITB3"archive.IDB.nof_tr"><br>'+
               '4,num of requests in a cluster: <ITB3"archive.IDB.nof_cl"> - <ITB3"archive.IDB.nof_cl_max"><br>'+
               '4,watchdog timer: <ITB3"archive.IDB.watchdog">s')+'<br>'+
-            '4,used / limit: <span name="SHOW_QUOTA"></span><button name="archive.queryQuota"><img src="' + cnst.icons.refresh + '" style="width:1em;height:1em"></button><br>'+
+            '4,used / limit: <span name="SHOW_QUOTA"></span><button type="button" name="archive.queryQuota"><img src="' + cnst.icons.refresh + '" style="width:1em;height:1em"></button><br>'+
             '3,Manual/Auto<br>'+
             '3,<IC"archive.oneshot.post_idb"><IC"archive.live.post_idb">Posts<br>'+
             '3,<IC"archive.oneshot.tn_idb"><IC"archive.live.tn_idb">Thumbnails<br>'+
@@ -3894,7 +3894,7 @@ if (!pref.test_mode['192']) {
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2021.07.18.1<br>'+
+          'Version 2021.07.18.3<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -17790,7 +17790,10 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
         } else if (pref.test_mode['154'] && req.data_type==='xml' && site2[req.domain].XMLParser) {
           value.response = site2[req.domain].XMLParser(value.responseText);
         } else if (req.data_type==='html' || req.data_type==='xml') value.response = new DOMParser().parseFromString(value.responseText, 'text/'+req.data_type); // causes massive leak on chrome50
-        else if (req.data_type==='json') value.response = JSON.parse(value.responseText);
+        else if (req.data_type==='json') {
+          if (brwsr.ff) value = Object.create(value); // avoid error in FF, Error: Not allowed to define cross-origin object as property on [Object] or [Array] XrayWrapper
+          value.response = JSON.parse(value.responseText);
+        }
       }
       req.REQ.callback_1(req, value, req.REQ);
 //        req.REQ.callback(req.key, value, req.callback_arg);
