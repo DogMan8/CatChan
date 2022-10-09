@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2021.07.18.3
+// @version 2021.07.18.4
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -3894,7 +3894,7 @@ if (!pref.test_mode['192']) {
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2021.07.18.3<br>'+
+          'Version 2021.07.18.4<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -5947,6 +5947,7 @@ if (!pref.test_mode['192']) {
 //            watchtime_changed = true;
 //          }
           var time_watch = watch[2];
+          var ur_old = liveTag.generate_ur(watch[1]);
           if (watch[0]&0x00040000) { // initial
 //            time_watch = cataLog.get_watch_time_of_a_thread(th.key,th.time_created,null, true); // BUG, can't handle if time_watch===0(not watched).
             if (watch[0]&0x00800000) {
@@ -5968,7 +5969,6 @@ if (!pref.test_mode['192']) {
           }
           var time_check_old = time_check;
 //console.log('start: '+dbt[0]+dbt[1]+dbt[2],watch[5]);
-          var ur_old = liveTag.generate_ur(watch[1]);
           var watching = watch[0]&0x040c0000; // includes passive
 if (!passive) {
           var i = th.posts.length-1;
@@ -21947,9 +21947,9 @@ if (!pref.test_mode['24']) {
                         this.pn.insertBefore(pn, ref);
                         ref = pn.nextSibling;
                       }
-                      if (--limit==0) this.update_pn_pos = [ref,i+1, pn_count];
+                      if (--limit==0) this.update_pn_pos = [ref,i+1, pn_count+1];
                     }
-                  } else ref = pn.nextSibling;
+                  } else if (pn) ref = pn.nextSibling;
                   pn_count++; // pos_insert++;
                 }
               } else if (pn) {
@@ -27668,7 +27668,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
               }
             }
             if (sb.obj.length===0) {
-              if (sb.indicator) sb.indicator.remove();
+//              if (sb.indicator) sb.indicator.remove();
               if (sb.callback) {
                 var func = sb.callback
                 var args = sb.callback_args;
@@ -27938,9 +27938,9 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////////  if (pref.scan.crawler_adaptive) scan_boards_crawler_timer_clear();
           var sb = args[1];
           var dbt = key.split(',');
-          var sb_source = dbt[3].slice(0,dbt[3].indexOf('_'));
 ////          if (pref.scan.crawler_adaptive) crawler.clear_req(sb);
           if ((value.status==200 || value.status==304) && value.response && sb.found_threads<sb.max_threads) { // Checking 'value.response' is a patch for 8chan's inconsistency, 8chan sometimes return 200 with null. // checking 304 is a patch.
+            var sb_source = dbt[3].slice(0,dbt[3].indexOf('_'));
 if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             for (var i=0;i<value.response.length;i++) {
 //              threads_meguca[dbt[1]+value.response[i]] = {page:parseInt(i/10) +'.'+ i%10, refresh:sb.refresh};
