@@ -46,18 +46,19 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2023.01.15.0: Fixed bugs.(degrade)<br>
 v2022.11.06.0: Added RSS support and now collaborate with <a href="http://rssnews.sakura.tv/news/">http://rssnews.sakura.tv/news/</a><br>
 v2021.07.18.1-4: Fixed a Bug.(degrade)<br>
-v2021.07.18.0: Fixed Bugs.<br>
-v2021.06.20.0: Fixed Bugs.<br>
-v2021.06.06.0: Fixed Bugs.<br>
+v2021.07.18.0: Fixed bugs.<br>
+v2021.06.20.0: Fixed bugs.<br>
+v2021.06.06.0: Fixed bugs.<br>
 v2021.05.02.0: Cleaned up.<br>
-v2021.03.28.0: Fixed Bugs.<br>
+v2021.03.28.0: Fixed bugs.<br>
 v2021.01.24.0: Tuned up.<br>
 v2020.12.27.0: Tuned up.<br>
 v2020.12.06.0: Cleaned up.<br>
 v2020.11.22.0: Cleaned up.<br>
-v2020.10.11.0: Fixed Bugs.<br>
+v2020.10.11.0: Fixed bugs.<br>
 v2020.09.27.0: Cleaned up.<br>
 v2020.09.13.0: Cleaned up.<br>
 v2020.08.16.0: Cleaned up.<br>
