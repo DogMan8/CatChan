@@ -9,7 +9,8 @@ Functions:<br>
 4. [Archiver](https://github.com/DogMan8/CatChan/wiki/Archiver)<br>
 5. Other functions<br>
 &emsp;&emsp;[Incremental search from posts in entire sites](https://github.com/DogMan8/CatChan/wiki/Search)<br>
-6. Misc.<br>
+6. RSS Reader<br>
+7. Misc.<br>
 <br>
 This is a userscript. You need [Greasemonkey](https://addons.mozilla.org/ja/firefox/addon/greasemonkey/) (for Firefox) or [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) (for Chrome) beforehand. Then click following link to install.<br>
 <h1><a href="https://raw.github.com/Dogman8/CatChan/master/CatChan.user.js">[GET USERSCRIPT STABLE]</a></h1><br>
@@ -46,6 +47,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2023.01.22.0: Fixed bugs.(degrade)<br>
 v2023.01.15.0: Fixed bugs.(degrade)<br>
 v2022.11.06.0: Added RSS support and now collaborate with <a href="http://rssnews.sakura.tv/news/">http://rssnews.sakura.tv/news/</a><br>
 v2021.07.18.1-4: Fixed a Bug.(degrade)<br>
