@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2023.01.15.0
+// @version 2023.01.22.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -426,9 +426,9 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       open_spoiler_image: false,
       merge: false, merge_list: false, merge_list_str: '', merge_list_obj6: null, merge_truncated: false,
       merge_lv:true, merge_lv_str:'', merge_lv_obj6:null,
-      merge_auto_list:false, merge_auto_list_lv:2, merge_auto_list_lv_add:true,
-      merge_op_auto:false, merge_op_lv:0, merge_op_lv_add:true, merge_op_auto_hop:0, merge_op_lv_inc:true, merge_op_attr:false, merge_op_list:false,
-      merge_btn:true, merge_btn_mode:'list', merge_btn_lv:2, merge_btn_lv_add:true,
+      merge_auto:false, // merge_auto_lv:2, merge_auto_lv_add:true,
+      merge_op:{auto:false, fetch:false, hop:1, lv_add:true, lv_def:2, lv_inc:true, attr:true,  list:true},
+      merge_mode:'list',   merge_btn:{add:true, lv_add:true, lv_def:1, lv_inc:true, attr:false, list:false},
       lazyDraw: {merge: true, merge_step: 16, step: 16},
       scroll_lock: false,
       use_expander_always: false,
@@ -666,6 +666,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         infoPv: {use: false, __proto__:proto.infoPv},
         safety: {__proto__:proto.safety},
         searchAs:true, accept_others_refresh:true,
+        merge_op:{__proto__:proto.merge_op},
+        merge_btn:{__proto__:proto.merge_btn},
         __proto__: proto},
       page: {
         get embed(){return pref.catalog.embed_page;},
@@ -683,6 +685,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         appearance: {titleBar:{__proto__:proto.appearance.titleBar}, expand:{__proto__:proto.appearance.expand}, __proto__:proto.appearance},
         safety: {__proto__:proto.safety},
         footer: {__proto__:proto.footer},
+        merge_op:{__proto__:proto.merge_op},
+        merge_btn:{__proto__:proto.merge_btn},
         __proto__: proto},
       thread: {
         embed: false,
@@ -697,11 +701,13 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         auto_update: false,
 //        use_expander_always: true, // for merge
 //        view: 'thread',
-        merge_btn_mode:'all',
+        merge_mode:'all',
         triage_hover:false,
         appearance: {titleBar:{__proto__:proto.appearance.titleBar}, expand:{time:false, __proto__:proto.appearance.expand}, __proto__:proto.appearance},
         safety: {__proto__:proto.safety},
         footer: {__proto__:proto.footer}, // for safe
+        merge_op:{__proto__:proto.merge_op},
+        merge_btn:{__proto__:proto.merge_btn},
         __proto__: proto},
       float: {
         click: 'open',
@@ -723,6 +729,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         auto_launch: false, clone:true,
         appearance: {titleBar:{__proto__:proto.appearance.titleBar}, expand:{__proto__:proto.appearance.expand}, __proto__:proto.appearance},
         safety: {__proto__:proto.safety},
+        merge_op:{__proto__:proto.merge_op},
+        merge_btn:{__proto__:proto.merge_btn},
         __proto__: proto},
       headline:{
         triage_hover:false,
@@ -741,6 +749,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
         sync_watch_list: true,
         sync_watch_list_delay: 100,
         watch_list_rm404: 'no',
+        merge_list_rm404: 'dead',
         blur_404: true,
 //        watch_list_fromAutoKwd: true,
 //        watch_list_fromTimeFilter: false,
@@ -815,7 +824,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //        post_new: 'border:2px solid red',
         userCSS: {use:false, str:''},
         tips:{
-          merged:true,
+          merged:true, merged_cnt:'>>',
 //          merged1:true, merged1_str:'merged1::before{float:left;content:">";}',
 //          merged2:true, merged2_str:'merged2::before{float:left;content:">>";}',
 //          merged3:true, merged3_str:'merged3::before{float:left;content:">>>";}',
@@ -895,8 +904,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       colorPicker: { bgbd:'bg', bds:'2px solid', txt:'', picker:'#ff0000', col:'#ff0000'},
       proto: proto, // for overwrite from pref_default.
     };
-    for (var i=0;i<40;i++) pref_new.debug_mode[i] = false;
-    for (var i=0;i<210;i++) pref_new.test_mode[i] = false;
+    for (var i=0;i<50;i++) pref_new.debug_mode[i] = false;
+    for (var i=0;i<220;i++) pref_new.test_mode[i] = false;
     if (site0.pref_default2) pref_func.pref_overwrite(pref_new,site0.pref_default2);
     if (site0.pref_default ) pref_func.pref_overwrite(pref_new,site0.pref_default);
     if (site0.pref_default3) comf.overwrite_prop(pref_new,site0.pref_default3);
@@ -1226,6 +1235,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       var pn = this.settings && this.settings.pn13 && this.settings.pn13.getElementsByClassName(pref.cpfx+'errors')[0];
       if (pn) pn.appendChild(cnst.dom('<div>'+str+'</div>'));
     },
+    add_to_list_2: null, // inserted later
+    fmt4str2_2: null, // inserted later
   };
 
   var pref = pref_default(); // pref_default is loaded.
@@ -1358,7 +1369,6 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
   var debugWindow;
   var cataLog = {
     threads: null,
-//    insert_footer3: null,
     scan_boards: null,
     scan_init: null,
 //    catalog_filter_query: null,
@@ -1841,11 +1851,15 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
       str2obj2: (function(){
         function func_org(str, tgt){
           var name = str.replace(/[@;].*/,'').replace(/^\s*/,'');
-          var fields = str.slice(name.length).replace(/@/g,';@').split(';'); // better than match(/(^.|[@;])[^@;]*)/g);
-//          var idx = str.search(/@;/);
-//          var name = idx>0? str.slice(0,idx) : 'DEFAULT';
-//          var fields = str.substring(idx).replace(/@/g,';@').replace(/!/g,';').split(';').filter(function(v){return v;}); // better than match(/(^.|[@;])[^@;]*)/g);
-          if (!name) name = 'DEFAULT';
+          func_org_1(name||'DEFAULT', str.slice(name.length), tgt);
+//          var fields = str.slice(name.length).replace(/@/g,';@').split(';'); // better than match(/(^.|[@;])[^@;]*)/g);
+////          var idx = str.search(/@;/);
+////          var name = idx>0? str.slice(0,idx) : 'DEFAULT';
+////          var fields = str.substring(idx).replace(/@/g,';@').replace(/!/g,';').split(';').filter(function(v){return v;}); // better than match(/(^.|[@;])[^@;]*)/g);
+//          if (!name) name = 'DEFAULT';
+        }
+        function func_org_1(name, str, tgt){
+          var fields = str.replace(/@/g,';@').split(';'); // better than match(/(^.|[@;])[^@;]*)/g);
           var obj = tgt[name] || (tgt[name] = {});
           for (var i=0;i<fields.length;i++) { // if (fields[i]) set_val(obj, fields[i]);
             var val = fields[i];
@@ -1895,8 +1909,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
 //          set_vals(tgt[name],'cmd'  ,field.match(/![^@\^!]*/g),true);
 //        }
         function func_rev(field, tgt){
-          if (field[0]==='+') field = field.slice(1);
-          var name = field.replace(/[@;:].*/,'') || 'DEFAULT';
+          func_rev_1((field[0]==='+'? field.slice(1):field).replace(/[@;:].*/,'') || 'DEFAULT', tgt);
+//          if (field[0]==='+') field = field.slice(1);
+//          var name = field.replace(/[@;:].*/,'') || 'DEFAULT';
+        }
+        function func_rev_1(name, tgt){
           var idx = name.indexOf('/');
           var idxl = name.lastIndexOf('/');
           if (idx>0 && idx!==idxl && idxl!=name.length-1) { // domain/board/thread
@@ -1912,82 +1929,85 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           tgt[name] = field.substr(idx+1);
         }
         var obj2proto = {
-          _revise: function(name, str){
-            if (str) str = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').replace(/\s*$/,'').split(/\s*,\s*/)[0]; // for safety
+          _revise: function(name, str_add, str_removed){
+            if (!pref.test_mode['190']) this._reviseObj(name, str_add);
+            return fmt4str2_2(str_removed, str_add && (name+str_add));
+          },
+          _reviseObj: function(name, str){
+//            if (str) str = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').replace(/\s*$/,'').split(/\s*,\s*/)[0]; // for safety
             var exist = (name in this);
             if (exist) {
               if (!str) obj3_rm(this[':REV'], name);
               delete this[name]; // force remake for not accumulating
             }
             if (!str) return;
-            func_org(str,this);
-            if (!exist) func_rev(str,this[':REV']);
+            func_org_1(name, str===true?'':str, this);
+            if (!exist) func_rev_1(name,this[':REV']);
           },
-//          _add: function(str){
-//            str = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').replace(/\s*$/,'').split(/\s*,\s*/)[0]; // for safety
-//            if (!str) return;
-//            delete this[name]; // force remake for unsticky
-//            func_org(str,this);
-//            func_rev(str,this[':REV']);
-//          },
-//          _rm: function(str){
-//            var name = str.replace(/[@;:].*/,'');
-//            var idx = name.indexOf('/');
-//            var idxl = name.lastIndexOf('/');
-//            if (idx>0 && idx!==idxl && idxl!=name.length-1) { // domain/board/thread
-//              delete this[name];
-//              var db = name.slice(0,idxl+1);
-//              delete this[':REV'][db][name.slice(idxl+1)];
-//            }
-//          },
         };
         var obj2proto_merge = {
-          _revise: function(dst, src, str, no_insert, old){ // dst and src must be fullname
-            var now = this;
-            var darr = now[dst];
-            var sarr = now[src];
-if (!pref.test_mode['192']) {
-            if (!old) old = {__proto__:now}; // emulation of _old, WILL BE REMOVED
-            if (darr) {
-              var dold = darr.slice();
-              for (var i=0;i<darr.length;i++) if (!old.hasOwnProperty(darr[i])) old[darr[i]] = dold;
-            } else if (dst && !old.hasOwnProperty(dst)) old[dst] = undefined;
-            if (sarr) {
-              var sold = sarr.slice();
-              for (var i=0;i<sarr.length;i++) if (!old.hasOwnProperty(sarr[i])) old[sarr[i]] = sold;
-            } else if (!old.hasOwnProperty(src)) old[src] = undefined;
-}
+          _revise: function(dst, src, no_insert,    str, old){ // dst and src must be fullname
+            var darr = this[dst];
+            var sarr = this[src];
+//if (!pref.test_mode['192']) { // working code
+////            if (!old) old = {__proto__:this}; // emulation of _old, WILL BE REMOVED
+////            if (darr) {
+////              var dold = darr.slice();
+////              for (var i=0;i<darr.length;i++) if (!old.hasOwnProperty(darr[i])) old[darr[i]] = dold;
+////            } else if (dst && !old.hasOwnProperty(dst)) old[dst] = undefined;
+////            if (sarr) {
+////              var sold = sarr.slice();
+////              for (var i=0;i<sarr.length;i++) if (!old.hasOwnProperty(sarr[i])) old[sarr[i]] = sold;
+////            } else if (!old.hasOwnProperty(src)) old[src] = undefined;
+//            this._str = str;
+//}
             var tgts;
-            var sarr_old = sarr && sarr.slice();
-            if (sarr && (!dst || darr || no_insert)) sarr.splice(sarr.indexOf(src),1);
+//            var sarr_old = sarr && sarr.slice();
+            var obj3 = this[':REV'];
+            var str = add_to_list_2(dst, src, this._str, no_insert);
+            this._str = (sarr && (!dst || darr || no_insert))? rm1(sarr, src, obj3, this, str) : str;
+//            if (sarr && (!dst || darr || no_insert)) {
+//              sarr.splice(sarr.indexOf(src),1);
+//              if (sarr && sarr.length==1) if (obj3_rm(obj3,sarr[0],this)) str = add_to_list_2(null, sarr[0], str);
+//            }
             if (dst) {
-              if (darr) {darr.splice(darr.indexOf(dst)+1,0,src); now[src] = darr; tgts = sarr_old || [src];} // members of sarr_old may bump down
-              else if (sarr && !no_insert) {sarr.splice(sarr.indexOf(src),0,dst); now[dst] = sarr; tgts = darr || [dst];} // members of darr may bump down
-              else {now[dst] = now[src] = tgts = [dst,src];}
-            } else {delete now[src]; tgts = sarr_old;} // member of sarr_old may bump down
-            var obj3 = now[':REV'];
-            if (dst && !darr) func_rev(dst,obj3);
-            if (dst && !sarr) func_rev(src,obj3);
-            else if (!dst && sarr) obj3_rm(obj3,src);
-            str = add_to_list_2(dst, src, str, no_insert);
-            if (sarr && sarr.length==1) if (obj3_rm(obj3,sarr[0])) { // check if fullname and delete
-              delete now[sarr[0]];
-              str = add_to_list_2(null, sarr[0], str);
-            }
-            return {str:str, tgts:tgts, old:old};
+              if (!sarr) func_rev(src,obj3);
+              if (darr) {darr.splice(darr.indexOf(dst)+1,0,src); this[src] = darr; tgts = [src];} // members of sarr_old may bump down
+              else {
+                func_rev(dst,obj3);
+                if (sarr && !no_insert) {sarr.splice(sarr.indexOf(src),0,dst); this[dst] = sarr; tgts = [dst];} // members of darr may bump down
+                else {this[dst] = this[src] = tgts = [dst,src];} // member of both sarr_old and darr may bump down
+              }
+            } else {if (sarr) obj3_rm(obj3,src,this); tgts = [src];} // member of sarr_old may bump down
+            return /*(!pref.test_mode['192'])? {str:this._str, tgts:tgts, old:old} :*/ tgts;
           },
           _rm: function(name,obj3_db,no,str){
-            var tgt = this[name];
-            if (tgt.length>1) {
-              tgt.splice(tgt.indexOf(name),1);
-              if (tgt.length==1) if (obj3_rm(this[':REV'],tgt[0])) { // checking if fullname, and tgt[0] may be in other boards
-                delete this[tgt[0]];
-                str = site2['DEFAULT'].update_posts_merge_bases.add_to_list_2(null, tgt[0], str); // temporarily, CAUTION, regular expression must be reconsider
-              }
-            }
+            str = rm1(this[name], name, this[':REV'], this, str);
             return rm_merge.call(this,name,obj3_db,no,str);
-          }
+          },
+          get _str(){return pref.proto.merge_list_str;},
+          set _str(s){pref.proto.merge_list_str = s;
+                      setPnValue('proto.merge_list_str',s);
+                     },
         };
+        var setPnValue = (function(){ // for reducing call of getElementsByTagName()
+          var reqs = {};
+          var go = DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){
+            for (var i in reqs) {
+              var pn = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')[i];
+              if (pn) pn.value = reqs[i];
+            }
+            reqs = {};
+          },100));
+          return function(name, value){reqs[name] = value; go();};})();
+        function rm1(arr,name,obj3,obj2,str){
+          if (arr.length>1) {
+            arr.splice(arr.indexOf(name),1);
+            if (arr.length===1) if (obj3_rm(obj3,arr[0],obj2)) // checking if fullname, and obj3_db can't be used since arr[0] may be in other boards.
+              str = add_to_list_2(null, arr[0], str);
+          }
+          return str;
+        }
         function rm_merge(name,obj3_db,no,str){
           delete this[name];
           delete obj3_db[no];
@@ -1995,31 +2015,55 @@ if (!pref.test_mode['192']) {
           return str.replace(new RegExp('(^|,)'+key+'([,\n]+\\s*\\+*|$|\\+)','mg'),'$1').replace(new RegExp('\\+\\s*'+key+'(,|\n|$|\\s*\\+)','mg'),'$2');
         }
         var obj2proto_merge_lv = {
-          _revise: function(name, lv, rm, str){ // name must be fullname
-            var idxl = name.lastIndexOf('/');
-            var db = name.slice(0,idxl+1);
-            var obj3_db = this[':REV'][db];
-            var no = name.slice(idxl+1);
-            if (rm) {
-              delete this[name];
-              delete obj3_db[no];
-            } else {
-              this[name] = lv;
-              if (!obj3_db) obj3_db = this[':REV'][db] = {};
-              obj3_db[no] = null;
-            }
-            var rx = new RegExp('(^|,)\\s*'+name+'(:[^,\n]*)*(,|\n|$)','mg');
-            return pref_func.fmt4str2(str.replace(rx,',')+'\n'+(rm? '' : name+':'+lv+'\n'));
+          _revise: function(name, lv){ // name must be fullname
+            var str = this._str;
+            var changed = {};
+            if (typeof(name)==='string') str = this._reviseObj(name, lv, str, changed);
+            else for (var i=0;i<name.length;i++) str = this._reviseObj(name[i], lv, str, changed);
+            this._str = str;
+            return changed;
           },
-          _rm: rm_merge
+          _reviseObj: function(name, lv, str, changed){ // name must be fullname
+            var exist = (name in this);
+            var lv_old = this[name] || null;
+            var lv_str = lv!==null? lv.toString() : null; // can accept lv==='' as end mark for merge_op.auto
+            if ((lv_str||null)!==lv_old) changed[name] = lv_old;
+            var str_add = lv!==null && (name+':'+lv);
+            if (str_add) {
+              this[name] = lv_str; // stores string value for '0'
+              if (!exist) func_rev_1(name,this[':REV']);
+            } else if (exist) obj3_rm(this[':REV'], name, this);
+            return fmt4str2_2(str.replace(new RegExp('(^|,)\\s*'+name+'(:[^,\n]*)*(,|\n|$)','mg'),''), str_add);
+          },
+//          _revise: function(name, lv, rm, str){ // name must be fullname
+//            var idxl = name.lastIndexOf('/');
+//            var db = name.slice(0,idxl+1);
+//            var obj3_db = this[':REV'][db];
+//            var no = name.slice(idxl+1);
+//            if (rm) {
+//              delete this[name];
+//              delete obj3_db[no];
+//            } else {
+//              this[name] = lv;
+//              if (!obj3_db) obj3_db = this[':REV'][db] = {};
+//              obj3_db[no] = null;
+//            }
+//            return pref_func.fmt4str2_2(str.replace(new RegExp('(^|,)\\s*'+name+'(:[^,\n]*)*(,|\n|$)','mg'),''), rm? '' : name+':'+lv);
+//          },
+          _rm: rm_merge,
+          get _str(){return pref.proto.merge_lv_str;},
+          set _str(s){pref.proto.merge_lv_str = s;
+                      setPnValue('proto.merge_lv_str',s);
+                     },
         };
-        function obj3_rm(obj3, name){
+        function obj3_rm(obj3, name, obj2){
           var idx = name.indexOf('/');
           var idxl = name.lastIndexOf('/');
           if (idx>0 && idx!==idxl && idxl!=name.length-1) { // domain/board/thread
             var db = name.slice(0,idxl+1);
             if (obj3[db]) delete obj3[db][name.slice(idxl+1)];
             else console.log('Error: an inconsistency was found in str2obj2.obj3_rm: '+name);
+            if (obj2) delete obj2[name];
             return true;
           }
         }
@@ -2036,15 +2080,25 @@ if (!pref.test_mode['192']) {
               var idx = (src && dst.index>src.index? dst.index - len_erased : dst.index) + dst[0].length;
               str = str.slice(0,idx)+'+'+name+str.slice(idx); // add
             } else if (src && !no_insert) str = str.slice(0,src.index+src[1].length)+tgt+'+'+str.slice(src.index+src[1].length); // insert
-            else str += '\n'+tgt+'+'+name+'\n' // add to last
+            else var str_add = tgt+'+'+name; // add to last
           }
-          return pref_func.fmt4str2(str);
+          return fmt4str2_2(str, str_add);
         }
         function existIn(str, key_in){
           var key = key_in.replace(/\+/,'\\+');
           return new RegExp('(^|,|\\+)\\s*'+key+'(\s*)(?=(,|\n|$|\\+))','mg').exec(str);
 //          return new RegExp('(^|,|\\+)\\s*'+key+'([^,\n+]*)(?=(,|\n|$|\\+))','mg').exec(str); // (?<=) requires chrome 62 // BUG, key isn't terminated
         }
+        function fmt4str2_2(str, str_add){
+          str = str_add? (str + (str.length===0 || str[str.length-1]==='\n'? '':'\n')+str_add+'\n') : str; // add to last, '\n' for faster execution(no replacement)
+          if (pref.debug_mode['40'] && pref_func.fmt4str2(str)!==str) {
+            console.log('ERROR: fmt4str2_2');
+            console.trace();
+          }
+          return str;
+        }
+        pref_func.add_to_list_2 = add_to_list_2;
+        pref_func.fmt4str2_2 = fmt4str2_2;
         return function(str, src, obj2_only, func){
           var tgt = src==='merge'? {__proto__:obj2proto_merge} : src==='merge_lv'? {__proto__:obj2proto_merge_lv} : src || {__proto__:obj2proto};
           var fields = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').replace(/\s*$/,'').split(/\s*,\s*/);
@@ -2697,7 +2751,10 @@ if (!pref.test_mode['192']) {
       settings: {
         pn13 : null,
         get pn13_1(){return this.pn13 && this.pn13.childNodes[1] || null;},
-        pnOrDummy: function(name){return this.pn13 && this.pn13.getElementsByTagName('*')[name] || {name:name, tagName:'TEXTAREA', onchange:cataLog.event_func, getAttribute: function(prop){return this[prop];}};},
+        pnOrDummy: (function(){
+          var dummy = {name:'', tagName:'TEXTAREA', get onchange(){return cataLog.event_func}, getAttribute:function(prop){return this[prop];}};
+          return function(name){return this.pn13 && this.pn13.getElementsByTagName('*')[name] || (dummy.name = name, dummy);};})(),
+//        pnOrDummy: function(name){return this.pn13 && this.pn13.getElementsByTagName('*')[name] || {name:name, tagName:'TEXTAREA', onchange:cataLog.event_func, getAttribute: function(prop){return this[prop];}};},
         show_hide : function(e){
           if (pref_func.settings.pn13===null) {
             var pos = ((e.clientX*2>window.innerWidth)? 'right':'left') + ':0px:' + ((e.clientY*2>window.innerHeight)? 'bottom:0':'top:'+site.header_height())+'px';
@@ -3128,39 +3185,36 @@ if (!pref.test_mode['192']) {
           merge_all: function(mode){
             return '2,<IC"' +mode+ '.merge">Merge all threads'+ this.rollup(
               '2,<IC"' +mode+ '.merge_list">Merge listed threads&emsp;<BTN"cleanMerge,CleanUpList">'+'<br>'+
-              this.merges(mode)+'<br>'+
-              (mode==='thread'? '3,<IC"thread.scroll_lock">Don\'t scroll at merging<br>':''))+'<br>';
-          },
-          merge_list: function(mode){
-            return '2,<IC"' +mode+ '.merge_list">Merge listed threads'+ this.rollup(
-              this.merges(mode)+'<br>'+
-              '2,<IC"' +mode+ '.merge">Merge all threads','&emsp;<BTN"cleanMerge,CleanUpList">');
-          },
-          merges: function(mode){
-            return '3,<TA"proto.merge_list_str"><br>'+
-              '3,<IC"' +mode+ '.merge_lv"'+(mode==='catalog'?' disabled':'')+'>Merge with level<br>'+
+              '3,<TA"proto.merge_list_str"><br>'+
+              '3,<IC"' +mode+ '.merge_lv"' /* +(mode==='catalog'?' disabled':'') */ +'>Merge with level<br>'+
               '4,<TA"proto.merge_lv_str"><br>'+
               '4,Use style tips or user CSS to style'+this.rollup(
-              this.userCSS(4).slice(0,-4))+'<br>'+
-              (mode==='thread' || mode==='page'? '3,<IC"'+mode+'.merge_auto_list">Auto merge listed threads'+this.rollup(
-              '4,<IC"'+mode+'.merge_auto_list_lv_add">with level <ITB2"'+mode+'.merge_auto_list_lv">')+'<br>' : '')+
-              '3,<IC"'+mode+'.merge_op_auto">Auto merge cross-linked threads in OP'+this.rollup(
-              '5,(For new thread of generals typically.)<br>'+
-              '4,to hop <ITB2"'+mode+'.merge_op_auto_hop"><br>'+
-              '4,<IC"'+mode+'.merge_op_lv_add">with level <ITB2"'+mode+'.merge_op_lv">, <IC"'+mode+'.merge_op_lv_inc">increment by hop<br>'+
-              '4,(Entries of level are also used as end flags.<br>'+
-              '4,Unmerged states will be cleared after relaod if they are not added.)<br>'+
-              '4,<IC"'+mode+'.merge_op_list">Inherit value of exclusive list<br>'+
-              '4,<IC"'+mode+'.merge_op_attr">Inherit value of attribute list')+'<br>'+
-              '3,<IC"' +mode+ '.merge_btn">Add merge button to cross-links'+ this.rollup(
-              '4,Merge mode:<br>'+
-              '5,<IR"'+mode+'.merge_btn_mode,all"'+ (mode!=='thread'?' disabled':'')+'>all (Don\'t modify the list)<br>'+
-              '5,<IR"'+mode+'.merge_btn_mode,list"'+(mode!=='thread'?' disabled':'')+'>by list (target is added to the list)<br>'+
-              '4,<IC"'+mode+'.merge_btn_lv_add">with level <ITB2"'+mode+'.merge_btn_lv">');
+              this.userCSS(4,4).slice(0,-4))+'<br>'+
+              '3,<IC"'+mode+'.merge_auto">Auto fetch and merge listed threads<br>'+
+//              (mode==='thread' || mode==='page'? '3,<IC"'+mode+'.merge_auto">Auto fetch and merge listed threads'+ this.rollup(
+//              '4,<IC"'+mode+'.merge_auto_lv_add">with level <ITB2"'+mode+'.merge_auto_lv">')+ '<br>' : '')+
+              '3,<IC"'+mode+'.merge_op.auto">Auto merge cross-linked threads in OP'+this.rollup(
+//              '5,(For new thread of generals typically.)<br>'+
+              '4,<IC"'+mode+'.merge_op.fetch">Fetch to hop <ITB2"'+mode+'.merge_op.hop"> recursively<br>'+
+              this.merge_lv(mode+'.merge_op'))+'<br>'+
+//              '4,(Entries of level are also used as end flags.<br>'+
+//              '4,Unmerged states will be cleared after relaod if they are not added.)<br>'+
+//              '4,<IC"'+mode+'.merge_op_list">Inherit watch time<br>'+
+//              '4,<IC"'+mode+'.merge_op_attr">Inherit style attributes')+'<br>'+
+              '3,<IC"' +mode+ '.merge_btn.add">Add merge button to cross-links'+ this.rollup(
+              this.merge_lv(mode+'.merge_btn'))+'<br>'+
+              '2,Merge mode:<br>'+
+              '3,<IR"'+mode+'.merge_mode,all"'+ (mode!=='thread'?' disabled':'')+'>all (Don\'t modify the list)<br>'+
+              '3,<IR"'+mode+'.merge_mode,list"'+(mode!=='thread'?' disabled':'')+'>by list (Each target is added to the list)'+
+              (mode==='thread'? '<br>3,<IC"'+mode+'.scroll_lock">Don\'t scroll at merging':''))+'<br>';
           },
-          userCSS: function(indent){
-            return indent + ',Style tips for merge:<br>'+
-              (indent+1)+',<IC"style.tips.merged">Add n * ">" to merged threads of level n<br>'+
+          merge_lv: function(mode_tgt){
+            return '4,<IC"'+mode_tgt+'.lv_add">with level<ITB2"'+mode_tgt+'.lv_def">, <IC"'+mode_tgt+'.lv_inc">increment by hop<br>'+
+              '4,<IC"'+mode_tgt+'.attr">Inherit style attributes<br>'+
+              '4,<IC"'+mode_tgt+'.list">Inherit watch time';
+          },
+          userCSS: function(indent, indent_tips){
+            return indent_tips+',<IC"style.tips.merged">Add n * <ITBL2"style.tips.merged_cnt"> to merged threads of level n<br>'+
 //              (indent+1)+',<IC"style.tips.merged1">Add ">" to merged threads of level 1<br>'+
 //              (indent+1)+',<IC"style.tips.merged2">Add ">>" to merged threads of level 2<br>'+
 //              (indent+1)+',<IC"style.tips.merged3">Add ">>>" to merged threads of level 3<br>'+
@@ -3527,10 +3581,7 @@ if (!pref.test_mode['192']) {
               '3,<IC"catalog.page_his">Store page history in 4chan<br>'+
               this.backlink('catalog')+
               this.save_idx_promiscuous('catalog')+
-              this.merge_list('catalog')+'<br>'+ // + this.rollup(
-//              '2,OP merge by manual<br>'+
-//              '3,to hop <ITB2"catalog.merge_op_auto_hop"><br>'+
-//              '3,<IC"catalog.merge_op_lv_add">with level <ITB2"catalog.merge_op_lv">, <IC"catalog.merge_op_lv_inc">increment by hop')+'<br>'+
+              this.merge_all('catalog')+
               '1,<IC"catalog.embed_archive">Generate catalog in archive'+this.rollup(
                 '5,from top <ITB5"scan.max_archive"> threads')+'<br>'+
               '<br>'+
@@ -3610,7 +3661,7 @@ if (!pref.test_mode['192']) {
 //          '2,<IC"float.refresh_by_watchlist">Refresh according to watchlist (watcher mode)<br>'+
           '2,<IC"float.hide_unwatched">Show watched threads only (watcher mode)<br>'+
           '2,<IC"liveTag.NC">Separated virtual board for each instance<br>'+
-          this.merge_list('float')+'<br>'+
+          this.merge_all('float')+'<br>'+
           '3,<IC"headline.merge_truncated">Truncate members in headline view<br>'+
           '2,<IC"catalog.appearance.orderOnTB">Order selector on title bar<br>'+
           '2,'+this.rollup_radio('catalog.appearance.initial.state',' :At initial, <ITBN4"catalog.appearance.initial.width">x<ITB4"catalog.appearance.initial.height">(0 means auto)', 3, '',
@@ -3622,8 +3673,8 @@ if (!pref.test_mode['192']) {
           '1,<IC"float.auto_launch">Auto start an instance at initial<br>'+
           '1,<IC"float.env.refresh_initial">Refresh at initial<br>'+
           this.add_indent(-1, this.save_idx_promiscuous('float'))+
-//          '1,'+this.resize_thumbnails('float')+
-          (pref.test_mode['147']? this.add_indent(-1,this.merge_all('float')) : '')+
+////          '1,'+this.resize_thumbnails('float')+
+//          (pref.test_mode['147']? this.add_indent(-1,this.merge_all('float')) : '')+
           '<br>'+
           '1,Advanced options:<br>'+
           '2,<IC"common.consolidated_watch_list">Consolidated watch list (for watcher mode)<br>'+
@@ -3742,6 +3793,8 @@ if (!pref.test_mode['192']) {
                 ['imm:Immediately','watched:Keep watched threads','unread:Keep watched threads if they have unread posts', 'no:No, keep all threads remain']) +'<br>'+
               '1,<IC"common.blur_404">Blur 404 threads<br>'+
               '1,<IC"catalog.bookmark_list_rm404">Remove 404 threads from bookmark<br>'+
+              '1,'+ this.rollup_radio('common.merge_list_rm404',' :Remove 404 threads in merge list', 2, '',
+                ['imm:Immediately',/*'UI:Wait 404 for threads merged by UI(NOT IMPLEMENTED)',*/'dead:Wait 404(the thread can\'t be merged anymore)', 'no:No, keep all threads remain']) +'<br>'+
               '1,<IC"pref2.8chan.utilize_boards_json">Utilize boards.json in 8chan<br>'+
               '1,<IC"pref2.meguca.utilize_boards_json">Utilize boardTimestamps in meguca<br>'+
               '2,<IC"pref2.meguca.utilize_boards_json_domain">Utilize boardTimestamps at refresh in meguca<br>'+
@@ -4152,6 +4205,7 @@ if (!pref.test_mode['192']) {
           this.expand_row('Editing post:,<ITBL15"style.design.post_editing.base">,<IC"style.design.post_editing.ov">,<ITBL10"style.design.post_editing.sel">,<IC"style.design.post_editing.comp">')+
           '</tbody></table><br>'+
           '2,Z-Index: <ITB4"style.zIndex"><br>'+
+          '1,Style tips for merge:<br>'+
 //          '2,<IR"style.sel,fix"> Use base design <BTN"style.reset.fix,reset"><br>'+
 //          '3,Title bar:<ITBL30"style.fix.titleBar_str"><br>'+
 //          '3,Window:<ITBL30"style.fix.window_str"><br>'+
@@ -4163,7 +4217,7 @@ if (!pref.test_mode['192']) {
 //          '1,Others:<br>'+
 //          '2,New post:<ITBL30"style.post_new"><br>'+
 //          '2,Editing post:<ITBL30"style.post_editing"><br>'+
-          this.userCSS(1);},
+          this.userCSS(1,2);},
         'Features': function(){
         return 'Features:<br>'+
           '1,<IC"features.page">Page<br>'+
@@ -4186,7 +4240,7 @@ if (!pref.test_mode['192']) {
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2023.01.15.0<br>'+
+          'Version 2023.01.22.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4207,7 +4261,7 @@ if (!pref.test_mode['192']) {
             '<div style="clear:both"></div>')+'<br>'+
           this.cb_block('debug_mode',9)+
           '<BTN"debugWindow,debugWindow"><br>'+
-          'Test mode'+this.rollup(this.cb_block('test_mode',0,100))+this.rollup(this.cb_block('test_mode',100)+
+          'Test mode'+this.rollup(this.cb_block('test_mode',0,100))+this.rollup(this.cb_block('test_mode',100,200))+this.rollup(this.cb_block('test_mode',200)+
           (Debug? ' LastReloaded: '+new Date(Debug.lastReloaded).toLocaleString():'')+'<br>'+
           '<IC"test_mode.tips">'+
           '<ITB6"test_mode.num">'+
@@ -4234,7 +4288,7 @@ if (!pref.test_mode['192']) {
                 '1,<TA"samples.dashboard.rss.auto" disabled><br>'+
                 '<span class="JSON_result"></span><br>'+
                 this.ta_with_help('catalog.style_general_list', 'Use global style', true)+
-                this.userCSS(0));},
+                this.userCSS(0,1));},
       rss_dashboard_table: function(){
         var data = site2['rss'].generate_registered_rss(pref.dashboard.rss && pref.dashboard.rss['new']);
         pref.dashboard.rss = data;
@@ -4836,7 +4890,7 @@ if (!pref.test_mode['192']) {
                   'UNARC,Stop archiving,\n'+
                   'MERGEB,Set merge base,\n'+
                   'MERGE,Merge,\n'+
-                  'MERGEOP,Merge threads in op,\n'+
+//                  'MERGEOP,Merge threads in op,\n'+
                   'UNMERGE,Unmerge,\n'+
                   'UNDOMERGE,Undo last merge,\n',
               };
@@ -5241,18 +5295,18 @@ if (!pref.test_mode['192']) {
             debugWindow.connect = function(){return debugWindow.cn.appendChild(document.createElement('div'));};
           },
           'cleanMerge': function(){
-            var mems = pref.proto.merge_list_str.replace(/\+/g,',+').replace(/\n/g,',\n,').split(',');
-            var has_tails = false;
-            for (var i=mems.length-1;i>=0;i--) {
-              var tgt = mems[i].replace(/^\s*/,'').replace(/\s*$/,'');
-              if (tgt==='\n' || tgt==='') continue;
-              if (tgt.search(/[^/+]+\/[^/]+\/[^/]+/)===0) { // head with fullname
-                if (!has_tails) mems.splice(i,1); // removes single heads
-                has_tails = false;
-              } else has_tails = true;
-            }
-            pref.proto.merge_list_str = pref_func.fmt4str2(mems.join(',').replace(/,\+/g,'+').replace(/,\n,/g,'\n'));
-            pref_func.apply_prep_1n('proto.merge_list_str', false, true, null, true); // make obj, call event
+//            var mems = pref.proto.merge_list_str.replace(/\+/g,',+').replace(/\n/g,',\n,').split(',');
+//            var has_tails = false;
+//            for (var i=mems.length-1;i>=0;i--) {
+//              var tgt = mems[i].replace(/^\s*/,'').replace(/\s*$/,'');
+//              if (tgt==='\n' || tgt==='') continue;
+//              if (tgt.search(/[^/+]+\/[^/]+\/[^/]+/)===0) { // head with fullname
+//                if (!has_tails) mems.splice(i,1); // removes single heads
+//                has_tails = false;
+//              } else has_tails = true;
+//            }
+//            pref.proto.merge_list_str = pref_func.fmt4str2(mems.join(',').replace(/,\+/g,'+').replace(/,\n,/g,'\n'));
+//            pref_func.apply_prep_1n('proto.merge_list_str', false, true, null, true); // make obj, call event
             var req = {
               key:'cleanMerge',
               obj:Object.keys(pref3.proto.merge_list_obj2[':REV']).filter(function(key){
@@ -5680,18 +5734,48 @@ if (!pref.test_mode['192']) {
 //        }
 //      }
 //    },
-    perf_out: function(obj){
-      obj.push(performance.now());
-      var str = '';
-      var last_ts = null;
-      for (var i=0;i<obj.length;i++) {
-        if (typeof(obj[i])==='number') {
-          if (last_ts) str += (obj[i]-last_ts) + ', ';
-          last_ts = obj[i];
-        } else str += obj[i] + ', ';
+    perf_out: (function(){
+      var count = 0;
+      var history = [];
+      var records = [];
+      var show = Watchdog.prototype.restart.bind(new Watchdog(function(){
+        history.push(out_sum('now',records));
+        out_sum('Hist: '+count, history.slice(-10), true);
+        records = [];
+        if (history.length>1000) history.shift();
+        count++;
+      },20000));
+//      function out_1(arr){
+//        var str = arr[0]+': '+(arr[arr.length-1]-arr[1])+': ';
+//        var last_ts = arr[1];
+//        for (var i=2;i<arr.length;i++) {
+//          if (typeof(arr[i])==='number') {
+//            str += (arr[i]-last_ts) + ', ';
+//            last_ts = arr[i];
+//          } else str += arr[i] + ', ';
+//        }
+//        console.log(str);
+//      }
+      function out_sum(cap,arr,avg){
+        var arr_t = arr.map(v=>v[v.length-1]-v[1]);
+        var sum = arr_t.reduce((a,c)=>a+c);
+        if (avg) console.log(cap+': '+(avg?'Avg':'Sum')+arr2str(arr_t,arr[0][0]+': '+Math.round(avg? sum/arr.length : sum)+': ')+(avg? ', '+arr2str(arr[arr.length-1][2]):''));
+        return [arr[0][0], 0, arr_t, sum];
       }
-      console.log(str);
-    },
+      function arr2str(arr,cap){
+        return arr.length+': '+(cap||'')+'['+arr.map(Math.round)+']';
+      }
+//      function round1(float){
+//        var str = (float+0.05).toString();
+//        var idx = str.indexOf('.');
+//        return idx===-1? str : str.slice(0,idx+2);
+//      }
+      return function(arr){
+        arr.push(performance.now());
+        records.push(arr);
+        show();
+      };
+    })(),
 //    obj_scopy_from_key: function(obj){
 //      for (var i in obj)
 //        if (typeof(i)==='string' && Object.prototype.hasOwnProperty.call(obj,obj[i])) obj[i] = obj[obj[i]];
@@ -6116,7 +6200,7 @@ if (!pref.test_mode['192']) {
 ////    get_boards_json: function(key,callback,callback_always,health_indicator){
 ////      var key = 'boards_json_'+this.nickname;
 ////      if (this.get_boards_json_indicator) {
-////        this.get_boards_json_indicator.report({end:Date.now(), prog_str:'Aborted.', err_str:'Aborted by next request.'});
+////        this.get_boards_json_indicator.report({end:Date.now(), prog_str:'Aborted.', err:'Aborted by next request.'});
 ////        this.get_boards_json_indicator = null;
 ////      }
 ////      if (this.boards_json) this.get_boards_json_callback(this.nickname,{status:200, response:this.boards_json},[callback,callback_always]);
@@ -6138,7 +6222,7 @@ if (!pref.test_mode['192']) {
 ////      }
 ////      if (args[2]) {
 ////        args[2].report({end:Date.now(), prog_str: (value.status==200)? 'boards.json is loaded.' : '',
-////                        err_str:  (value.status==200)? '' : 'Error at loading board\'s infomation.'});
+////                        err:  (value.status==200)? '' : 'Error at loading board\'s infomation.'});
 ////        this.get_boards_json_indicator = null;
 ////      }
 ////      if (args[3]) http_req.close(args[3]);
@@ -6331,12 +6415,6 @@ if (!pref.test_mode['192']) {
     link_dbtp2href_abs: function(dbtp, quote){
       return (this.nickname!=site.nickname? this.protocol + '//' + this.domain_url : '') + this.link_dbtp2href(dbtp, quote);
     },
-////////    insert_footer : function(thread,page_no,boardname,insert,date,nof_posts,nof_files){return [nof_posts,nof_files];}, // insert information footer, and returns count of posts and images.
-
-////////    insert_footer2: function(thread,type,nums,nums2){}, // insert num of new replies to me, num of new replies.
-//    prep_footer3 : function(){return null;}, // prepare footer
-//    insert_footer3: function(thread,nums,nums2){}, // insert footer.
-
 //    prep_own_posts: function(){}, // prepare own_post object.
 //    prep_own_posts_event: function(e){}, // event entry for preparing own_post object.
     ls_key_own_posts: pref.script_prefix + '.own_posts.',
@@ -6690,10 +6768,6 @@ if (!passive) {
           watch[0] = (watch[0]&0xfff90000) + th.nof_posts;
 //console.log('end:   '+dbt[0]+dbt[1]+dbt[2]);
 //if (pref.debug_mode['3'] && extracted_tags.length!=0) console.log(th.key+': '+extracted_tags);
-////////          if (cataLog.threads && cataLog.threads[th.key]) { // working code.
-//////////            if (!cataLog.threads[th.key][9][0]) cataLog.threads[th.key][9] = cataLog.catalog_filter_query(th.key); // doesn't work because threads[name][8] is NOT updated.
-////////            cataLog.insert_footer3(th.key,null,th.page,tags);
-////////          }
           if (notify && watching) {
 //            if (ext_posts.length!=0 && pref.notify.desktop.notify && th.parse_funcs.add_op_img_url) th.parse_funcs.add_op_img_url(ext_posts,th.board,th.domain); // can't get 'com' if 'meguca'
             if (pref.notify.desktop.notify) {
@@ -7831,7 +7905,12 @@ if (!passive) {
 //              if (pref[cataLog.embed_mode].link_show_op && as_txt.search(op_regexp)===0 && as_txt.indexOf('(OP)')==-1) as[j].textContent += ' (OP)';
               if (th_q[0]!==thq) {
                 if (pref[cataLog.embed_mode].link_show_cross && as_txt.indexOf('\u2192')===-1) as[j].textContent += ' \u2192';
-                if (pref[cataLog.embed_mode].merge_btn) as[j].parentNode.insertBefore(Triage.prototype.doms.emMerge.cloneNode(true),as[j].nextSibling);
+                if (pref[cataLog.embed_mode].merge_btn.add) {
+                  var pn_mg = Triage.prototype.doms.emMerge.cloneNode(true);
+                  gGEH.pns_all_keys.set(pn_mg,th.key);
+                  if (th.no!==post.no) pn_mg.dataset.cmd = 'MERGETC';
+                  as[j].parentNode.insertBefore(pn_mg,as[j].nextSibling);
+                }
 //                if (pref[cataLog.embed_mode].merge_btn) cnst.doms_insertBefore(as[j].parentNode, ' [<a href="javascript:;" class="'+pref.cpfx+'UImerge">Merge</a>]',as[j].nextSibling);
               }
               quotes[quotes.length] = [th_q[0], th_q[1]]; // quotes may be multiple.
@@ -8274,7 +8353,6 @@ if (!passive) {
         },
       }
     })(),
-    parse_pn_dummy: document.createElement('div'),
     parse_funcs: { // DEFAULT
       'common': {
 ////        entry : function(dtpo,req) { // doc, thread, post, object // working code.
@@ -8360,10 +8438,13 @@ if (!passive) {
         has_posts: true,
 //        last_replies: function(th){return th.posts.slice(1);},
 ////        post_no: function(post){return post.no;},
-        txt: function(th){
-          site2['DEFAULT'].parse_pn_dummy.innerHTML = th.com;
-          return site2['DEFAULT'].parse_pn_dummy[brwsr.innerText];
-        },
+        txt: (function(){
+          var pn = document.createElement('div');
+          return function(th){
+            pn.innerHTML = th.com;
+            return pn[brwsr.innerText];
+          };
+        })(),
         type_com: 'html',
         footer_prep: function(th, footer){
           var str = footer.innerHTML.replace(/ *R:[0-9 \/]*I:[0-9 \/]*/,'');
@@ -8385,7 +8466,25 @@ if (!passive) {
 //        txt2com: function(txt){return txt;},
         nativeUpdate2pn: function(pn_in){return pn_in.lastChild;}, // rip container from updated instance by native updater.
 //        nativeUpdate2pn: function(pn_in){return pn_in;},
-        nofFiles: function(){return 0;} // nof files in post
+        nofFiles: function(){return 0;}, // nof files in post
+        hrefs: function(post){ // moved from DEFAULT.post_json
+          if (!post.com) return;
+          var hrefs = post.com.match(/href="([^"]*)"/g);
+          if (hrefs) for (var i=hrefs.length-1;i>=0;i--) {
+            hrefs[i] = hrefs[i].slice(6,-1); // remove href=""
+            if (hrefs[i].indexOf('javascript')===0) hrefs.splice(i,1);
+          }
+//          if (hrefs) for (var i=0;i<hrefs.length;i++) {
+//            var idx = hrefs[i].indexOf('://');
+//            hrefs[i] = hrefs[i].slice(idx===-1? 6:idx+1, -1);
+//          }
+          return hrefs;
+        },
+        _links: function(post){
+          var arr = this.hrefs(post);
+          if (arr) for (var i=0;i<arr.length;i++) arr[i] = site2[post.domain].popups_href2dbtp(arr[i]);
+          return arr;
+        },
       },
       'headline_html': {
         footer: function(th){return th.pn.insertBefore(cnst.dom('<span style="padding:0 3px 0 0"></span>'),th.pn.firstChild);},
@@ -8707,15 +8806,6 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         time_unit: 1000,
         pn: function(post){return site2[post.domain_html].post_json2html(post);}, // blocked by template
         anchor: function(){},
-        hrefs: function(post){
-          if (!post.com) return;
-          var hrefs = post.com.match(/href="([^"]*)"/g);
-          if (hrefs) for (var i=0;i<hrefs.length;i++) {
-            var idx = hrefs[i].indexOf('://');
-            hrefs[i] = hrefs[i].slice(idx===-1? 6:idx+1, -1);
-          }
-          return hrefs;
-        },
       },
       'base_html': { // for HTML based sites, timeunit===1
         time_created: function(th){return th.posts[0].time;},
@@ -8870,7 +8960,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           },
           get_class: function(key, force, old) {
             if (!force && !pref.proto.merge_lv) return null;
-            var lv = pref_func.merge_obj5a_sc(key,old? pref3.proto.merge_lv_obj2_old : pref3.proto.merge_lv_obj2, null);
+            var lv = pref_func.merge_obj5a_sc(key, old && pref3.proto.merge_lv_obj2_old || pref3.proto.merge_lv_obj2, null); // '0' can be got.
 //            var lv = (key===site.nickname+site.board+site.no)? 0 : 1; // test
             return (lv===null)? null : pref.cpfx+'merged'+lv;
           },
@@ -8908,18 +8998,19 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
             get tags(){
               var pf = pref.proto.footer.merged_tag;
               if (pf==='no') return [];
+              var lths_len = this.lths.length;
               if (pf==='all') {
                 var tags_all = {};
-                for (var i=0;i<this.lths.length;i++) {
+                for (var i=0;i<lths_len;i++) {
                   var tags = this.lths[i].tags;
                   for (var j=0;j<tags.length;j++) tags_all[tags[j]] = (tags_all[tags[j]]||0) + 1; // obj might be faster than Map?
                 }
-                var tags0 = this.lths[0].tags;
-                for (var j=0;j<tags0.length;j++) if (tags_all[tags0[j]]!=this.lths.length) return tags.slice(0,j);
+                var tags0 = this.lths[0].tags.slice();
+                for (var j=tags0.length-1;j>=0;j--) if (tags_all[tags0[j]]!==lths_len) tags0.splice(j,1);
                 return tags0;
               } else {
                 var tags_all = new Map();
-                for (var i=0;i<this.lths.length;i++) {
+                for (var i=0;i<lths_len;i++) {
                   var tags = this.lths[i].tags;
                   for (var j=0;j<tags.length;j++) tags_all.set(tags[j], (tags_all.get(tags[j])||0)+1);
                 }
@@ -9033,7 +9124,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
           merge.tgt_ths.splice(idx,1);
           merge.lths.splice(idx,1);
           var domain_html = tgt_th[16].domain_html;
-          tgt_th[0] = (clg.view==='catalog')? site2[domain_html].catalog_separate(merge, tgt_th[3], tgt_th[16], clg, merge.isShown>1 && merge.keys[0]===key) // this.remove_th_catalog({cns:tgt_th[3], __proto__:tgt_th[16]}, merge);
+          tgt_th[0] = (clg.view==='catalog')? site2[domain_html].catalog_separate(merge, tgt_th[3], tgt_th[16], clg) // , merge.isShown>1 && merge.keys[0]===key) // this.remove_th_catalog({cns:tgt_th[3], __proto__:tgt_th[16]}, merge);
                     : (clg.view==='headline')? site2[domain_html].headline_separate(merge, tgt_th[3], clg, tgt_th)
                     : this.remove_th_page(tgt_th[16], false, merge, clg); // merge.isShown==1 doesn't mean 'remove'
           if (merge.isShown===2) {
@@ -9050,7 +9141,7 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
 //            if (tgt_th[16].icon_sticky) delete tgt_th[16].icon_sticky;
 //            if (tgt_th[16].icon_showAlways) delete tgt_th[16].icon_showAlways;
 //            gGEH.pns_all_keys.set(tgt_th[0], key);
-//            clg.view_attr_set(key, null, true); // calls idx_reorder and changes order of clg.idxs here
+          clg.view_attr_set(key, null, true); // doesn't call idx_reorder since tgt_th[20] is NOT changed.
 //          }
           tgt_th[3] = null; // for catalog and headline
 //          if (merge.isShown>=2) tgt_th[22] = null;
@@ -9238,9 +9329,16 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
         var base_0 = mb.bases[key];
         var base = base_0 || !tgt_th[1] && mb.query(key, tgt_th, null, false, this); // for usual case -> all cases
 //        if (!pref.test_mode['148'] && base) base.reorder_req = true; // base.reorder(key, this); // causes chattering // moved to insert in idx_xxxx because this invokes reorder always.
-        if (!base || base_0 && merge_tail) return idx_now; // merge_tail for short cut, ignores return value // base_0 check is for additional auto merge by pref.*.merge_op_auto
-//        var base = mb.bases[key];
-        if (!pref.test_mode['179']) return mb.shown.get(base) || idx_now;
+        if (!base || base_0 && merge_tail) return idx_now; // merge_tail for short cut, ignores return value // base_0 check is for additional auto merge by pref.*.merge_op.auto
+        if (!pref.test_mode['179']) {
+          if (!mb.shown.has(base)) {
+            mb.shown.set(base, idx_now); // track first idx to remove indexOf // cant' be used in test_mode['132']
+            base.top_key = key;
+            mb.shownSet.add(mb.base_arr(key));
+            return idx_now;
+          } else return mb.shown.get(base);
+        }
+//        if (pref.test_mode['179']) return mb.shown.get(base) || idx_now;
         var idx = this.idxs.indexOf(base.top_key); // idx===-1 means base.top_key===null
         return (idx===-1 || idx>idx_now)? (base.top_key = key, idx_now) : idx; // bump up, and this can handle bumping down also,
       },
@@ -9252,34 +9350,33 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       func_check_overrated: function(key){
         var mb = this.merge_bases;
         var base = mb.bases[key];
-//        if (base && base.top_key===null && !pref.test_mode['179']) console.log('overrated: '+key); // this line is not hit probably.
+//        if (base && base.top_key===null && pref.test_mode['179']) console.log('overrated: '+key); // this line is not hit probably.
         return base && base.top_key===null;
       },
       func_track_shown: function(name, update_drawn_y, idx){ // this refers catalog_obj2
         var mb = this.merge_bases;
         var base = mb.bases[name];
-        if (base) {
-          var pf_merge = this.pref[this.mode].merge;
-          if (!mb.shown.has(base)) {
-//          var pn = base.pn;
-//          if (!mb.shown.has(pn) || mb.shown.get(pn)===name) { // ===name for reentry.
-            var retval = true;
-            this.func_track_shown_org(name, !pf_merge && update_drawn_y);
+        if (!base) return this.func_track_shown_org(name, update_drawn_y);
+        var pf_merge = this.pref[this.mode].merge;
+        var isTop = !pref.test_mode['179']? name===base.top_key : !mb.shown.has(base);
+        if (isTop) {
+//        var pn = base.pn;
+//        if (!mb.shown.has(pn) || mb.shown.get(pn)===name) { // ===name for reentry.
+          this.func_track_shown_org(name, !pf_merge && update_drawn_y);
+          if (pref.test_mode['179']) {
             mb.shown.set(base, idx); // track first idx to remove indexOf in func_search_ref_idx // cant' be used in test_mode['132']
-            if (!pref.test_mode['179']) base.top_key = name;
-//            mb.shown.add(base); // set(base, name); // track first name, but this causes BUG at test_mode['132'] // trial patch 'func_check_reorder was given.
+            base.top_key = name; // BUG, IT'S TOO LATE, top_key is used in func_search_ref before.
+  //          mb.shown.add(base); // set(base, name); // track first name, but this causes BUG at test_mode['132'] // trial patch 'func_check_reorder was given.
             /*if (mb.shownSet)*/ mb.shownSet.add(mb.base_arr(name));
           }
-          if (base.lazy && base.lazy_idx<base.posts.length) this.lazy_tgts.set(base,name);
-          if (pf_merge && update_drawn_y && (this.view==='page' || this.view==='thread')) {
-            var step = (pref.test_mode['88'])? 1 : pref.proto.lazyDraw.merge_step;
-            if (++this.post_count%step==0) this.drawn_y = this.threads[name][16].posts[0].pn.offsetTop;
-          }
-          return retval;
-        } else {
-          this.func_track_shown_org(name, update_drawn_y);
-          return false;
         }
+        if (base.lazy && base.lazy_idx<base.posts.length) this.lazy_tgts.set(base,name);
+        if (pf_merge && update_drawn_y && (this.view==='page' || this.view==='thread')) {
+          var step = (pref.test_mode['88'])? 1 : pref.proto.lazyDraw.merge_step;
+          if (++this.post_count%step==0) this.drawn_y = this.threads[name][16].posts[0].pn.offsetTop;
+          return isTop? 0x02 : 0x00;
+        }
+        return isTop? 0x02 : 0x01; // [1]: isTop, [0]: NOT updated this.drawy_y (to supress increasing lazy_next, true(1) must be strictly accurate, but false(0) is allowed if vague.
       },
       shown: new Map(), // base -> idx of first shown member
 //      shown: new Set(), // Map(), // base -> name of first shown pair for search_ref
@@ -9356,128 +9453,150 @@ if (!pref.test_mode['5']) { // faster, because object creation is light,,,orz,,,
       },
       release_hook: function(){},
       auto_merge_list: function(name, clg){
-//        var tgt_th = clg.threads[name];
-        var base = this.bases[name]; //  || this.query(name, tgt_th, null, false, clg); // called after show_catalog(), calling this.query is redundant.
-        if (base) {
+////        var tgt_th = clg.threads[name];
+//        var base = this.bases[name]; //  || this.query(name, tgt_th, null, false, clg); // called after show_catalog(), calling this.query is redundant.
+//        if (base) {
           var arr = this.base_arr(name);
           if (arr) {
-            var tgts = arr.slice().splice(arr.indexOf(name),1);
-            scan.scan_ui('mergeAuto', {tgts:tgts, options:{refresh:clg}});
-            if (pref[pClg.mode].merge_auto_list_lv_add) pClg.merge_bases.add_to_lv_list(tgts, pref[pClg.mode].merge_auto_list_lv, pClg);
+            var tgts = arr.slice();
+            tgts.splice(tgts.indexOf(name),1);
+            return tgts;
+//            scan.scan_ui('mergeAuto', {tgts:tgts, options:{refresh:clg}});
+//            if (pref[pClg.mode].merge_auto_lv_add) pClg.merge_bases.add_to_lv_list(tgts, pref[pClg.mode].merge_auto_lv, pClg);
           }
-//          for (var key in pref3.proto.merge_list_obj2) if (name!==key && this.base_arr(key)===arr) tgts[tgts.length] = key;
-//          scan.scan_ui('mergeAuto', {tgts:tgts, options:{refresh:clg}});
-        }
-      },
-      add_to_list_fromUI: function(key_dst, name, clg){
-        scan.scan_ui('mergeUI', {tgts:[name], options:{refresh:clg}});
-//        var pn13_doms = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('*') || {};
-        if (pref.proto.merge_btn_lv_add) this.add_to_lv_list(name, pref.proto.merge_btn_lv, clg);
-//        if (pref.proto.merge_btn_lv_add) { // working code
-//          var key_lv = new RegExp('(^|,)\\s*'+name+'\\s*:\\s*\\d+(,|\n|$)','mg');
-//          var str_lv = pref.proto.merge_lv_str.replace(key_lv,',')+','+name+':'+pref.proto.merge_btn_lv+',\n';
-//          pref.proto.merge_lv_str = str_lv.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,''); // see 'triage_exe'
-//          var dom_lv = pn13_doms['proto.merge_lv_str'];
-//          pref_func.apply_prep(dom_lv || cnst.dom('<textarea name="proto.merge_lv_str"></textarea>'), false, true, null, true);
-//          if (!dom_lv) clg.onchange_funcs['*w/.merge_lv_str']();
+////          for (var key in pref3.proto.merge_list_obj2) if (name!==key && this.base_arr(key)===arr) tgts[tgts.length] = key;
+////          scan.scan_ui('mergeAuto', {tgts:tgts, options:{refresh:clg}});
 //        }
-        if (clg.pref[clg.mode].merge_btn_mode==='all') {
-          if (!clg.pref[clg.mode].merge) {
-            clg.pref[clg.mode].merge = true;
-            pref_func.apply_prep(clg.components.merge, false, true, clg.mode!=='float');
-          }
-        } else {
-          this.add_to_list_1(key_dst, name, clg, null, true);
-//        var str = pref.proto.merge_list_str.replace(/\s*\+/g,',+'); // working code
-//        var dst_arr = this.base_arr(key_dst);
-//        var src_arr = this.base_arr(name);
-//        if (!dst_arr || !src_arr || dst_arr!==src_arr) {
-//          var key = new RegExp('(^|,)\\s*\\+*\\s*'+key_dst+'\\s*(,|\n|$)','mg');
-//          var str_addend = ',+'+name+',';
-//          var idx = str.search(key);
-//          var str_new = (idx!=-1)? str.replace(key,'$&'+str_addend) : str + key_dst + str_addend;
-//          pref.proto.merge_list_str = str_new.replace(/,+\+/g,'+').replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,''); // see 'triage_exe'
-//          var dom = pn13_doms['proto.merge_list_str'];
-//          pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_list_str"></textarea>'), false, true, null, true);
-//          if (!dom) pref_func.settings.onchange_funcs['*.merge_list_str']();
+      },
+//      add_to_list_fromUI: function(dst, src, clg, no_insert){ // moved to Clg.prototype.merge_cross_links_fromUI
+//        if (!clg.threads[src]) scan.scan_ui('mergeUI', {tgts:[src], options:{refresh:clg}});
+////        var pn13_doms = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('*') || {};
+//        this.add_to_lv_list_pf(dst, src, clg, pref.proto.merge_btn_lv);
+////        if (pref.proto.merge_btn_lv_add) { // working code
+////          var lv = pref.proto.merge_btn_lv_inc && (parseInt(pref3.proto.merge_lv_obj2[dst],10) + pref.proto.merge_btn_lv_hop) || pref.proto.merge_btn_lv;
+////          this.add_to_lv_list(src, lv, clg);
+////        }
+//////        if (pref.proto.merge_btn_lv_add) { // working code
+//////          var key_lv = new RegExp('(^|,)\\s*'+name+'\\s*:\\s*\\d+(,|\n|$)','mg');
+//////          var str_lv = pref.proto.merge_lv_str.replace(key_lv,',')+','+name+':'+pref.proto.merge_btn_lv+',\n';
+//////          pref.proto.merge_lv_str = str_lv.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,''); // see 'triage_exe'
+//////          var dom_lv = pn13_doms['proto.merge_lv_str'];
+//////          pref_func.apply_prep(dom_lv || cnst.dom('<textarea name="proto.merge_lv_str"></textarea>'), false, true, null, true);
+//////          if (!dom_lv) clg.onchange_funcs['*w/.merge_lv_str']();
+//////        }
+//        var mg_mode = clg.pref[clg.mode].merge_mode==='all'? 'merge' : 'merge_list';
+//        if (!clg.pref[clg.mode][mg_mode]) {
+//          clg.pref[clg.mode][mg_mode] = true;
+//          pref_func.apply_prep(clg.components[mg_mode], false, true, clg.mode!=='float');
 //        }
-          if (!pref.proto.merge_list) {
-            pref.proto.merge_list = true;
-            pref_func.settings.pnOrDummy(pClg.mode+'.merge_list').checked = true;
-//          var dom_cb = pn13_doms[pClg.mode+'.merge_list'];
-//          if (dom_cb) dom_cb.checked = true;
-            clg.onchange_funcs['*w/.merge_list']();
-          }
-        }
+//        if (mg_mode==='merge_list') this.add_to_list_1(dst, src, clg, no_insert);
+////        if (clg.pref[clg.mode].merge_mode==='all') {
+////          if (!clg.pref[clg.mode].merge) {
+////            clg.pref[clg.mode].merge = true;
+////            pref_func.apply_prep(clg.components.merge, false, true, clg.mode!=='float');
+////          }
+////        } else {
+////          this.add_to_list_1(key_dst, name, clg, null, true);
+//////        var str = pref.proto.merge_list_str.replace(/\s*\+/g,',+'); // working code
+//////        var dst_arr = this.base_arr(key_dst);
+//////        var src_arr = this.base_arr(name);
+//////        if (!dst_arr || !src_arr || dst_arr!==src_arr) {
+//////          var key = new RegExp('(^|,)\\s*\\+*\\s*'+key_dst+'\\s*(,|\n|$)','mg');
+//////          var str_addend = ',+'+name+',';
+//////          var idx = str.search(key);
+//////          var str_new = (idx!=-1)? str.replace(key,'$&'+str_addend) : str + key_dst + str_addend;
+//////          pref.proto.merge_list_str = str_new.replace(/,+\+/g,'+').replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,''); // see 'triage_exe'
+//////          var dom = pn13_doms['proto.merge_list_str'];
+//////          pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_list_str"></textarea>'), false, true, null, true);
+//////          if (!dom) pref_func.settings.onchange_funcs['*.merge_list_str']();
+//////        }
+////          if (!clg.pref[clg.mode].merge_list) {
+////            clg.pref[clg.mode].merge_list = true;
+////            pref_func.apply_prep(clg.components.merge_list, false, true, clg.mode!=='float');
+//////            pref_func.settings.pnOrDummy(clg.mode+'.merge_list').checked = true;
+////////          var dom_cb = pn13_doms[pClg.mode+'.merge_list'];
+////////          if (dom_cb) dom_cb.checked = true;
+//////            clg.onchange_funcs['*w/.merge_list']();
+////          }
+////        }
+//      },
+      add_to_lv_list_pf: function(dst, src, clg, pf){
+        if (!pf.lv_add) return;
+        var lv = pf.lv_inc && (parseInt(pref3.proto.merge_lv_obj2[dst],10) + 1) || pf.lv_def;
+        this.add_to_lv_list(src, lv, clg);
       },
-      add_to_lv_list: function(name, lv, clg, rm){
-if (pref.test_mode['193']) {
-        if (!Array.isArray(name))            pref.proto.merge_lv_str = pref3.proto.merge_lv_obj2._revise(name,    lv, rm, pref.proto.merge_lv_str);
-        else for (var i=0;i<name.length;i++) pref.proto.merge_lv_str = pref3.proto.merge_lv_obj2._revise(name[i], lv, rm, pref.proto.merge_lv_str);
-        pref_func.settings.pnOrDummy('proto.merge_lv_str').value = pref.proto.merge_lv_str;
-} else {
-        if (Array.isArray(name)) {
-          for (var i=0;i<name.length;i++) this.add_to_lv_list(name[i], lv, i===name.length-1? clg : null, rm);
-          return;
-        }
-        var key = new RegExp('(^|,)\\s*'+name+'\\s*:\\s*\\w+\\s*(,|\n|$)','mg');
-        var str = pref.proto.merge_lv_str.replace(key,',')+'\n'+(rm? '' : name+':'+lv+'\n');
-        pref.proto.merge_lv_str = pref_func.fmt4str2(str);
-        if (!clg) return;
-        pref_func.apply_prep_1n('proto.merge_lv_str', false, null, null, true); // make obj
-}
-//        var dom = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['proto.merge_lv_str'];
-//        pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_lv_str"></textarea>'), false, true, null, true);
-        if (this.base_arr(name)) clg.onchange_funcs['*w/.merge_lv_str'](null, clg.mode, name);
-//        /*if (!dom)*/ clg.onchange_funcs['*w/.merge_lv_str']();
+      add_to_lv_list: function(name, lv, clg){
+//if (pref.test_mode['193']) {
+        var tgts = pref3.proto.merge_lv_obj2._revise(name, lv); // ._revise can accept array of names.
+        if (clg.pref[clg.mode].merge_lv && Object.keys(tgts).length>0) clg.onchange_funcs['*w/.merge_lv_str'](null, clg.mode, tgts);
+////        if (!Array.isArray(name))            pref.proto.merge_lv_str = pref3.proto.merge_lv_obj2._revise(name,    lv, rm, pref.proto.merge_lv_str);
+////        else for (var i=0;i<name.length;i++) pref.proto.merge_lv_str = pref3.proto.merge_lv_obj2._revise(name[i], lv, rm, pref.proto.merge_lv_str);
+////        pref_func.settings.pnOrDummy('proto.merge_lv_str').value = pref.proto.merge_lv_str;
+//} else { // working code
+//        if (Array.isArray(name)) {
+//          for (var i=0;i<name.length;i++) this.add_to_lv_list(name[i], lv, i===name.length-1? clg : null);
+//          return;
+//        }
+//        var key = new RegExp('(^|,)\\s*'+name+'\\s*:\\s*\\w+\\s*(,|\n|$)','mg');
+//        var str = pref.proto.merge_lv_str.replace(key,'');
+//        pref.proto.merge_lv_str = pref_func.fmt4str2_2(str, lv!==null && (name+':'+lv));
+//        if (!clg) return;
+//        pref_func.apply_prep_1n('proto.merge_lv_str', false, null, null, true); // make obj
+////        var dom = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['proto.merge_lv_str'];
+////        pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_lv_str"></textarea>'), false, true, null, true);
+//        clg.onchange_funcs['*w/.merge_lv_str'](null, clg.mode, typeof(name)==='string'? [name] : name);
+////        /*if (!dom)*/ clg.onchange_funcs['*w/.merge_lv_str']();
+//}
       },
-      add_to_list_1: function(dst, name, clg, prep_only, merge){
-        var arr = this.base_arr(name);
-        if (dst && name && arr && (prep_only || arr===this.base_arr(dst))) return;
-if (pref.test_mode['192']) {
-        var retval = pref3.proto.merge_list_obj2._revise(dst, name, pref.proto.merge_list_str, merge==='no_insert');
-        pref_func.settings.pnOrDummy('proto.merge_list_str').value = pref.proto.merge_list_str = retval.str;
-        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, comf.Array_toObj(retval.tgts,null), prep_only, true, merge);
-} else {
-        if (pref.test_mode['178']) {
-          var old_old = pref3.proto.merge_list_obj2_old;
-          var now = pref3.proto.merge_list_obj2;
-          var old_org = this.debug_copy(old_old||now);
-          var str_old = pref.proto.merge_list_str;
-        }
-        var str = pref.proto.merge_list_str;
-//        if (arr && merge==='unmerge_once') str = this.add_to_list_2(null, name, str); // erase once for GUI
-        str = this.add_to_list_2(dst, name, str, merge==='no_insert'); // erase, add or insert
-        if ((dst===null || this.base_arr(dst) || merge==='no_insert') && arr && arr.length===2) {
-          var rest = arr[arr.indexOf(name)? 0 : 1];
-          var idx = rest.indexOf('/');
-          var idxl = rest.lastIndexOf('/');
-          if (idx>0 && idx!==idxl && idxl!==rest.length-1) str = this.add_to_list_2(null, rest, str); // erase // check if fullname
-        }
-        pref.proto.merge_list_str = str;
-        pref_func.apply_prep_1n('proto.merge_list_str', false, null, null, true); // make obj
-//        if (pref.test_mode['177']) pref3.proto.merge_list_obj2c_update(name); // name is NOT registered to gClg.AllThreads yet.
-//        var dom = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['proto.merge_list_str'];
-//        pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_list_str"></textarea>'), false, null, null, true); // make obj
-        var tgts = comf.Array_toObj((arr||[]).concat(this.base_arr(name)||[]), null); // arr was made from obj2_old at this time.
-        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, tgts, prep_only, true, merge);
-        if (pref.test_mode['178']) { // changes old directly, can't be before drawing.
-          var now_org = pref3.proto.merge_list_obj2;
-//          if (arr && merge==='unmerge_once') var old = now._revise(old_old, null, name);
-          var retval = now._revise(dst, name, str_old, merge==='no_insert', old || old_old);
-          var old = retval.old;
-          for (var i in old) if (old[i])      this.debug_error_check(name,dst,i,old,old_org,'old!==old_org');
-          for (var i in old_org) if (!old[i]) this.debug_error_check(name,dst,i,old_org,old,'old_org!==old');
-          for (var i in now)                  this.debug_error_check(name,dst,i,now,now_org,'now!==now_org', old_org);
-          for (var i in now_org) if (!now[i]) this.debug_error_check(name,dst,i,now_org,now,'now_org!==now', old_org);
-          for (var db in now[':REV'])     for (var i in now[':REV'][db])     if (now[':REV'][db][i]!==now_org[':REV'][db][i]) console.log('ERROR: now3!==now_org3, '+db+i);
-          for (var db in now_org[':REV']) for (var i in now_org[':REV'][db]) if (now_org[':REV'][db][i]!==now[':REV'][db][i]) console.log('ERROR: now_org3!==now3, '+db+i);
-          if (retval.str!==pref.proto.merge_list_str) {
-            for (var i=0;i<retval.str.length;i++) if (retval[i]!==pref.proto.merge_list_str[i]) break;
-            console.log('ERROR: str at '+i+'\n'+str.slice(i-10,i+100)+'\n'+pref.proto.merge_list_str.slice(i-10,i+100));
-          }
-        }
-}
+      add_to_list_1: function(dst, name, clg, no_insert, prep_only){
+        var sarr = this.base_arr(name);
+        var darr = dst && this.base_arr(dst);
+        if (!dst && !sarr || dst && sarr && sarr===darr) return;
+//if (pref.test_mode['192']) {
+        var tgts = pref3.proto.merge_list_obj2._revise(dst, name, no_insert);
+//        pref_func.settings.pnOrDummy('proto.merge_list_str').value = pref.proto.merge_list_str = retval.str;
+        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, tgts, prep_only);
+//} else { // working code
+//        if (pref.debug_mode['41']) {
+//          var old_old = pref3.proto.merge_list_obj2_old;
+//          var now = pref3.proto.merge_list_obj2;
+//          var old_org = this.debug_copy(old_old||now);
+//          var str_old = pref.proto.merge_list_str;
+//        }
+//        var str = pref.proto.merge_list_str;
+////        if (sarr && merge==='unmerge_once') str = this.add_to_list_2(null, name, str); // erase once for GUI
+//        str = pref_func.add_to_list_2(dst, name, str, no_insert); // erase, add or insert
+//        if ((dst===null || darr || no_insert) && sarr && sarr.length===2) {
+//          var rest = sarr[sarr.indexOf(name)? 0 : 1];
+//          var idx = rest.indexOf('/');
+//          var idxl = rest.lastIndexOf('/');
+//          if (idx>0 && idx!==idxl && idxl!==rest.length-1) str = pref_func.add_to_list_2(null, rest, str); // erase // check if fullname
+//        }
+//        pref.proto.merge_list_str = str;
+//        pref_func.apply_prep_1n('proto.merge_list_str', false, null, null, true); // make obj
+////        if (pref.test_mode['177']) pref3.proto.merge_list_obj2c_update(name); // name is NOT registered to gClg.AllThreads yet.
+////        var dom = pref_func.settings.pn13 && pref_func.settings.pn13.getElementsByTagName('TEXTAREA')['proto.merge_list_str'];
+////        pref_func.apply_prep(dom || cnst.dom('<textarea name="proto.merge_list_str"></textarea>'), false, null, null, true); // make obj
+//        var tgts = !dst || darr? [name] : (sarr && !no_insert)? [dst] : [dst,name];
+////        var tgts = comf.Array_toObj((sarr||[]).concat(this.base_arr(name)||[]), null); // sarr was made from obj2_old at this time.
+//        clg.onchange_funcs['*w/.merge_list_str'](null, clg.mode, tgts, prep_only); // , merge);
+//        if (pref.debug_mode['41']) { // changes old directly, can't be before drawing.
+//          var now_org = pref3.proto.merge_list_obj2;
+////          if (sarr && merge==='unmerge_once') var old = now._revise(old_old, null, name);
+//          var retval = now._revise(dst, name, no_insert, str_old, old_old);
+////          var old = retval.old;
+////          for (var i in old) if (old[i])      this.debug_error_check(name,dst,i,old,old_org,'old!==old_org');
+////          for (var i in old_org) if (!old[i]) this.debug_error_check(name,dst,i,old_org,old,'old_org!==old');
+//          for (var i in now)                  this.debug_error_check(name,dst,i,now,now_org,'now!==now_org', old_org);
+//          for (var i in now_org) if (!now[i]) this.debug_error_check(name,dst,i,now_org,now,'now_org!==now', old_org);
+//          for (var db in now[':REV'])     for (var i in now[':REV'][db])     if (now[':REV'][db][i]!==now_org[':REV'][db][i]) console.log('ERROR: now3!==now_org3, '+db+i);
+//          for (var db in now_org[':REV']) for (var i in now_org[':REV'][db]) if (now_org[':REV'][db][i]!==now[':REV'][db][i]) console.log('ERROR: now_org3!==now3, '+db+i);
+//          if (retval.str!==pref.proto.merge_list_str) {
+//            for (var i=0;i<retval.str.length;i++) if (retval.str[i]!==pref.proto.merge_list_str[i]) break;
+//            console.log('ERROR: str at '+i+'\n'+retval.str.slice(i<10? 0:i-10,i+100)+'\n'+pref.proto.merge_list_str.slice(i<10? 0:i-10,i+100));
+//          }
+//        }
+//}
       },
       debug_copy: function(src){
         var obj = {};
@@ -9485,56 +9604,12 @@ if (pref.test_mode['192']) {
         return obj;
       },
       debug_error_check: function(name,dst,i,src0,src1,msg, old){
-        if (i!==':REV' && i!==':F' && i!=='_revise' && i!=='_rm') if (!src1[i] || src0[i].join()!==src1[i].join()) console.log('ERROR: ',name,dst,msg+': '+i+': '+src0[i].join()+': '+(Array.isArray(src1[i])? src1[i].join() : src1[i])+': '+(old? old[i] : '----'));
+        if (i!==':REV' && i!==':F' && i!=='_revise' && i!=='_rm' && i!=='_str') if (!src1[i] || src0[i].join()!==src1[i].join()) console.log('ERROR: ',name,dst,msg+': '+i+': '+src0[i].join()+': '+(Array.isArray(src1[i])? src1[i].join() : src1[i])+': '+(old? old[i] : '----'));
       },
-      add_to_list_2: function(tgt, name, str, no_insert){
-        var dst = tgt && this.existIn(str,tgt);
-        var src = this.existIn(str,name);
-        if (src && (!tgt || dst || no_insert)) {
-          str = src[1]==='+'? str.slice(0,src.index)              +str.slice(src.index+src[0].length) // eliminates '+' preferentially
-                            : str.slice(0,src.index+src[1].length)+str.slice(src.index+src[0].length+src[3].length); // remove
-          var len_erased = src[0].length + (src[1]==='+'? 0 : -src[1].length+src[3].length);
-        }
-        if (tgt) { // if (dst || tgt===null) {
-//          if (src) {
-//            str = src[1].length>0? str.slice(0,src.index)+str.slice(src.index+src[0].length)
-//                                 : str.slice(0,src.index)+str.slice(src.index+src[0].length+src[3].length); // remove
-//            var len_erased = src[1].length>0? src[0].length : src[0].length+src[3].length;
-//          }
-          if (dst) { // if (tgt!==null) {
-            var idx = (src && dst.index>src.index? dst.index - len_erased : dst.index) + dst[0].length;
-            str = str.slice(0,idx)+'+'+name+str.slice(idx); // add
-          } else if (src && !no_insert) str = str.slice(0,src.index+src[1].length)+tgt+'+'+str.slice(src.index+src[1].length); // insert
-          else str += '\n'+tgt+'+'+name+'\n' // add to last
-        }
-        return pref_func.fmt4str2(str);
-      },
-      existIn: function(str, key_in){
-        var key = key_in.replace(/\+/,'\\+');
-        return new RegExp('(^|,|\\+)\\s*'+key+'(\s*)(?=(,|\n|$|\\+))','mg').exec(str);
-//        return new RegExp('(^|,|\\+)\\s*'+key+'([^,\n+]*)(?=(,|\n|$|\\+))','mg').exec(str); // (?<=) requires chrome 62 // BUG, key isn't terminated
-      },
-//      add_to_list_2: function(dst, name, clg, insert){
-//        var str = pref.proto.merge_list_str;
-//        var key = dst.replace(/\+/,'\\+')+'([\\^@;][^,\n]*)*'; // see 'rm_items_404_delete_merge' and 'triage_exe'
-//        if (!name) str = str.replace(new RegExp('(^|,)'+key+'([,\n]+\\s*\\+*|$|\\+)','mg'),'$1').replace(new RegExp('\\+\\s*'+key+'(,|\n|$|\\s*\\+)','mg'),'$2');
-//        else {
-//          var res = new RegExp('(^|,|\\+|\\s)'+key+'(?=(,|\n|$|\\+))','mg').exec(str); // (?<=) requires chrome 62
-//          str = (!res)? str + '\n'+dst+'+'+name+'\n'
-//            : (insert)? str.slice(0,res.index+res[1].length)+name+'+'+str.slice(res.index+res[1].length)
-//            : str.slice(0,res.index+res[0].length)+'+'+name+str.slice(res.index+res[0].length); // str.replace(rx,'$&'+'+'+name);
-//        }
-//        pref.proto.merge_list_str = str.replace(/,,+/g,',').replace(/^,/g,'').replace(/\n,/g,'\n').replace(/\n\n+/g,'\n').replace(/^\n/,'');
-//      },
-      hide_merge_tgts: function(clg, check_func, srcs, merge){
-        var tgts = pref.test_mode['192'] && srcs || {};
-        if (!srcs || !pref.test_mode['192']) {
-          if (!srcs) srcs = clg.threads;
-          for (var name in srcs) {
-            var tgt_th = clg.threads[name];
-            if (tgt_th && (tgt_th[1]||merge) && check_func.call(this,name)) tgts[name] = tgt_th; // '||merge' for merging with not shown threads by MERGEN/MERGEC triage
-//            if (clg.func_hide(name)) tgt_th[1] = false;
-          }
+      hide_merge_tgts: function(clg, check_func, tgts){ // , merge){
+        if (!tgts) {
+          tgts = [];
+          for (var name in clg.threads) if (clg.threads[name] && check_func.call(this,name)) tgts[tgts.length] = name; // clg.threads check for multicatalog
         }
         clg.func_hide_all(tgts);
 //        pref3.proto.merge_list_obj2_old = null;
@@ -9543,34 +9618,36 @@ if (pref.test_mode['192']) {
         return tgts; // Object.keys(tgts).length;
       },
       onchange_funcs: comf.Object_defProps(pref_func.settings.onchange_funcs, { // dummy prop; this property itself is not used.
-        '*w/.merge_list_str': function(e,name, tgts, prep_only, no_dirtify, merge){
+        '*w/.merge_list_str': function(e,src, tgts, prep_only){ // , merge){
 //          var clg = this['.'];
-/*          if (!clg)*/ gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_list_str_1'], arguments); // broadcast always
-//          else this['*w/.merge_list_str_1'](e, name, prep_only);
+/*          if (!clg)*/ gClg.BroadcastEventByMode(src.split('.')[0], this['*w/.merge_list_str_1'], arguments); // broadcast always
+//          else this['*w/.merge_list_str_1'](e, src, prep_only);
           pref3.proto.merge_list_obj2_old = null;
         },
-        '*w/.merge_list_str_1': function(e,name, tgts, prep_only, no_dirtify, merge){
+        '*w/.merge_list_str_1': function(e,src, tgts, prep_only){ // , merge){
           var clg = this['.'];
           if (!clg.pref[clg.mode].merge_list) return;
           var tgts_draw = clg.merge_bases.hide_merge_tgts(clg, function(name){
             var now = this.base_arr(name);
             var old = this.base_arr_old(name);
-            return (now)? (!old || now.join()!==old.join() && (!merge || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts, merge); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged. // this.bases will be updated after show_catalog, but this.base_tgts was updated because it is calculated from this.base_arr.
-//            return (now)? (!old || now.join()!==old.join()) : old;});
-          if (!no_dirtify) clg.dirty |= 0x10;
-          if (!prep_only && Object.keys(tgts_draw).length) clg.show_catalog_buf(tgts_draw);
+            return (now)? (!old || now.join()!==old.join()) : old;}, pref.test_mode['210']? null : tgts);
+//            return (now)? (!old || now.join()!==old.join() && (!tgts_hide || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, pref.test_mode['210']? null : tgts, pref.test_mode['210']? null : tgts_hide); //  !merge check for rewinding overrated merged threads when its top thread is unmerged. // this.bases will be updated after show_catalog, but this.base_tgts was updated because it is calculated from this.base_arr. // <- BUG. this.base_tgts traverses this.bases which is NOT updated before show_catalog. merge==='no_insert' hits this case because it may include unmerging.
+//            return (now)? (!old || now.join()!==old.join() && (!merge || merge==='no_insert' || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts, merge); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged. // this.bases will be updated after show_catalog, but this.base_tgts was updated because it is calculated from this.base_arr. // <- BUG. this.base_tgts traverses this.bases which is NOT updated before show_catalog. merge==='no_insert' hits this case because it may include unmerging.
+//            return (now)? (!old || now.join()!==old.join() && (!merge || this.bases[this.base_tgts(name, clg.pref[clg.mode])]!==this.bases[name])) : old;}, tgts, merge); // now.join()!==old.join() may be redundant. // !merge check for rewinding overrated merged threads when its top thread is unmerged. // this.bases will be updated after show_catalog, but this.base_tgts was updated because it is calculated from this.base_arr.
+          if (!tgts) clg.dirty |= 0x10; // may be redundant with try_all in show_catalog.
+          if (!prep_only && tgts_draw.length>0) clg.show_catalog_buf(tgts_draw);
         },
         '*w/.merge_list': function(e, name){
           var clg = this['.'];
           if (!clg) {gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_list'], arguments); return;}
-          clg.merge_bases.hide_merge_tgts(clg, function(name){return this.base_arr(name) || this.base_arr_old(name);});
+          clg.merge_bases.hide_merge_tgts(clg, function(name){return this.base_arr(name);}); //  || this.base_arr_old(name);});
           clg.dirty |= 0x10;
           clg.show_catalog(0);
         },
         '*w/.merge': function(e, name){
           var clg = this['.'];
           if (!clg) {gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge'], arguments); return;}
-          clg.merge_bases.hide_merge_tgts(clg, function(){return true;});
+          clg.merge_bases.hide_merge_tgts(clg, null, clg.threads);
           clg.dirty |= 0x10;
           if (clg.pref[clg.mode].merge) clg.order.ordering_old = clg.order.ordering;
           clg.components.ordering.onfocus();
@@ -9579,32 +9656,33 @@ if (pref.test_mode['192']) {
           clg.components.ordering.onblur();
           clg.components.ordering.disabled = clg.pref[clg.mode].merge;
         },
-        '*w/.merge_lv_str': function(e, name, tgt){
+        '*w/.merge_lv_str': function(e, src, tgts){
 //          var clg = this['.'];
-/*          if (!clg)*/ gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_lv_1'], [e, name, true, tgt]); // broadcast always
-//          if (pref[clg.view].merge_lv) this['*w/.merge_lv_1'](e,name, true, tgt); // changed from clg.pref[clg.mode].merge_lv
+/*          if (!clg)*/ gClg.BroadcastEventByMode(src.split('.')[0], this['*w/.merge_lv_1'], [e, src, true, tgts]); // broadcast always
+//          if (pref[clg.view].merge_lv) this['*w/.merge_lv_1'](e,src, true, tgt); // changed from clg.pref[clg.mode].merge_lv
           pref3.proto.merge_lv_obj2_old = null; // this must be after broadcasting.
         },
-        '*w/.merge_lv': function(e, name){
+        '*w/.merge_lv': function(e, src){
           var clg = this['.'];
-          if (!clg) gClg.BroadcastEventByMode(name.split('.')[0], this['*w/.merge_lv_1'], arguments);
-          else this['*w/.merge_lv_1'](e, name);
+          if (!clg) gClg.BroadcastEventByMode(src.split('.')[0], this['*w/.merge_lv_1'], arguments);
+          else this['*w/.merge_lv_1'](e, src);
         },
-        '*w/.merge_lv_1': function(e, name, from_str, tgt){
+        '*w/.merge_lv_1': function(e, src, from_str, tgts_in){
           var clg = this['.'];
           if (!clg.pref[clg.mode].merge && !clg.pref[clg.mode].merge_list) return;
           var mb = clg.merge_bases;
-          var tgts = !tgt? clg.threads : !clg.threads[tgt]? {} : comf.Array_toObj([tgt], null); // {[tgt]:null}
+          var tgts = tgts_in || clg.threads;
+          var pf_mglv = clg.pref[clg.mode].merge_lv;
           for (var name in tgts) {
-            if (!clg.threads[name][1]) continue;
+            if (!clg.threads[name] || !clg.threads[name][1]) continue;
             var base = mb.bases[name];
             if (!base) continue;
             var now = base.get_class(name);
-            var old = from_str? base.get_class(name,true,true) : null;
+            var old = !from_str? null : tgts_in? tgts_in[name] && pref.cpfx+'merged'+tgts_in[name] : base.get_class(name,true,true); // tgts_in[name] is null if undefined, see obj2proto_merge_lv._revise
             if (!from_str || now!=old) {
               var posts = (clg.view==='page' || clg.view==='thread')? clg.threads[name][16].posts : [{pn:base.pn}];
-              if (from_str || !clg.pref[clg.mode].merge_lv) mb.class_remove_all(posts, from_str? old : now);
-              if (from_str ||  clg.pref[clg.mode].merge_lv) mb.class_add_all(posts,now);
+              if (from_str || !pf_mglv) mb.class_remove_all(posts, from_str? old : now);
+              if (from_str ||  pf_mglv) mb.class_add_all(posts,now);
             }
           }
 //          pref3.proto.merge_lv_obj2_old = null; // this must be moved to after broadcasting.
@@ -11075,21 +11153,6 @@ if (pref.features.domains['8chan'] || pref.features.domains['lain'] || pref.feat
 ////////        footer.childNodes[0].innerHTML = (nums[0]>=0)? 'U: '+ str_add + ' / ' : '';
 ////////      } 
 ////////    },
-//    prep_footer3 : function(footer,board){
-////      th.footer.setAttribute('name',pref.cpfx+'footer');
-//      if (pref.catalog_footer_show_board_name) {
-////        footer.innerHTML = '<span name="'+pref.cpfx+'footer">' + footer.innerHTML +'</span>' + '&emsp;' + board;
-//        footer.innerHTML = '<span>' + footer.innerHTML + '</span>' + '&emsp;' + board;
-//        footer = footer.childNodes[0];
-//      }
-//      return footer;
-//    },
-//    insert_footer3 : function(footer,nums,nums2){
-//      var str_add = ((pref.catalog_footer_show_nof_rep_to_me)? nums[1]+'/' : '' ) +(nums2[2]-nums[2]);
-//      var str = (pref.catalog_footer_design==='native')? ((nums[0]>=0)? 'U: '+ str_add + ' / ' : '') + 'R: '+(nums2[2]-1) + ' / I: '+nums2[3]
-//                                                       : ((nums[0]>=0)? str_add + '/' : '') + nums2[2] + '/'+nums2[3]; // trial.
-//      footer.innerHTML = str;
-//    },
 ////////    check_reply_to_me : function(name,dbt,nums,value,date,pool){
 ////////      var obj ;
 ////////      var time_check = (nums[6]==nums[0])? nums[3] : nums[0];
@@ -14016,8 +14079,15 @@ if (this.nickname==='4chan') {
             parse_funcs: {type_com:'html', __proto__:this},
 //            get com(){return this.teaser;},
             missing_info:undefined,
+            _links: null, // for block prototype chain.
             __proto__:doc.__proto__
           };
+          if (!pref.test_mode['146']) {
+            var rx_anchor = /<a href="(\/[^\/]+\/)thread\/(\d+)#p(\d+)" class="quotelink">&gt;&gt;(\d+)<\/a>/g;
+            var kill_if_pruned = function(m,board,no_th,no_post,no_caption){
+              return board!==doc.board || (no_th in obj.threads)? m : '<span class="deadlink">&gt;&gt'+no_caption+'</span>';
+            };
+          }
           for (var i in obj.threads) {
             var th = obj.threads[i];
             if (th.b>pns.length) continue; // for safe
@@ -14043,7 +14113,7 @@ if (this.nickname==='4chan') {
             if (!pref.test_mode['146']) { // linkfy >>xxxx in OP
               var ts = pns[th.b].getElementsByClassName('teaser')[0];
               var html_new = (th.sub? '<b>'+th.sub+'</b>':'')+(th.sub&&th.com?': ':'')+th.com;
-              if (html_new!==ts.innerHTML.replace(/\'/g,'&#039;')) ts.innerHTML = html_new;
+              if (html_new!==ts.innerHTML.replace(/\'/g,'&#039;')) ts.innerHTML = html_new.replace(rx_anchor, kill_if_pruned);
             }
             ths[th.b] = {
               pn: pns[th.b],
@@ -14614,9 +14684,11 @@ if (this.nickname==='4chan') {
         get pn_trip(){return this.exe_sub('pn_trip');},
 //        get pn_name(){return this.exe_sub('pn_name');},
         get tFlag(){return this.exe_sub('tFlag');},
+        get _links(){return this.exe_sub('_links');},
       },
       'json_template': { // for test_mode['121']
         get country(){return this.exe_sub('country') || this.board_flag && this.board_flag.toLowerCase() || undefined;},
+        get _links(){return this.exe_sub('_links');},
       },
     },
     popups_posts_class_hlt: 'highlight',
@@ -14886,6 +14958,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
         (desktop?'</span> <span class="postNum desktop">':' ')+
           '<a href="'+ url_post  + '" title="Link to this post">No.</a>'+
           '<a href="'+ url_quote + '" title="Reply to this post">' + post.no + '</a>'+
+          (post.domain==='4chan' && post.archived? ' <img src="//s.4cdn.org/image/archived.gif" alt="Archived" title="Archived" class="archivedIcon retina">' : '')+
 //        '<a href="'+ href_prefix + op_no + '#p' + post.no + '" title="Link to this post">No.</a>'+
 //        '<a href="'+ href_prefix + op_no + '#q' + post.no + '" title="Reply to this post">' + post.no + '</a>'+
         '</span>';
@@ -15132,8 +15205,13 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       }
       return cns;
     },
-    catalog_separate: function(merge, cns, tgt_th, clg, first){
+    catalog_separate: function(merge, cns, tgt_th, clg){ // , first){
       var skl = this.catalog_json2html3_skelton(tgt_th);
+      if (merge.cns && cns[1]===merge.cns[1]) { // merge.cns[0] refers merged footer.
+        merge.cns[1] = cns[1].nextSibling;
+        merge.cns[2] = cns[2].nextSibling;
+        clg.image_resize_img(cns[2].nextSibling.firstChild, true);
+      }
       if (merge.isShown===2) {
         merge.pn.classList.remove(pref.cpfx+'merged');
 //        merge.cns[2].style.float = null;
@@ -15143,18 +15221,17 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
       }
 //      cns[2].style.float = null;
       skl.appendChild(cns[2]);
-      if (merge.cns && cns[0]===merge.cns[0]) merge.cns[0] = cns[0].nextSibling;
       skl.appendChild(cns[0]);
-      if (merge.cns && cns[1]===merge.cns[1]) merge.cns[1] = cns[1].nextSibling;
       skl.appendChild(cns[1]);
       clg.image_resize_img(cns[2].firstChild, true);
-      if (first) clg.image_resize_img(merge.pn.firstChild.firstChild, true);
       return skl;
     },
     catalog_reorder: function(cns, merge, clg, idx_new){
       if (idx_new==0) {
         clg.image_resize_img(cns[2].firstChild,true);
         clg.image_resize_img(merge.pn.firstChild.firstChild);
+        merge.cns[1] = cns[1];
+        merge.cns[2] = cns[2];
       }
       merge.pn.insertBefore(cns[2], merge.pn.childNodes[idx_new] || null); // thumbnail
       var idx_footer = merge.isShown + (merge.pn.childNodes[merge.isShown]===merge.footer[0]? 1 : 2); // +1 for merged footer
@@ -15654,9 +15731,9 @@ if (pref.features.domains['meguca']) {
       reply: '/static/css/ui/unreadFavicon.ico',
       reply_to_me: '/static/css/ui/replyFavicon.ico',
     },
-    make_tack: function(){
+    make_tack: function(){ // added pointere-events:none
       var tack = document.createElement('div');
-      tack.innerHTML = '<svg class="sticky" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8"><path d="M1.34 0a.5.5 0 0 0 .16 1h.5v2h-1c-.55 0-1 .45-1 1h3v3l.44 1 .56-1v-3h3c0-.55-.45-1-1-1h-1v-2h.5a.5.5 0 1 0 0-1h-4a.5.5 0 0 0-.09 0 .5.5 0 0 0-.06 0z"></path></svg>';
+      tack.innerHTML = '<svg class="sticky" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8"><path style="pointer-events:none" d="M1.34 0a.5.5 0 0 0 .16 1h.5v2h-1c-.55 0-1 .45-1 1h3v3l.44 1 .56-1v-3h3c0-.55-.45-1-1-1h-1v-2h.5a.5.5 0 1 0 0-1h-4a.5.5 0 0 0-.09 0 .5.5 0 0 0-.06 0z"></path></svg>';
       return tack.childNodes[0];
     },
   };
@@ -19299,7 +19376,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
                 delete req.ERR_5xx;
                 dispatch_if_idle();
               }})(req.REQ),30000);
-          req.REQ.INDICATOR.report({err_str:(req.tgt||url2tgt(req.url))+'('+value.status+((e.type!=='load')? ':'+e.type : '')+')'});
+          req.REQ.INDICATOR.report({err:(req.tgt||url2tgt(req.url))+'('+value.status+((e.type!=='load')? ':'+e.type : '')+')'});
           if (req.REQ.callback_1_fail) req.REQ.callback_1_fail(req, value, req.REQ);
         }
         if (end) end_proc_user(req.REQ, value.date);
@@ -19376,7 +19453,7 @@ else if (pref.test_mode['34'] && val[0]==='ECHO') setTimeout(function(){send_mes
       return true;
     }
     function end_proc_user(req, date){
-      if (req.callback) req.callback(req); // this must be prior to report({end:}), because somefunc reports err_str to indicator.
+      if (req.callback) req.callback(req); // this must be prior to report({end:}), because somefunc reports err to indicator.
       req.INDICATOR.report({end:date});
     }
     function sub_tar_flush(args){
@@ -20290,6 +20367,7 @@ if (!pref.test_mode['209']) {
     function mouse_cursor_on_text(e){
       if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='SELECT') return true;
       if (pref.proto.popup2_sel==='move') return false;
+      if (e.currentTarget===e.target) return false;
       var et_cn = e.target.childNodes;
 //      if (et_cn.length===1) return et_cn[0].nodeType===3; // textNode
       var range = new Range();
@@ -21239,8 +21317,8 @@ if (site.nickname==='4chan' || site.nickname==='rssn') {
 ////        register(cpf+'hMenu:hover '+cpf+'hMCnt', 'display:block;position:absolute;');
 //        for (var prop in pref.style.tips) if (prop.slice(-4)!=='_str' && pref.style.tips[prop]) this.register_cc(pref.style.tips[prop+'_str']);
         var onchange_funcs = {
-          'style.tips.merged': function(){
-            for (var i=1;i<10;i++) register_cc('merged'+i+'::before', pref.style.tips.merged? 'float:left;content:"'+Array(i).fill('>').join('')+'"' : null);
+          'style.tips.*': function(){
+            for (var i=1;i<11;i++) register_cc('merged'+i+'::before', pref.style.tips.merged? 'float:left;content:"'+Array(i).fill(pref.style.tips.merged_cnt).join('')+'"' : null);
           },
 //          'style.tips.*w/': function(e, name){
 //            var prop = name.split('.')[2];
@@ -21278,7 +21356,7 @@ if (site.nickname==='4chan' || site.nickname==='rssn') {
 //        onchange_funcs['style.post_editing']();
         if (pref[embed_mode].open_spoiler_text) open_spoiler_text();
         if (!pref.test_mode['98'] && embed_mode==='catalog' && !site.hasViewSel) register('.backlink','display:inline;font-size:0.8em;');
-        if (pref.style.tips.merged) onchange_funcs['style.tips.merged']();
+        if (pref.style.tips.merged) onchange_funcs['style.tips.*']();
       },
       add_to_watch: add_to_watch,
       register_cc: register_cc,
@@ -21622,7 +21700,7 @@ if (site.nickname==='4chan' || site.nickname==='rssn') {
         UNARC: 'Stop archiving this thread',
         MERGEB: 'Mark as marge base',
         MERGE: 'Merge this thread with merge base',
-        MERGEOP: 'Merge all threads in OP',
+//        MERGEOP: 'Merge all threads in OP',
 //        MERGEN: 'Merge with near thread',
 //        MERGEC: 'Issue merge command',
 //        MERGECR: 'Issue merge command (reverse merge)',
@@ -21722,7 +21800,7 @@ if (site.nickname==='4chan' || site.nickname==='rssn') {
       Triage.prototype.howto = 'How to describe triage:\n\n'+
         'Each line will be each line of triage.\n'+
         '1st column: command\n'+
-      ['KILL','TIME','NONE','KILL_N','TIME_N','ATTR','WATCH','UNWATCH','STICKY','UNSTICKY','SHOW','UNSHOW','UNDO','GO','ARC1','ARC','UNARC','MERGEB','MERGE','MERGEOP','UNMERGE','UNDOMERGE','SPC','MENU','EXPAND'].map(
+      ['KILL','TIME','NONE','KILL_N','TIME_N','ATTR','WATCH','UNWATCH','STICKY','UNSTICKY','SHOW','UNSHOW','UNDO','GO','ARC1','ARC','UNARC','MERGEB','MERGE',/*'MERGEOP',*/'UNMERGE','UNDOMERGE','SPC','MENU','EXPAND'].map(
             function(v){return '  '+v+': '+tooltips[v]+(v==='UNDO'? '. Effective to commands above' : '') + '.\n';}).join('')+
         '2nd column: caption on the triage button.\n'+
         '3rd column: style applied to the thread.\n'+
@@ -22862,7 +22940,7 @@ if (pref.debug_mode['31'] && posts_deleted!=='') console.log('uip_deleted '+post
             // sID: stats of IDs
             // sg: saged posts
             // pgh: page history
-            // mh: merge hop count
+            // mh: merge hop count (not used now)
             // q: quoted posts
             // hp: hidden post(manually)
           });
@@ -25010,7 +25088,7 @@ if (!pref.test_mode['24']) {
   var IDB = (window.indexedDB && pref.features.IDB)? (function(){
     function IDBRequest_onerror(e){
       console.log('IDB: ERROR: ',e);
-      indicator.report({err_str:'IDB_ERROR:'+e.target.error.name});
+      indicator.report({err:'IDB_ERROR:'+e.target.error.name});
       for (var key of db_info.keys()) console.log(db_info.get(key));
       console.log('last_closed: ',last_closed);
     }
@@ -25019,7 +25097,7 @@ if (!pref.test_mode['24']) {
     }
     function IDBTransaction_onabort(e){
       console.log('IDBT: ABORT: '+e.target.error.name,e);
-      indicator.report({err_str:'IDBT_ABORT:'+e.target.error.name});
+      indicator.report({err:'IDBT_ABORT:'+e.target.error.name});
       var tr = e.target;
       var db = tr.db;
 //      if (tr.error.name==='TimeoutError') {
@@ -25039,7 +25117,7 @@ if (!pref.test_mode['24']) {
     }
     function IDBTransaction_onerror(e){
       console.log('IDBT: ERROR: '+e.target.error.name,e);
-      indicator.report({err_str:'IDBT_ERROR:'+e.target.error.name});
+      indicator.report({err:'IDBT_ERROR:'+e.target.error.name});
       var tr = e.target.transaction;
       var db = e.target.db || e.target.transaction && e.target.transaction.db;
       IDBT_rereq(db, tr, 'IDBT_onerror:'+tr.error.name);
@@ -25805,7 +25883,7 @@ if (!pref.test_mode['79']) {
       if (stats.total!==0) watchdog.start(pref.archive.IDB.watchdog*1000);
       function indicator_report(){
         if (stats.str) {
-          indicator.report({err_str:'WDG: '+stats.str});
+          indicator.report({err:'WDG: '+stats.str});
           stats.str = '';
         }
       }
@@ -27350,9 +27428,10 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             if (!stat) return; // when indicator was pruned.
 //            var prog = stat.prog; // prepare for being overwritten.
             if (obj) for (var i in obj) {
-              if (i==='err_str') {
-                if (!stat.err_str) this.set('orange');
-                stat[i] = ((stat[i])? stat[i]+', ':'') + obj[i];
+              if (i==='err') {
+                if (!stat.errs) this.set('orange');
+                stat.errs = (stat.errs||0) + 1;
+                stat.err_str = (stat.err_str||'') + ', ' + obj[i];
               } else stat[i] = obj[i];
               var prog = stat.prog;
               if (i==='end') { // end must NOT come with prog.
@@ -27362,7 +27441,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
 //                                                   prog.found_threads+'/'+prog.scanned+', '+prog.found_boards+'/'+prog.max;
                   stat.prog = null; // remove reference loop.
                 }
-                var result = (!stat.err_str || stat.initiator==='IDB')? '\u25cf' :
+                var result = (!stat.err || stat.initiator==='IDB')? '\u25cf' :
                              (prog && prog.SUC)? '\u25b2' : 'X';
 //                             (prog && Object.keys(prog.error_obj).length<prog.max)? '\u25b2' : 'X';
                 this.set((result==='X')?'red':null, result);
@@ -27399,7 +27478,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
                        ((stat.prog_str)? 'Progress: '+ stat.prog_str+'<br>' : '')+
                        'Priority: '+ stat.priority+'<br>'+
                        ((stat.start && !stat.end && stat.prog)? 'Crawler: '+ stat.prog.crawler+'<br>' : '')+
-                       ((stat.err_str)? '<span style="color:red">Errors: '+ stat.err_str+'</span><br>' : '')+
+                       ((stat.errs)? '<span style="color:red">Errors: '+ stat.errs +': '+ stat.err_str.slice(2) +'</span><br>' : '')+
                        ((stat.abort_str)? '<span style="color:red">Abort: '+ stat.abort_str+'</span><br>' : '')+
                        ((stat.end)? 'End: '+ new Date(stat.end).toLocaleTimeString()+'<br>' : '');
             var retval = (!cancel_button)? html : {html:html, callback:tooltip_func}
@@ -27490,6 +27569,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
         mode: embed_mode,
         mode_fmt: null, // embed_mode=='float'? 'float' : 'catalog',
         threads: threads,
+        mg_footers: new Set(),
 //        timestamp_trial: 16,
         timestamp: embed_mode==='thread'? 16 : 0,
         clean_idx: 0,
@@ -27598,15 +27678,15 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var footer = tgt_th[24];
 //          var footer = this.threads[name][24];
 //          if (!footer) return;
-          if (footer[4]!==this.timestamp) this.insert_footer3(footer, name); // , 0x10); // keep force_network_update flag
+          if (footer[4]!==this.timestamp) this.insert_footer3(footer, name, null, null, pref.test_mode['214'] && 0x02); // , 0x10); // keep force_network_update flag
 //          if (footer[4] & 0x0f) this.insert_footer3(footer, name);
 //          footer[4] = this.timestamp_trial; // keep updating while lazy drawing is not completed, but this is too much.
         },
         draw_merge: function(tgt_th, name, merge){ // update both footers in both cases.
           var footer = tgt_th[24];
-          if (!merge) this.insert_footer3(footer, name, /*0x10,*/ null, true); // for unmerge, update both footers.
+          if (!merge) this.insert_footer3(footer, name, /*0x10,*/ null, true, pref.test_mode['214'] && 0x02); // for unmerge, update both footers.
           footer[6] = merge;
-          if ( merge) this.insert_footer3(footer, name, /*0x10,*/ null, true); // for merge, update both footers.
+          if ( merge) this.insert_footer3(footer, name, /*0x10,*/ null, true, pref.test_mode['214'] && 0x02); // for merge, update both footers.
         },
         factory: function(clg, init0){
           if (init0) {
@@ -27614,6 +27694,7 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             if (!pref_func.settings.pn13) pref.settings.footer_sel = clg.mode==='float'? 3 : clg.view==='catalog'? 1 : clg.view==='page'? 2 : 0;
           }
           var retval = init0? this : {
+            mg_footers: new Set(),
             threads: clg.threads,
 //            timestamp_trial: this.timestamp,
             timestamp: 0, // updated by compile() just below
@@ -27794,12 +27875,25 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           var lth = liveTag.mems.getFromName(name);
           flags = flags || (footer[4]&0x01);
           tags = tags || (footer[4]&0x04);
-          this.draw_exe_1(footer, name, flags, tags, tgt_th, lth);
-          if (footer[5]) this.draw_exe_1(footer[5], name, flags, tags, tgt_th, lth);
-          if (footer[6] && footer[6].footer) if (!merge_consolidate || footer[6].lths[0]===lth) this.draw_exe_1(footer[6].footer, name, null, tags, footer[6], footer[6]); // tricky, see site2['DEFAULT'].update_posts_merge_bases.base_factory
+          this.draw_exe_1(footer, flags, tags, tgt_th, lth);
+          if (footer[5]) this.draw_exe_1(footer[5], flags, tags, tgt_th, lth);
+          if (footer[6] && footer[6].footer)
+            if (pref.test_mode['214'] && (merge_consolidate&0x02)) this.draw_merge_consolidated_req(footer[6], flags, tags);
+            else if (!merge_consolidate || footer[6].lths[0]===lth) this.draw_exe_1(footer[6].footer, null, tags, footer[6], footer[6]); // tricky, see site2['DEFAULT'].update_posts_merge_bases.base_factory
           footer[4] = this.timestamp; //  + (footer[4]&ts_mask); // ts_mask: 0x10 for keeping flag for force_network_update, 0 for clearing it.
         },
-        draw_exe_1: function(footer, name, flags, tags, tgt_th, lth){
+        draw_merge_consolidated_req: function(mg, flags, tags){
+          mg.footer[4] |= (flags? 0x01 : 0) | (tags? 0x04 : 0) | 0x08; // copied from this.update
+          this.mg_footers.add(mg);
+        },
+        draw_merge_consolidated_exe: function(){
+          for (var mg of this.mg_footers) {
+            var ft = mg.footer;
+            if (ft) this.draw_exe_1(ft, null, (ft[4]|0)&0x04, mg, mg);
+          }
+          this.mg_footers.clear();
+        },
+        draw_exe_1: function(footer, flags, tags, tgt_th, lth){
           var pf = this.pref_fmt; // pref[this.mode_fmt].footer;
           var str = pf.use && this.get_str(tgt_th, lth);
 //          if (pf.use) {
@@ -28230,7 +28324,6 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
       })(Footer);
 //      Footer.compile();
       cataLog.Footer = Footer;
-//      cataLog.insert_footer3 = insert_footer3;
 
 
       var AutoUpdate = function(clg, indicator){
@@ -28613,6 +28706,8 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
           if (clg.native.viewChanged) clg.native.viewChanged();
 //          clg.drawn_idx = 0;
           clg.footer.view_changed();
+          var footer_sel = ['headline','catalog','page','float'].indexOf(clg.view);
+          clg.pref.settings.footer_sel = footer_sel===-1? 0 : footer_sel;
           clg.show_catalog(0);
         },
         'INST.page.subStyle2/O': 'INST.*.subStyle/O',
@@ -29135,7 +29230,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
   this.scrollTop = 0;
   this.innerHeight = null;
   this.pppn_window.addEventListener('scroll', this.show_catalog_scroll, false);
-////  if (!pref.test_mode['96'] || this.mode!=='catalog') this.pppn_window.addEventListener('resize', this.show_catalog_cont, false); // BUG, DOM ELEMENT CAN'T TAKE resize EVENT, this doesn't work // https://stackoverflow.com/questions/6492683/how-to-detect-divs-dimension-changed
+  /*if (!pref.test_mode['96'] || this.mode!=='catalog')*/ this.pppn_window.addEventListener('resize', this.show_catalog_resize, false); // embed catalog needs to be added eventLister, but // BUG, DOM ELEMENT CAN'T TAKE resize EVENT, this doesn't work // https://stackoverflow.com/questions/6492683/how-to-detect-divs-dimension-changed
   if (this.mode==='float') this.ppn.addEventListener('scroll', this.show_catalog_scroll, false); // Element: scroll event is not bubbles. // https://developer.mozilla.org/en-US/docs/Web/API/Element/scroll_event
 
 //  this.filter_kwd_prep_init(null,true); // prep kwd.rexps // redundant, called in this.onchange_funcs['*.board_list_sel']
@@ -29147,6 +29242,7 @@ var Clg = function(embed_embed, embed_mode, watcher){
 //  if (this.pref!==pref && !pref.liveTag.NC) Object.defineProperty(this.pref.filter, 'tag', {get:function(){return pref.filter.tag;}, set:function(v){pref.filter.tag = v;}, configurable:true, enumerable:true});
   this.merge_bases = (clgs.length===0)? site2['DEFAULT'].update_posts_merge_bases : site2['DEFAULT'].update_posts_merge_bases.factory();
   this.merge_bases.view = this.view; // for site2['DEFAULT'].update_posts_merge_bases itself // REDUNDANT???
+  this.merge_op_hops = {};
   this.delayed_filter_changed = new Watchdog(this.filter_changed.bind(this),1000).get_bound_func();
 
   this.Clgs.push(this);
@@ -29198,7 +29294,11 @@ var Clg = function(embed_embed, embed_mode, watcher){
 //      for (var i=0;i<clgs.length;i++) removed |= clgs[i].remove_thread(name, pn_only, keep, true) && !keep;
 //      if (removed) gClg.Maintain_AllThreads(name);
 //    },
-    filter_changed: Clg.prototype.Clgs.FilterChanged, // this mya be redundant already...
+    filter_changed: Clg.prototype.Clgs.FilterChanged, // this may be redundant already...
+    keepMergedThread: function(name){
+      var clgs = Clg.prototype.Clgs;
+      for (var i=0;i<clgs.length;i++) if (clgs[i].keepMergedThread(name)) return true;
+    },
     __proto__:Clg.prototype});
 
   if (clgs.length===1) cataLog.auto_update = this.auto_update;
@@ -29613,7 +29713,7 @@ if (force_clear || site.nickname==='meguca') this.kwd_clear(); // just NOT teste
 //                if (ref<this.drawn_idx) this.drawn_idx = 0;
 //              }
             }
-            this.merge_bases.remove_th(name, tgt_th, this); // calls idx_reorder and changes order of idxs here <- ,but changed???
+//            this.merge_bases.remove_th(name, tgt_th, this); // redundant, called in func_hide above. // calls idx_reorder and changes order of idxs here <- ,but changed???
           }
           if (pn_only) {
             tgt_th[0] = false;
@@ -29626,10 +29726,7 @@ if (force_clear || site.nickname==='meguca') this.kwd_clear(); // just NOT teste
           }
           delete this.threads[name]; // remove ':DL:' also
           if (pref.debug_mode['2']) console.log('removed: '+name);
-  //        for (var i=this.idxs.length-1;i>=0;i--) if (threads_idx[i]===name) {this.idxs.splice(i,1);break;}
           this.idx_remove(name);
-//          if (ref===undefined || this.idxs[ref]!==name) ref = this.idxs.indexOf(name); // func_hide and remove_th may call idx_reorder and change order of this.idxs, so ref must be re-set.
-//          if (ref>=0) this.idxs.splice(ref,1);
           if (pref.test_mode['95'] && site.nickname==='dist') site2[site.nickname].testPoster(name);
           if (!from_gClg && tgt_th) gClg.Maintain_AllThreads(name);
           return tgt_th;
@@ -29793,6 +29890,7 @@ if (force_clear || site.nickname==='meguca') this.kwd_clear(); // just NOT teste
             },
             queue: function(name, arg1, arg2){
               if (typeof(name)==='string') this.tgts[name] = null;
+              else if (Array.isArray(name)) for (var i=0;i<name.length;i++) this.tgts[name[i]] = null;
               else for (var i in name) this.tgts[i] = null;
               this.arg1 = this.arg1 || arg1; // ||= from chrome85
               this.arg2 = this.arg2 || arg2;
@@ -29985,7 +30083,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
             }
           },
           callback: function(req){
-            if (req.ABORT) req.INDICATOR.report({err_str:'Aborted.'+(req.UPPERLIMIT? '(Reached upper limit)':'')});
+            if (req.ABORT) req.INDICATOR.report({err:'Aborted.'+(req.UPPERLIMIT? '(Reached upper limit)':'')});
             delete scan_boards.args[req.key];
             if (Object.keys(scan_boards.args).length==0) scan_boards.pool = null;
             if (req.callback2) req.callback2(req.callback_args);
@@ -30317,7 +30415,7 @@ if (pref.debug_mode['5']) console.log('scan_init: '+key);
 ////////////                if (keys.length==0) sb.indicator.set(null,'\u25cf');
 ////////////                else if (keys.length>=sb.max) sb.indicator.set('red','X');
 ////////////                else sb.indicator.set(null,'\u25b2');
-////                if (sb.found_threads>=sb.max_threads) sb.indicator.report({err_str:'Aborted.(Reached upper limit)'});
+////                if (sb.found_threads>=sb.max_threads) sb.indicator.report({err:'Aborted.(Reached upper limit)'});
 ////                sb.indicator.report({end:Date.now()});
 ////              }
 ////              delete scan_boards.args[sb.key];
@@ -30408,12 +30506,13 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             var pf_store = (pref[embed_mode].storePosts==='ALL_agg' || pref[embed_mode].storePosts==='auto' && pref4.search_posts_active_once)? 'ALL' : pref[embed_mode].deleted_posts.detect; // the same code is in 'gClg.Maintain_AllThreads'
             if (pf_store==='no' && embed_mode==='page') pf_store = pref[embed_mode].t2h_num_of_posts;
             if (pref[embed_mode].detect_sage && dbt[0]==='4chan' && dbt[3]==='catalog_json') site2['4chan'].sage_detect_all(ths);
-            if (dbt[3]==='catalog_json' || dbt[3]==='catalog_html') {
-              var nos = Object.create(null);
-              if (ths[0] && ths[0].parse_funcs.db2pnos) ths[0].parse_funcs.add_nos(nos, dbt[0]+dbt[1], dbt[2]);
-              for (var i=0;i<ths.length;i++) nos[ths[i].no] = null;
-            }
+//            if (dbt[3]==='catalog_json' || dbt[3]==='catalog_html') { // merge_op.auto requires nos always
+            var nos = Object.create(null);
+            if (ths[0] && ths[0].parse_funcs.db2pnos) ths[0].parse_funcs.add_nos(nos, dbt[0]+dbt[1], dbt[2]);
+            for (var i=0;i<ths.length;i++) nos[ths[i].no] = null;
+//            }
             var sb_merge = sb.key==='mergeUI' || sb.key==='mergeAuto';
+            var sb_merge_op_not_done = {};
             var pf_notify_new_thread = sb.from_auto && (pref.notify.desktop.notify && pref.notify.desktop.new_thread || pref.notify.sound.notify && pref.notify.sound.new_thread);
             var has_page = sb_source!=='thread';
             var clgs_args = [];
@@ -30605,15 +30704,13 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////                  }
 ////                }
 ////              }
-////if (pref.test_mode['133']) {              
               if (filter_needs_wrapping) site2[th.domain].wrap_to_parse.posts(th);
-////if (!pref.test_mode['133']) {              
               for (var j=0;j<gClg.Clgs.length;j++) {
                 var clg = gClg.Clgs[j];
 //                var clg_refresh = refresh===clg ||
 //                                  refresh && refresh.pref[refresh.mode].board_list_sel===clg.pref[clg.mode].board_list_sel && clg.pref[clg.mode].accept_others_refresh ||
 //                                  clg.refresh_tgts[th.domain+th.board]===null;
-                var tgt_th_new = clg.insert_thread_1(th, lth, post_updated, tag_updated, clgs_args[j], value, nos, sb_merge);
+                var tgt_th_new = clg.insert_thread_1(th, lth, post_updated, tag_updated, clgs_args[j], value, nos, sb_merge, sb_merge_op_not_done);
                 if (!tgt_th && tgt_th_new) {
 //                if (tgt_th_status===undefined) { // BUG, this can't track proper number of posts when watcher's view is page and it is expanded.
                   var pf_store_2 = get_nof_store_posts(pf_store, tgt_th_new); // depends on embed_mode, not this.mode, so all clg have the same number of stored poste.
@@ -30624,73 +30721,12 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
                 }
                 if (tgt_th_new && tgt_th!==tgt_th_new) gClg.Maintain_AllThreads_incremental(th.key, tgt_th, tgt_th_new); // always tgt_th===tgt_th_new when this.Clgs.length===1
               }
-////} else {
-////              var pick_up_for_search = th.type_source==='thread' && pref[embed_mode].storePosts==='ALL_agg';
-////              var picked_up_by_kwd_filter = filter_active_kwd && catalog_filter_query_keyword.kwd(pref.filter.kwd, th.posts, th.domain);
-////              var picked_up_by_tag_filter = filter_active_tag && liveTag.search_by_tags(th.tags);
-////              var picked_up_by_filter = picked_up_by_kwd_filter || picked_up_by_tag_filter;
-////              var tgt_th_status = (tgt_th===undefined)? undefined : tgt_th[9][0];
-//////              var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' && (tgt_th[16].needs_update===true || tgt_th[16].needs_update===1)))) || pick_up_for_search;
-////              var force_update = (tgt_th && (tgt_th[16].expand_posts || (tgt_th[16].missing_info && tgt_th[16].missing_info>(th.missing_info||0)))) ||
-////                                 lth.ed_u<th.replyTime || pick_up_for_search;
-//////              var force_update = (tgt_th && (tgt_th[16].expand_posts || (th.type_source==='thread' &&
-//////                (tgt_th[16].needs_update===true || (tgt_th[16].needs_update<th.replyTime || tgt_th[16].needs_update===null))))) || pick_up_for_search;
-//////              if (refresh || (post_updated && tgt_th) || picked_up_by_filter || force_update) {
-//////              if (!sb.tag_only && (sb.refresh || (post_updated && tgt_th) || picked_up_by_filter)) {
-//////              if (!sb.tag_only && (sb.refresh || (filter_active && catalog_filter_query_scan(th.posts, th.tags)))) {
-////////////                if (insert_thread_with_test(th, dbt[3], value.date)) {// RUNS A REDUNDANT POST CHECK AT FIRST TIME....
-////              if (post_updated===null && tgt_th && (refresh || picked_up_by_filter)) {
-//////                if (post_updated===null && tgt_th) {
-////                var tgt_th8 = tgt_th[8];
-////                post_updated = !((((tgt_th8[0]>tgt_th8[4])? tgt_th8[0] : (tgt_th8[4] || tgt_th8[0])) >= ((th.time_bumped > th.time_posted)? th.time_bumped : (th.time_posted || th.time_bumped))) && // vichan has inconsistency in time between catalog.json and thread.json.
-////                                 tgt_th8[2]==th.nof_posts && tgt_th8[3]==th.nof_files) || th.type_source==='thread'; // pass thread to revise all of tgt_th[8]
-////              }
-////              if (post_updated && (tgt_th || pref[embed_mode].promiscuous) || (refresh || picked_up_by_filter) && !tgt_th || force_update) { // stop merging at preparing cross-thread popup
-//////              if (post_updated || (refresh || picked_up_by_filter) && !tgt_th || force_update) {
-//////              if (post_updated || picked_up_by_filter || tgt_th_status===undefined || force_update) {
-//////                if (!tgt_th) { // PATCH, WILL BE REMOVED BY CONSOLIDATING.
-//////                  var pf_store_th_2 = tgt_th16_proto.get_t2h_num_of_posts.call({lth:lth}) || 'no';
-//////                  if (pf_store!=='ALL' && (pf_store==='no' || pf_store==='passive' && pf_store_th_2!=='no'))
-//////                    if (pf_store_1!==pf_store_th_2) archiver.store_th_to_mem(value, th,lth, pf_store_th_2, null);
-//////                }
-////                if (pref[embed_mode].scroll_lock) pClg.show_catalog_scroll_lock.set();
-////                pClg.insert_thread(th, value.date, picked_up_by_kwd_filter, insert_thread_from_native_1); // insert_thread_from_native && ths[i].pn); // '&& ths[i].pn' for reentry.
-////                this.idx_reorder(th.key);
-////                tgts[th.key] = true;
-////                tgt_th = threads[th.key];
-////                if (tgt_th_status===undefined) {
-////                  var pf_store_2 = get_nof_store_posts(pf_store, tgt_th);
-////                  if (pf_store_1!==pf_store_2) archiver.store_th_to_mem(value, th,lth, pf_store_2, null);
-////                }
-////              } // else if (pref[embed_mode].load_on_demand) pClg.idx_reorder(th.key); // place thread before ODL. // changed. // implementation is changed.
-////              if (sb.from_auto && !tgt_th_status)
-////                if (pref.notify.desktop.notify || pref.notify.sound.notify) // lazy as much as possible
-////                  if (pClg.filter_test(th.key, tgt_th)) notifier.appeared(th,tgt_th_status===undefined);
-//////              if (sb.from_auto && !tgt_th_status && (pref.notify.desktop.notify || pref.notify.sound.notify)) {
-//////                if (tgt_th[9][0]===null) tgt_th[9] = catalog_filter_query(th.key, true); // tgt_th[9] is evaluated lazily.
-//////                if (tgt_th[9][0]) notifier.appeared(th,tgt_th_status===undefined);
-//////              }
-//////              if (sb.from_auto && (!tgt_th_status && tgt_th[9][0])) notifier.appeared(th,tgt_th_status===undefined);
-//////              } // else if (pref[embed_mode].load_on_demand && tgt_th) pClg.idx_reorder(th.key); // temporal, should be rewritten.  // place thread before ODL. // implementation is changed.
-//////              if (tgt_th_status!==undefined && tgt_th[16].expand_posts) insert_thread_format_html(th,th.key,false,false,th.type_data==='json'); // format_html.update_posts_in_page(th, th.key, true);
-////              if (tgt_th) {
-////                if (th.page) tgt_th[14] = th.page;
-////                gClg.footer.update(th.key, th.country && post_updated, (tgt_th_status!==undefined)? tag_updated : th.tags);
-////              }
-//////              if (tgt_th) insert_footer3(th.key,(post_updated)? th.flags:null, th.page, (tgt_th_status!==undefined)? tag_updated : th.tags, th);
-//////              if (pref.liveTag.use && i===0) scan.list_nup.add_board(th.domain+th.board, (th.type_source==='catalog')? value.date : null);
-//////              if (th.tags.q && th.parse_funcs.has_posts) site2[th.domain].popups_fetched(th); // stored AFTER modifying pn. // BUT, posts are deleted sometimes.
-////}
-//              sb.found_threads++;
               if (post_updated && gClg.UnsyncedTriages[th.key]) triage_exe_pipe(gClg.UnsyncedTriages[th.key]); // temporarily patch
 ////if (!pref.test_mode['133']) {
 ////  ths_info[ths_info.length] = [th, lth, post_updated, tag_updated, insert_thread_from_native_1];
 ////}
             }
             sb.found_threads += ths.length;
-////if (!pref.test_mode['133']) {
-////  for (var j=0;j<gClg.Clgs.length;j++) gClg.Clgs[j].insert_thread_1(ths, ths_info, refresh, sb, value.date, pf_store, value);
-////}
 ////if (pref.test_mode['22']) {
 ////            if (sb.scan_tag && from_catalog) tag_scan_board(ths, sb);
 ////}
@@ -30716,17 +30752,15 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
               if (tgt && tgt.type_source==='page' && (!site2[tgt.domain].all_boards || site2[tgt.domain].all_boards.indexOf(site.board)!=-1)) pClg.idx_raise_odl(tgt);
             }
             sb.found_boards++;
-////if (pref.test_mode['133']) {              
-////            if (Object.keys(tgts).length!==0) if (!sb.native_prep) show_catalog(tgts);
-////  //          if (pref.filter.tag_scan_auto) scan_tags();
-////} else {
-            /*if (!sb.native_prep)*/ for (var i=0;i<gClg.Clgs.length;i++) // show_catalog is requied to update footer even if sb.native_prep
-              if (gClg.Clgs[i].dirty) gClg.Clgs[i].show_catalog();
+            /*if (!sb.native_prep)*/ for (var i=0;i<gClg.Clgs.length;i++) {// show_catalog is requied to update footer even if sb.native_prep
+              var clg = gClg.Clgs[i];
+              if (clg.merge_op_tgts) {scan.scan_ui('mergeAuto', {tgts:clg.merge_op_tgts, options:{refresh:clg}}); clg.merge_op_tgts = null;}
+              if (clg.dirty) clg.show_catalog();
+            }
 //              if (gClg.Clgs[i].dirty) gClg.Clgs[i].show_catalog(undefined, null, null, gClg.Clgs[i].footer.query_update_without_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html')); // call even if tgts[i] is vacant
 //              if (gClg.Clgs[i].dirty) if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) gClg.Clgs[i].footer.update_without_updated_data(dbt[3]!=='thread_json' && dbt[3]!=='thread_html');
 //              if (Object.keys(tgts[i]).length===0 || gClg.Clgs[i].show_catalog(tgts[i])) if (refresh===gClg.Clgs[i]) gClg.Clgs[i].footer.update_without_updated_data();
             if (sb.key==='mergeAuto' && gGEH.time_jumped) for (var i=0;i<ths.length;i++) jump_to_time(ths[i], gGEH.time_jumped); // this has racing condition, see receive_message
-////}
   
 ////////            if ((dbt[3]==='thread_html' || dbt[3]==='thread_json') && threads[ths[0].key]) update_thread(dbt[0]+dbt[1]+dbt[2], ths[0], threads[ths[0].key][19]); // patch  // working code.
 //            if ((dbt[3]==='thread_html' || dbt[3]==='thread_json') && threads[ths[0].key] && threads[ths[0].key][23]) update_thread(dbt[0]+dbt[1]+dbt[2], ths[0], threads[ths[0].key][19]); // patch to delete threads[name][23]
@@ -30766,7 +30800,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             if (value.status==404 && (dbt[3]==='thread_json' || dbt[3]==='thread_html')) {
               var lth = liveTag.mems.getFromName(dbt[0]+dbt[1]+dbt[2]);
               if (!pref.test_mode['146']) if (lth.q && lth.q.waiting) {
-                var lth_w = {domain_html:site.nickname, time:0, com:'PRUNED', type_source:'thread', __proto__:lth};
+                var lth_w = {domain_html:site.nickname, time:0, com:'PRUNED', type_source:'thread', __proto__:lth}; // __proto__ kills optimizer, but this case isn't improved by removing these lines, just change to 'Not optimized: Optimized too many times', see https://github.com/petkaantonov/bluebird/wiki/Optimization-killers
                 site2[dbt[0]].popups_fetched({posts:[lth_w], __proto__:lth_w}, lth);
               }
               rm_items_404_th(dbt[0],dbt[1],dbt[2]);
@@ -30778,7 +30812,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////////              sb.error_obj[key] = value.status;
               if (value.status==404) comment_out_bookmark(key);
 ////              if (sb.indicator) {
-////                sb.indicator.report({err_str:key+'('+value.status+')'});
+////                sb.indicator.report({err:key+'('+value.status+')'});
 ////                sb.indicator.set('orange');
 ////              }
             }
@@ -30827,19 +30861,20 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////            var tag_updated = ths_info[i][3];
 ////            var insert_thread_from_native_1 = ths_info[i][4];
 ////            var tgt_th = this.threads[th.key];
-        Clg.prototype.insert_thread_1 = function(th, lth, post_updated, tag_updated, clg_args, value, nos, sb_merge){
+        Clg.prototype.insert_thread_1 = function(th, lth, post_updated, tag_updated, clg_args, value, nos, sb_merge, sb_merge_op_not_done){
 //          var pfm = pref[embed_mode]; // CAUTION: embed_mode is used intentionally. // this.pref[this.mode];
 //          var pfcm = this.pref[this.mode];
           var th_key = th.key;
           var tgt_th = this.threads[th_key];
-          var new_th = tgt_th===undefined;
+          if (!tgt_th) {
+            var new_th = true; // tgt_th===undefined;
 //          var undo = (th_key in this.ths_undo);
 //          if (undo) delete this.ths_undo[th_key];
-          var refresh_or_search = clg_args.refresh || this.refresh_tgts[th.domain+th.board]===null ||
+            var refresh_or_search = clg_args.refresh || this.refresh_tgts[th.domain+th.board]===null ||
               this.view!=='thread' && (
-                                  clg_args.ALL_agg && th.type_source==='thread' || // pick_up_for_search
-                                  clg_args.pf_fKwd && catalog_filter_query_keyword.kwd(clg_args.pf_fKwd, th.posts, th.domain) || // picked_up_by_kwd_filter
-                                  clg_args.pf_fTag && liveTag.search_by_tags(lth)); // picked_up_by_tag_filter
+                                    clg_args.ALL_agg && th.type_source==='thread' || // pick_up_for_search
+                                    clg_args.pf_fKwd && catalog_filter_query_keyword.kwd(clg_args.pf_fKwd, th.posts, th.domain) || // picked_up_by_kwd_filter
+                                    clg_args.pf_fTag && liveTag.search_by_tags(lth)); // picked_up_by_tag_filter
 //              var pick_up_for_search = th.type_source==='thread' && pfm.storePosts==='ALL_agg';
 //              var picked_up_by_kwd_filter = this.pref.filter.kwd.active && catalog_filter_query_keyword.kwd(this.pref.filter.kwd, th.posts, th.domain);
 //              var picked_up_by_tag_filter = this.pref.filter.tag && this.liveTag.active.in && liveTag.search_by_tags(lth);
@@ -30855,7 +30890,8 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////              if (!sb.tag_only && (sb.refresh || (post_updated && tgt_th) || picked_up_by_filter)) {
 ////              if (!sb.tag_only && (sb.refresh || (filter_active && catalog_filter_query_scan(th.posts, th.tags)))) {
 //////////                if (insert_thread_with_test(th, dbt[3], value.date)) {// RUNS A REDUNDANT POST CHECK AT FIRST TIME....
-          if (tgt_th) {
+          } else {
+//          if (tgt_th) {
             if (post_updated===null) {
 //              if (post_updated===null && tgt_th) { // && refresh_or_search) {
 //              if (post_updated===null && tgt_th && (refresh || picked_up_by_filter)) {
@@ -30880,7 +30916,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 ////                }
                 /*if (pfm.scroll_lock) this.show_catalog_scroll_lock.set();*/
 //            this.idx_reorder(th_key, tgt_th? 0x03 : 0x01); // will be moved to here after removing pref_test.mode['169']
-            tgt_th = this.insert_thread(th, value.date, sb_merge, nos); // insert_thread_from_native && ths[i].pn); // '&& ths[i].pn' for reentry.
+            tgt_th = this.insert_thread(th, value.date, sb_merge, nos, sb_merge_op_not_done); // insert_thread_from_native && ths[i].pn); // '&& ths[i].pn' for reentry.
             /*var order_new =*/ this.idx_reorder(th_key, new_th); // true);
                 /*tgts[th.key] = true;*/
 ////                tgt_th = this.threads[th.key];
@@ -31326,9 +31362,11 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         if (cmd==='MERGET' || cmd==='REMOVET' || cmd==='UNMERGET') {
           var href = et.parentNode.previousSibling.getAttribute('href');
           var tgt = site2[site.nickname].popups_href2dbtp(href).slice(0,3).join('');
+          var no_insert = et.parentNode.dataset.cmd==='MERGETC';
           et.parentNode.innerHTML = triage.htmls[cmd];
           if (cmd==='MERGET') {
-            this.merge_bases.add_to_list_fromUI(site.key, tgt, this);
+            this.merge_cross_links_fromUI(name, tgt, no_insert);
+//            this.merge_bases.add_to_list_fromUI(name, tgt, this, no_insert);
             cmd = 'WATCH'; // return;
           } else if (cmd==='REMOVET') {this.remove_thread(tgt); return;}
           else cmd = cmd.slice(0,-1);
@@ -31371,10 +31409,11 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         }
         if (cmd==='MERGEE') {
           var key_tgt = triage.emb_get_key(et);
-          this.merge_bases.add_to_list_fromUI(key_tgt, key_base, this);
+          this.merge_cross_links_fromUI(key_tgt, name, false); // not debugged since rewriting to use merge_cross_links_fromUI
+//          this.merge_bases.add_to_list_fromUI(key_tgt, key_base, this);
           return;
         }
-        var hist = cmd!=='MERGE' && cmd!=='UNMERGE' && cmd!=='MERGEOP';
+        var hist = cmd!=='MERGE' && cmd!=='UNMERGE' /*&& cmd!=='MERGEOP'*/;
         this.triage_multicast(key_base,cmd,attr,hist, datetime, pn); // , expanded);
         if (cmd==='MERGE') {
           if (triage_merge_base && triage_merge_base.pn) {
@@ -31438,14 +31477,14 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //        if (cmd==='NONE_M') {var cmd_org = cmd; cmd = 'NONE';}
         if (cmd==='MERGEC' || cmd==='MERGECR' || cmd==='MERGECU') {
           var reverse = cmd==='MERGECR';
-          this.merge_bases.add_to_list_1(reverse? name : attr, reverse? attr : name, this, null, cmd==='MERGECU'? 'no_insert' : true);
+          this.merge_bases.add_to_list_1(reverse? name : attr, reverse? attr : name, this, cmd==='MERGECU');
           triage.off();
           return;
         }
-        if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base.name, name, this, null, true); triage.off(); if (attr) cmd='ATTR'; else return;}
+        if (cmd==='MERGE') {this.merge_bases.add_to_list_1(triage_merge_base.name, name, this); triage.off(); if (attr) cmd='ATTR'; else return;}
         if (cmd==='UNMERGE') {this.merge_bases.add_to_list_1(null, name, this); triage.off(); return;}
-        if (cmd==='UNMERGELV') {this.merge_bases.add_to_lv_list(name, null, this, true); triage.off(); return;}
-        if (cmd==='MERGEOP') {this.merge_cross_links_in_op_manually(name); triage.off(); return;}
+        if (cmd==='UNMERGELV') {this.merge_bases.add_to_lv_list(name, null, this); triage.off(); return;}
+//        if (cmd==='MERGEOP') {this.merge_cross_links_in_op_manually(name); triage.off(); return;}
         if (['ARC','ARC1','UNARC'].indexOf(cmd)!=-1) {
           if (!pref.test_mode['67']) archiver.start_1(cmd,liveTag.mems.getFromName(name),true); // test patch
           return;
@@ -31457,7 +31496,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           var broadcast = gClg.Clgs.length==1 || this===clg? false : this===gClg? true : this.pref[this.mode].board_list_sel==clg.pref[clg.mode].board_list_sel? 0 : true;
 //          var broadcast = this!==clg && this.pref[this.mode].board_list_sel!=clg.pref[clg.mode].board_list_sel);
           var changed = clg.triage_exe(name,cmd,attr,hist,datetime, broadcast, stop_loop); // , from_pipe, stop_loop);
-          if (!from_auto && (cmd!=='TRACK' || this.mode!=='thread')) clg.triage_exe_view(changed.name, changed, cmd!=='UNDO' && broadcast===false? pn : undefined, cmd.indexOf('m')!=-1); // changed.name for undo // TRACK trips child->catalog->child
+          if (!from_auto && (cmd!=='TRACK' || this.mode!=='thread')) clg.triage_exe_view(changed.name, changed, cmd!=='UNDO' && broadcast===false? pn : undefined); // , cmd.indexOf('m')!=-1); // changed.name for undo // TRACK trips child->catalog->child
           changed_watch |= changed.watch;
 //          if (cmd_org==='NONE_M') if (clg.view==='headline') if (clg.merge_bases.bases[name]) clg.view_attr_set(name, true, true, clg.threads[name][3]); // TEST
         }
@@ -31468,7 +31507,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           if (!lth.archived) archiver.start_1('ARC',lth,true);
         }
       };
-      Clg.prototype.triage_exe_view = function(names, changeds, pn, cmd_m){ // , from_pipe, stop_loop){
+      Clg.prototype.triage_exe_view = function(names, changeds, pn) { // , cmd_m){ // , from_pipe, stop_loop){
 //        var changed = this.triage_exe(name,tri_str_ex,tri_str_attr,hist,datetime, broadcast);
 //        name = changed.name; // for undo
 //        if (!pref.triage.broadcast_attr && broadcast) changed.attr = false;
@@ -31487,7 +31526,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           if (changed.watch && !tgt_th && pf.refresh_src!=='bg') this.clone_thread_1(name);
           if (tgt_th) { // threads[name] might not exist at undo
             if (changed.attr) {
-              if (cmd_m && this.view==='headline' && this.merge_bases.bases[name]) this.view_attr_set(name, true, true, tgt_th[3]);
+//              if (cmd_m && this.view==='headline' && this.merge_bases.bases[name]) this.view_attr_set(name, true, true, tgt_th[3]);
               this.view_attr_set(name, null, null, pn); // may be reorderd here
 //              var req = this.view_attr_set(name, null, true, pn); // may be reorderd here
 //              if (req) {
@@ -31594,7 +31633,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         if (changed.watch && (pref.test_mode['190'] || cmd==='UNDO')) pref_func.apply_prep(watch_list,this.pref);
         if (changed.ex    && (pref.test_mode['190'] || cmd==='UNDO')) pref_func.apply_prep(ex_list,this.pref);
         if (changed.attr  && (pref.test_mode['190'] || cmd==='UNDO')) pref_func.apply_prep(attr_list,this.pref);
-        if (cmd==='UNDO' && (changed.watch || his[0][1]==='KILL')) this.triage_rewind_watch(changed);
+        if (cmd==='UNDO' && (changed.watch || his[0][1]==='KILL')) this.triage_rewind_watch(changed); // 'KILL' might not have changed watch-list, but watch status was changed when time-filter was active.
 //        if (cmd==='UNDO' && (changed.watch || his[0][1]==='KILL')) { // re-order, 'KILL' doesn't change watch-list. 
 ////        if (cmd==='UNDO' && changed.watch) { // re-order
 //          for (var i=0;i<names.length;i++) {
@@ -31619,23 +31658,23 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           var time_str = '@' + (datetime<0x10000? datetime : new Date(datetime).toLocaleString() + ((millisec = datetime%1000)? '.'+('00'+millisec).slice(-3) : ''));
 //          var time_str = '@' + new Date(datetime).toLocaleString() + (millisec? '.'+('00'+millisec).slice(-3) : '');
           var wt_now = this.pref.filter.watch_list_str;
-          var wt_str = wt_now.replace(key,',');
+          var wt_str = wt_now.replace(key,'');
           var wt_has = wt_now.length !== wt_str.length 
           if (broadcast===false || wt_has || pref.common.consolidated_watch_list || pref.triage.sync_watch==='all' || broadcast===0 && pref.triage.sync_watch==='bg') {
             var wt_add = '';
 //              if (cmd!=='DELETE') {
             if (cmd==='WATCH' || cmd==='TRACK' || cmd==='TIME') { //  && pref.auto_watch.watch) {
-              wt_add = name + time_str; // TIME or WATCH
+              wt_add = time_str; // TIME or WATCH
               if (/*broadcast===false ||*/ tgt_th) this.mark_read_thread(name, datetime, cmd==='TRACK' && attr); // attr has count of unread posts
             } else {
-              if (cmd==='UNWATCH' && !wt_has) wt_add = name + '@0'; // explicit unwatch
+              if (cmd==='UNWATCH' && !wt_has) wt_add = '@0'; // explicit unwatch
               if (/*broadcast===false ||*/ tgt_th) this.mark_read_thread(name, null);
             }
 //              }
-            if (wt_add || wt_has) { // for spped up 'KILL'
-              watch_list.value = this.pref.filter.watch_list_str = pref_func.fmt4str2(wt_add? wt_str+','+wt_add+'\n' : wt_str);
+            if (wt_add || wt_has) { // for speed up 'KILL'
+              watch_list.value = this.pref.filter.watch_list_str = this.pref.filter.watch_list_obj2._revise(name, wt_add, wt_str); // = pref_func.fmt4str2(wt_add? wt_str+','+wt_add+'\n' : wt_str);
               changed.watch = true;
-              if (!pref.test_mode['190']) this.pref.filter.watch_list_obj2._revise(name, wt_add);
+//              if (!pref.test_mode['190']) this.pref.filter.watch_list_obj2._revise(name, wt_add);
             }
           }
         }
@@ -31643,12 +31682,12 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         if (!from_LSmirror) if (['KILL','TIME','NONE',/*'DELETE',*/'UNWATCH'].indexOf(cmd)!=-1) {
           if (broadcast===false || ex_list.value.search(key)!=-1 || pref.triage.sync_ex==='all' || broadcast===0 && pref.triage.sync_ex==='bg') {
             var ex_now = this.pref.filter.list_str;
-            var ex_str = ex_now.replace(key,',');
-            var ex_add = (['KILL','TIME'].indexOf(cmd)!=-1 && tgt_th)? name + (cmd==='TIME'? time_str : '') : '';
+            var ex_str = ex_now.replace(key,'');
+            var ex_add = (cmd==='NONE' || cmd==='UNWATCH' || !tgt_th)? '' : cmd==='TIME'? time_str : true; // true is dummy for _reviseObj to make entry without args
             if (ex_add || ex_now.length !== ex_str.length) {
-              ex_list.value = this.pref.filter.list_str = pref_func.fmt4str2(ex_add? ex_str+','+ex_add+'\n' : ex_str);
+              ex_list.value = this.pref.filter.list_str = this.pref.filter.list_obj2._revise(name, ex_add, ex_str); // = pref_func.fmt4str2(ex_add? ex_str+','+ex_add+'\n' : ex_str);
               changed.ex = true; // eliminate this flag as much as possible to speed up 'NONE'
-              if (!pref.test_mode['190']) this.pref.filter.list_obj2._revise(name, ex_add);
+//              if (!pref.test_mode['190']) this.pref.filter.list_obj2._revise(name, ex_add);
             }
           }
         }
@@ -31691,7 +31730,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
             var style_str = (['KILL','TIME','NONE'].indexOf(cmd)!=-1)? attr
                 : Object.keys(at_style).map(function(k){return k+':'+at_style[k];}).join(';');
             var cmd_str = Object.keys(at_cmd).map(function(k){return k+(at_cmd[k]===true? '' : ':'+at_cmd[k]);}).join(';');
-            var at_add = (style_str || cmd_str)? name + (style_str? ';'+style_str:'') + (cmd_str? ';'+cmd_str:'') : '';
+            var at_add = (style_str? ';'+style_str:'') + (cmd_str? ';'+cmd_str:'');
 //              at_str = name;
 //              if (['KILL','TIME','NONE'].indexOf(cmd)!=-1) {
 //                if (attr!=='') at_str += '^' +attr;
@@ -31709,10 +31748,10 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
 //              }
 //              at_str = (at_str === name)? '' : at_str + '\n';
           }
-          var at_str = (matched || !tgt_th)? at_now.replace(key,',') : at_now;
+          var at_str = (matched || !tgt_th)? at_now.replace(key,'') : at_now;
           if (matched || at_add || at_now.length!==at_str.length) { // for 'KILL'
-            attr_list.value = this.pref.filter.attr_list_str = pref_func.fmt4str2(at_add? at_str+','+at_add+'\n' : at_str);
-            if (!pref.test_mode['190']) this.pref.filter.attr_list_obj2._revise(name, at_add);
+            attr_list.value = this.pref.filter.attr_list_str = this.pref.filter.attr_list_obj2._revise(name, at_add, at_str); // = pref_func.fmt4str2(at_add? at_str+','+at_add+'\n' : at_str);
+//            if (!pref.test_mode['190']) this.pref.filter.attr_list_obj2._revise(name, at_add);
             return true;
           }
           return false;
@@ -32347,10 +32386,10 @@ if (pref.test_mode['0']) {
                       __proto__:proto}];
         var th = {posts:posts, __proto__:posts[0]};
         liveTag.prep_tags(th);
-        this.insert_thread(th, 0);
+        this.insert_thread(th, 0, null, {}, {});
         this.threads[domain+board+no][16].missing_info = 10000;
       };
-      Clg.prototype.insert_thread = function(th, date_load, merge, nos){
+      Clg.prototype.insert_thread = function(th, date_load, sb_merge, nos, sb_merge_op_not_done){
 //        var date_load = date_load;
         var name = th.key;
         var insert_thread_from_native = (!pref.test_mode['94'] || th.pn) && th.insert_thread_from_native;
@@ -32475,7 +32514,7 @@ if (pref.test_mode['19']) { // stability test.
 ////            tgt_th[16].tn_h = th.tn_h;
 ////            tgt_th[16].op_img_url = th.op_img_url;
 ////          }
-          if (this.mode==='thread') tgt_th[16].t2h_sel = (merge)? pref[embed_mode].t2h_sel : 'all'; // intentional lower leters, work as 'ALL' but distinguishable.
+          if (this.mode==='thread') tgt_th[16].t2h_sel = (sb_merge)? pref[embed_mode].t2h_sel : 'all'; // intentional lower leters, work as 'ALL' but distinguishable.
 //          if (this.mode==='thread' && merge) {
 //            tgt_th[16].t2h_page = tgt_th[16].get_t2h_num_of_posts();
 //            tgt_th[16].t2h_sel = 'page';
@@ -32576,29 +32615,56 @@ if (pref.test_mode['19']) { // stability test.
           }
 //          if (pref.test_mode['177']) pref3.proto.merge_list_obj2c_update(th.key); // DOESN'T WORK, tgts may NOT be registered yet.
           var pfm = this.pref[this.mode];
-          if ((pfm.merge_list || pfm.merge_list_delayed) && pfm.merge_op_auto && (this.view==='catalog' || this.view==='headline')) { // merge_list_delayed for 4chan, see delayed_merge
-            if (!pref3.proto.merge_list_obj2[name] && !pref3.proto.merge_lv_obj2[name]) { // merge_lv is used as an end flag // CAUTION, obj2 are accessed directly.
+          var pf_op = pfm.merge_op;
+          if (pfm.merge_list && (pf_op.auto || pfm.merge_auto) && (!pref.test_mode['211'] || this.view==='catalog' || this.view==='headline')) {
+//          if ((pfm.merge_list /*|| pfm.merge_list_delayed*/) && pfm.merge_op_auto && (this.view==='catalog' || this.view==='headline')) { // merge_list_delayed is depatched, see delayed_merge
+            var hop = this.merge_op_hops[name];// lth.mh || 0;
+            var done = !pref.test_mode['215'] && !sb_merge_op_not_done[name] && ((name in pref3.proto.merge_list_obj2) || (name in pref3.proto.merge_lv_obj2));
+            if (pf_op.auto && (hop || !done)) { // merge_lv is used as an end flag // CAUTION, obj2 are accessed directly.
+//            if (!pref3.proto.merge_list_obj2[name] && !pref3.proto.merge_lv_obj2[name]) { // merge_lv is used as an end flag // CAUTION, obj2 are accessed directly.
+              var done_tgts = {};
               if (th._links) for (var i=th._links.length-1;i>=0;i--) {
                 var link = th._links[i];
                 var tgt = link.slice(0,3).join('');
-                if (nos && link[0]===th.domain && link[1]===th.board && !(link[2] in nos)) {
-                  if (!pref.test_mode['147'] || !pfm.merge_op_auto_hop) continue;
-                  var hop = lth.mh || 0;
-                  if (hop >= pfm.merge_op_auto_hop) continue;
-                  scan.list_nup.add_scan(tgt); // BUG, REQUIRES REQUEST FLAG or promiscuous mode.
-                  var tgt_lth = liveTag.mems.getFromName(tgt);
-                  if (!tgt_lth.mh || tgt_lth.mh > hop +1) tgt_lth.mh = hop +1; // for racing condition
-                  nos[link[2]] = null; // add mask because rm_items_404_check will be run right after this.
+                if (tgt in done_tgts) continue;
+                if (!this.threads[tgt] && (link[0]!==th.domain || link[1]!==th.board || !(link[2] in nos))) {
+//                if (nos && link[0]===th.domain && link[1]===th.board && !(link[2] in nos)) {
+//                  if (!pref.test_mode['147'] || !pfm.merge_op_auto_hop) continue;
+                  if (!pf_op.fetch || hop >= pf_op.hop) continue;
+                  if (this.merge_op_tgts) this.merge_op_tgts[this.merge_op_tgts.length] = tgt; else this.merge_op_tgts = [tgt];
+//                  scan.scan_ui('mergeAuto', {tgts:[tgt], options:{refresh:this}});
+//                  scan.list_nup.add_scan(tgt); // BUG, REQUIRES REQUEST FLAG or promiscuous mode.
+                  if (!this.merge_op_hops[tgt] || this.merge_op_hops[tgt] > hop +1) this.merge_op_hops[tgt] = hop +1; // for racing condition
+//                  var tgt_lth = liveTag.mems.init({domain:link[0], board:link[1], no:link[2]});
+//                  if (!tgt_lth.mh || tgt_lth.mh > hop +1) tgt_lth.mh = hop +1; // for racing condition
+////                  liveTag.mems.init({domain:link[0], board:link[1], no:link[2]}).mh = hop +1;
+                  if (!pref.test_mode['213']) if (link[0]===th.domain || link[1]===th.board) nos[link[2]] = null; // add mask because rm_items_404_check will be run right after this.
                 }
-                if (pfm.merge_op_lv_add) this.merge_bases.add_to_lv_list(th.key, pfm.merge_btn_lv, this); // levelize old one, instead of new one.
-                this.merge_bases.add_to_list_1(tgt, th.key, this, true, true); // merge new one to old one to cascade.
-//              this.force_all_named = true;
-                if (pfm.merge_op_attr || pfm.merge_op_list) {
-                  var attr = (pfm.merge_op_attr)? this.view_attr_get_str(tgt) : null;
-                  var list = (pfm.merge_op_list)? pff.list_obj2[tgt] : null; // CAUTION, obj2 are accessed directly.
-                  if (attr || list) this.triage_exe_broadcast(th.key, !list? 'NONE' : list.time? 'TIME' : 'KILL', attr || '', false, list && list.time || null, false, true); // CAUTION: TRIAGE IS SLOW BECAUSE IT IS DESIGNED TO BE USED AS GUI, it redraws doms and remake objs always.
+                if (!(tgt in pref3.proto.merge_list_obj2) && !(tgt in pref3.proto.merge_lv_obj2)) sb_merge_op_not_done[tgt] = true; //  for racing condition between threads in the same catalog especially for initial. !this.threads[name] is NOT required, the thread may exist with missing_info.
+                if (pref.debug_mode['43'] && !sb_merge_op_not_done[name] && ((name in pref3.proto.merge_list_obj2) || (name in pref3.proto.merge_lv_obj2))) console.log('merge_op: '+th.no+', '+th.sub+', '+tgt);
+                this.merge_tgts(name, [tgt], false, true, pf_op);
+                if (!(name in pref3.proto.merge_lv_obj2)) this.merge_bases.add_to_lv_list(name, '', this); // add an end mark
+//                if (pfm.merge_op_lv_add) this.merge_bases.add_to_lv_list(th.key, pfm.merge_btn_lv, this); // levelize old one, instead of new one.
+//                this.merge_bases.add_to_list_1(tgt, th.key, this, null, true); // merge new one to old one to cascade.
+////              this.force_all_named = true;
+//                if (pfm.merge_op_attr || pfm.merge_op_list) {
+//                  var attr = (pfm.merge_op_attr)? this.view_attr_get_str(tgt) : null;
+//                  var list = (pfm.merge_op_list)? pff.list_obj2[tgt] : null; // CAUTION, obj2 are accessed directly.
+//                  if (attr || list) this.triage_exe_broadcast(th.key, !list? 'NONE' : list.time? 'TIME' : 'KILL', attr || '', false, list && list.time || null, false, true); // CAUTION: TRIAGE IS SLOW BECAUSE IT IS DESIGNED TO BE USED AS GUI, it redraws doms and remake objs always.
+//                }
+//                break;
+                done_tgts[tgt] = null;
+              }
+              delete this.merge_op_hops[name];
+            } else if (pfm.merge_auto && done && pref.test_mode['212']) {
+              var tgts = this.merge_bases.auto_merge_list(name, this);
+              if (tgts) for (var i=0;i<tgts.length;i++) {
+                var tgt = tgts[i]
+                var dbt = comf.fullname2dbt(tgt);
+                if (!this.threads[tgt] && (dbt[0]!==th.domain || dbt[1]!==th.board || !(dbt[2] in nos))) {
+                  if (this.merge_op_tgts) this.merge_op_tgts[this.merge_op_tgts.length] = tgt; else this.merge_op_tgts = [tgt];
+                  if (!pref.test_mode['213']) if (dbt[0]===th.domain || dbt[1]===th.board) nos[dbt[2]] = null; // add mask because rm_items_404_check will be run right after this.
                 }
-                break;
               }
             }
           }
@@ -32731,7 +32797,7 @@ if (pref.test_mode['19']) { // stability test.
 ////            th.pn.appendChild(text);
 ////            tgt_th[18] = 'text';
 ////          }
-          if (!popup) tgt_th[24] = this.footer.prep_footer3(th, tgt_th[24]); // for remake_html // for reentry in meguca
+        if (!popup) tgt_th[24] = this.footer.prep_footer3(th, tgt_th[24]); // for remake_html // for reentry in meguca
 //          if (from_lazy) insert_footer3(th.key, null, th.page, th.tags, th); // consolidated into show_catalog
           this.view_attr_set(th.key, popup, true); // required to be here to add style to html, catalog_attr_set in insert_thread might not add because of NO html.
 //        }
@@ -32767,7 +32833,7 @@ if (pref.test_mode['19']) { // stability test.
           if (pref[embed_mode].popup) {
             if ((!this.pref.filter.kwd.posts_active || pref.test_mode['125']) && !pref[this.mode].backlink_all) site2[th.domain].popups_release_all_not_exist(th.lth, tgt_th[16].posts);
 //            site2[th.domain].popups_add(tgt_th[16].posts, th, !this.pref.filter.kwd.posts_active);
-            if (pref[this.mode].merge_op_auto && posts_used[0]===tgt_th[16].posts[0]) this.merge_cross_links_in_op(th.lth, tgt_th[16].posts[0]);
+            if (pref.test_mode['211'] && pref[this.mode].merge_op.auto && posts_used[0]===tgt_th[16].posts[0]) this.merge_cross_links_in_op(th.lth, tgt_th[16].posts[0]);
           }
         }
 //        } else {
@@ -32857,86 +32923,51 @@ if (pref.test_mode['19']) { // stability test.
       }
       Clg.prototype.merge_cross_links_in_op = function(lth, post){
         var hop = lth.mh || 0;
-        if (hop >= pref[this.mode].merge_op_auto_hop) return;
+        if (hop >= pref[this.mode].merge_op.hop) return;
         var quotes = lth.q[post.no].quotes;
         var tgts = quotes && quotes.filter(function(v){return v[0]!==lth.q;}).map(function(v){return v[0].key;}).filter(function(v){return !this.threads[v];},this);
-        if (tgts && tgts.length!=0) {
+        if (tgts && tgts.length>0) {
           scan.scan_ui('mergeAuto', {tgts:tgts, options:{refresh:this}});
-          this.merge_tgts(tgts, hop);
+          this.merge_tgts(lth.key, tgts, false, true, this.pref[this.mode].merge_op);
+          for (var i=0;i<tgts.length;i++) {
+            var dbt = comf.fullname2dbt(tgts[i]);
+            var lth = liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]});
+            if (!lth.mh || lth.mh > hop +1) lth.mh = hop +1; // for racing condition
+//            liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]}).mh = hop +1;
+          }
         }
       };
-      Clg.prototype.merge_tgts = function(tgts, hop){
-        if (pref[this.mode].merge_op_lv_add) this.merge_bases.add_to_lv_list(tgts, pref[this.mode].merge_op_lv + (pref[this.mode].merge_op_lv_inc? hop : 0), this);
+      Clg.prototype.merge_cross_links_fromUI = function(dst, tgt, no_insert){
+        var pfm = this.pref[this.mode];
+        if (!this.threads[tgt]) scan.scan_ui('mergeUI', {tgts:[tgt], options:{refresh:this}});
+        this.merge_tgts(dst, [tgt], no_insert, false, pfm.merge_btn);
+        var mg_mode = pfm.merge_mode==='all'? 'merge' : 'merge_list';
+        if (!pfm[mg_mode]) {
+          pfm[mg_mode] = true;
+          pref_func.apply_prep(this.components[mg_mode], false, true, this.mode!=='float');
+        }
+      };
+      Clg.prototype.merge_tgts = function(dst, tgts, no_insert, prep_only, pf){
+        this.merge_bases.add_to_lv_list_pf(dst, tgts, this, pf);
         for (var i=0;i<tgts.length;i++) {
-          var dbt = comf.fullname2dbt(tgts[i]);
-          var lth = liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]});
-          if (!lth.mh || lth.mh > hop +1) lth.mh = hop +1; // for racing condition
-//          liveTag.mems.init({domain:dbt[0], board:dbt[1], no:dbt[2]}).mh = hop +1;
+          if (this.pref[this.mode].merge_mode!=='all') this.merge_bases.add_to_list_1(dst, tgts[i], this, no_insert, prep_only);
+          if (pf.attr || pf.list) {
+            var attr = (pf.attr)? this.view_attr_get_str(dst) : null;
+            var list = (pf.list)? this.pref.filter.list_obj2[dst] : null; // CAUTION, obj2 are accessed directly.
+            if (attr || list) this.triage_exe_broadcast(tgts[i], !list? 'NONE' : list.time? 'TIME' : 'KILL', attr || '', false, list && list.time || null, false, true); // CAUTION: TRIAGE IS SLOW BECAUSE IT IS DESIGNED TO BE USED AS GUI, it redraws doms and remake objs always.
+          }
         }
       };
-      Clg.prototype.merge_cross_links_in_op_manually = function(name){
-        var lth = liveTag.mems.getFromName(name);
-        site2[lth.domain].popups_prep(lth);
-        format_html.prepare_html_post(lth.th, lth.th.posts[0]);
-        var quotes = lth.q[lth.th.posts[0].no].quotes;
-        var tgts = quotes && quotes.filter(function(v){return v[0]!==lth.q;}).map(function(v){return v[0].key;}).filter(function(v){return this.threads[v];},this);
-        if (tgts && tgts.length!=0) {
-          this.merge_tgts(tgts, lth.mh || 0);
-          for (var i=0;i<tgts.length;i++) this.merge_bases.add_to_list_1(name, tgts[i], this, null, true);
-        }
-      };
-//      Clg.prototype.insert_thread_format_html_add_events = function(th, posts_used, insert_thread_from_native){ // removed code for static(test_mode['104']) and simplified, Changed to format_html.prep_blacklist_click_tn
-//        if (posts_used && (this.mode==='page' || this.mode==='thread')) {
-//          if (insert_thread_from_native && pref[this.mode].env.expand_thumbnail_inline_native && !(pref[this.mode].env.event_dynamic && th.domain===site.nickname))
-////          var add_event = !pref[this.mode].env.expand_thumbnail_inline_native || !insert_thread_from_native; //  || (pref[this.mode].expand_thumbnail_inline_all_after && pref[this.mode].env.event_dynamic);
-////          var expand_now = pref[this.mode].expand_thumbnail_initial;
-////          var expand_on_demand = pref[this.mode].thumbnail.inline.ondemand;
-////          if (!add_event && !(pref[this.mode].env.event_dynamic && th.domain===site.nickname))
-//            for (var j=0;j<posts_used.length;j++) {
-//              var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
-//              if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) GEH.prototype.blacklist_click.add(tn_imgs[i]);
-////              if (expand_now) {
-////                if (expand_on_demand) {
-////                  DIH.expand_thumbnail_on_demand(tn_imgs[i]);
-////                  expand_now = false;
-////                } else DIH.expand_thumbnail_inline.call(tn_imgs[i], null, true);
-////              }
-//            }
+//      Clg.prototype.merge_cross_links_in_op_manually = function(name){ // working code
+//        var lth = liveTag.mems.getFromName(name);
+//        site2[lth.domain].popups_prep(lth);
+//        format_html.prepare_html_post(lth.th, lth.th.posts[0]);
+//        var quotes = lth.q[lth.th.posts[0].no].quotes;
+//        var tgts = quotes && quotes.filter(function(v){return v[0]!==lth.q;}).map(function(v){return v[0].key;}).filter(function(v){return this.threads[v];},this);
+//        if (tgts && tgts.length!=0) {
+//          this.merge_tgts(lth.key, tgts, lth.mh || 0);
+//          for (var i=0;i<tgts.length;i++) this.merge_bases.add_to_list_1(name, tgts[i], this);
 //        }
-//      };
-//      Clg.prototype.insert_thread_format_html_add_events = function(th, posts_used, insert_thread_from_native){ // working code
-//        if (posts_used && (this.mode==='page' || this.mode==='thread')) {
-//          var add_event = !pref[this.mode].env.expand_thumbnail_inline_native || !insert_thread_from_native || (pref[this.mode].expand_thumbnail_inline_all_after && pref[this.mode].env.event_dynamic);
-//          var expand_now = pref[this.mode].expand_thumbnail_initial;
-//          var expand_on_demand = pref[this.mode].thumbnail.inline.ondemand;
-//          if (add_event || expand_now || !pref.test_mode['104'])
-//            for (var j=0;j<posts_used.length;j++) {
-//              var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
-//              if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) {
-//                if (pref.test_mode['104']) tn_imgs[i].onclick = DIH.expand_thumbnail_inline;
-//                else if (!add_event && !(pref[this.mode].env.event_dynamic && th.domain===site.nickname)) GEH.prototype.blacklist_click.add(tn_imgs[i]);
-////                tn_imgs[i].onclick = (add_event)? expand_thumbnail_inline : expand_thumbnail_on_demand_set; // REDUNDANT???
-//                if (expand_now) {
-//                  if (expand_on_demand) {
-//                    DIH.expand_thumbnail_on_demand(tn_imgs[i]);
-////                    DIH.expand_thumbnail_queue_add(tn_imgs[i]);
-//                    expand_now = false;
-//                  } else DIH.expand_thumbnail_inline.call(tn_imgs[i], null, true);
-//                }
-//              }
-//            }
-//        }
-////        if (pref.test_mode['103']) if (posts_used && ((embed_mode==='catalog' && init_new) || (embed_mode==='page' || embed_mode==='thread')))  // working code, but static.
-////          if (pref[embed_mode].image_prefetch || (pref[embed_mode].image_hover && (!pref[embed_mode].env.image_hover_native || !insert_thread_from_native)))
-////            if (th.parse_funcs.has_posts && (embed_mode==='page' || embed_mode==='thread')) {
-////              for (var j=0;j<posts_used.length;j++) {
-////                var tn_imgs = th.parse_funcs_html.tn_imgs(posts_used[j]);
-////                if (tn_imgs) for (var i=0;i<tn_imgs.length;i++) tn_imgs[i].onmouseover = image_hover_add;
-////              }
-////            } else if (init_new && !th.parse_funcs_html.dynamic_image_hover) {
-////              var tn_imgs = th.parse_funcs_html.tn_imgs(th);
-////              for (var i=0;i<tn_imgs.length;i++) tn_imgs[i].onmouseover = image_hover_add;
-////            }
 //      };
       var format_html = {
         prepare_html_prep_posts: function(th, force){
@@ -33377,7 +33408,7 @@ if (pref.test_mode['19']) { // stability test.
         }
         var retval_first_idx;
         function insert_bulk(names, clg, almost_sorted, from_merged, rm_dic,    checked){ // Merges unsorted names with sorted idxs.
-          if ((pref.test_mode['169'] || pref.test_mode['172']) && !checked) {
+          if ((/*pref.test_mode['169'] ||*/ pref.test_mode['172']) && !checked) {
             var idxs_before = almost_sorted? [] : clg.idxs;
             var names_before = names.slice();
             var rm_dic_before = rm_dic && Object.keys(rm_dic).reduce(dic_null,{});
@@ -33385,7 +33416,7 @@ if (pref.test_mode['19']) { // stability test.
             check_bulk(idxs_new, clg.idxs_single, clg, clg.loose_check, idxs_before, names_before, almost_sorted, from_merged, rm_dic_before);
             return idxs_new;
           }
-          if (!from_merged && !pref.test_mode['169'] && !pref.test_mode['148']) { // base may not exist here because base is generated in show_catalog, but the thread will be appended at the case and order won't broken.
+          if (!from_merged && /*!pref.test_mode['169'] &&*/ !pref.test_mode['148']) { // base may not exist here because base is generated in show_catalog, but the thread will be appended at the case and order won't broken.
             var mb_base = clg.merge_bases.bases;
             for (var i=0;i<names.length;i++) {
               var base = mb_base[names[i]];
@@ -33407,6 +33438,8 @@ if (pref.test_mode['19']) { // stability test.
 
           // SOULD I USE .sort() instead of implementing them by myself?
           if (names.length===1 && !pref.test_mode['175'] && (!rm_dic || Object.keys(rm_dic).length===0)) return insert_bulk_1(clg.idxs, names[0], func_1, pf.ordering<6, func_1b);
+          // test_mode['173'](insert_sort) is too slow with 4000 threads for usual usage in 5ch.
+          //   insert_sort requires 100-120ms for average, whereas insert_bulk requires 20-30ms. see debug_mode['42']
           // 700 threads * 5 boards are merged with 3500 threads in 2 catalogs, ordering 'fast' and 'create' refresh:
           //   insert_sort: 268.0ms, 167.6ms = 134.2ms +  33.4ms (insert_bulk_all + insert_bulk_1by1)
           //                305.9ms, 686.9ms = 676.9ms +  10.3ms
@@ -33785,40 +33818,41 @@ if (pref.test_mode['19']) { // stability test.
 //          clear: clear, // NEED TO BE IMPLEMENTED to clear 'threads_odl' to prevent memory from leaking.
           idx_re_sort: function(start_pos, small_diff){
             var odls = this.idxs.filter(function(v){return v[0]===':';});
-            if (pref.test_mode['169']) var idxs_bulk = this.idxs.slice();
+//            if (pref.test_mode['169']) var idxs_bulk = this.idxs.slice();
             var idxs = this.idxs;
             this.idxs = [];
             var hide_tgts = {};
             var hide_unwatched = this.pref[this.mode].hide_unwatched
-            if (pref.test_mode['168'] || pref.test_mode['169']) {
-              if (small_diff) for (var i=idxs.length-1;i>=0;i--) {if (idxs[i][0]!==':') this.idx_re_sort_sub(hide_unwatched, idxs[i], hide_tgts);}
-              else for (var i in this.threads) this.idx_re_sort_sub(hide_unwatched, i, hide_tgts);
+//            if (pref.test_mode['168'] || pref.test_mode['169']) {
+//              if (small_diff) for (var i=idxs.length-1;i>=0;i--) {if (idxs[i][0]!==':') this.idx_re_sort_sub(hide_unwatched, idxs[i], hide_tgts);}
+//              else for (var i in this.threads) this.idx_re_sort_sub(hide_unwatched, i, hide_tgts);
+//            }
+//            if (!pref.test_mode['168']) {
+//              if (pref.test_mode['169']) idxs = idxs_bulk;
+            if (!small_diff) idxs = Object.keys(this.threads);
+            else filterInPlace(idxs, odls);
+            if (hide_unwatched) {
+              var hide_tgts = idxs.filter(function(v){return !this.threads[v][16].lth.watched_p;}, this);
+              filterInPlace(idxs, hide_tgts);
             }
-            if (!pref.test_mode['168']) {
-              if (pref.test_mode['169']) idxs = idxs_bulk;
-              if (!small_diff) idxs = Object.keys(this.threads);
-              else filterInPlace(idxs, odls);
-              if (hide_unwatched) {
-                var hide_tgts = idxs.filter(function(v){return !this.threads[v][16].lth.watched_p;}, this);
-                filterInPlace(idxs, hide_tgts);
-              }
-//              for (var i=idxs.length-1;i>=0;i--) {
-//                var name = idxs[i];
-//                if (name[0]===':') {odls[odls.length] = name; idxs.splice(i,1);}
-//                else if (hide_unwatched && !this.threads[name][16].lth.watched_p) {hide_tgts[name] = this.threads[name]; idxs.splice(i,1);}
-//              }
-              if (idxs.length>0) this.idxs = insert_bulk(idxs, pref.test_mode['169']? {idxs:idxs_bulk, idxs_single:this.idxs, loose_check:true, __proto__:this} : this, small_diff || pref.test_mode['173'] || !pref.test_mode['176'], null, true);
-            }
+////              for (var i=idxs.length-1;i>=0;i--) {
+////                var name = idxs[i];
+////                if (name[0]===':') {odls[odls.length] = name; idxs.splice(i,1);}
+////                else if (hide_unwatched && !this.threads[name][16].lth.watched_p) {hide_tgts[name] = this.threads[name]; idxs.splice(i,1);}
+////              }
+            if (idxs.length>0) this.idxs = insert_bulk(idxs, /*pref.test_mode['169']? {idxs:idxs_bulk, idxs_single:this.idxs, loose_check:true, __proto__:this} :*/
+                                                             this, small_diff || pref.test_mode['173'] || !pref.test_mode['176'], null, true);
+//            }
             if (hide_unwatched) this.func_hide_all(hide_tgts);
             this.idxs = this.idxs.concat(odls);
             this.show_catalog(start_pos || 0);
           },
-          idx_re_sort_sub: function(hide_unwatched, name, hide_tgts){
-            if (!hide_unwatched || this.threads[name][16].lth.watched_p) insert(name, this);
-            else hide_tgts[name] = this.threads[name];
-          },
+//          idx_re_sort_sub: function(hide_unwatched, name, hide_tgts){ // working code
+//            if (!hide_unwatched || this.threads[name][16].lth.watched_p) insert(name, this);
+//            else hide_tgts[name] = this.threads[name];
+//          },
           idx_rm_reorder_exe: function(){
-            if (pref.test_mode['168']) return;
+//            if (pref.test_mode['168']) return;
             if (this.idxs_req.size===0) return; //  && !this.idxs_rm_queue) return;
             if (pref.test_mode['173']) var idxs_old = this.idxs; // .slice(0, this.drawn_idx===true? undefined : this.drawn_idx); // this.idxs is NOT changed, sort will be executed in a shallow copied array.
             var names_unique = [];
@@ -33834,95 +33868,83 @@ if (pref.test_mode['19']) { // stability test.
                 else names_dic[i] = null;
               } else rm_dic[i] = null;
             }
-//            for (var i of this.idxs_req.keys()) names_unique[names_unique.length] = i;
-//            var names_dic = names_unique.reduce(dic_null,{});
-//            var names_unique = (this.dirty&0x08)? Object.keys(names_dic) : reqs; // this.idxs_req;
-//            var rm_dic_base = Object.create(pref.test_mode['173']? null : names_dic);
-//            var rm_dic = this.idxs_rm_queue? this.idxs_rm_queue.reduce(dic_null, rm_dic_base) : rm_dic_base;
-            if (pref.debug_mode['39']) {
-              var errors = [];
-              for (var i=0;i<this.idxs.length;i++) {
-                var name = this.idxs[i];
-                if (!(name in this.threads) && (!(name in rm_dic) || (name in names_dic))) errors.push(name);
-              }
-              if (errors.length>0) {
-                console.log('ERROR: idx_rm_reorder_exe: ',errors);
-                console.trace();
-                console.log(rm_dic, names_dic, names_unique, this.idxs_req);
-              }
-            }
+////            for (var i of this.idxs_req.keys()) names_unique[names_unique.length] = i;
+////            var names_dic = names_unique.reduce(dic_null,{});
+////            var names_unique = (this.dirty&0x08)? Object.keys(names_dic) : reqs; // this.idxs_req;
+////            var rm_dic_base = Object.create(pref.test_mode['173']? null : names_dic);
+////            var rm_dic = this.idxs_rm_queue? this.idxs_rm_queue.reduce(dic_null, rm_dic_base) : rm_dic_base;
+//            if (pref.debug_mode['39']) {
+//              var errors = [];
+//              for (var i=0;i<this.idxs.length;i++) {
+//                var name = this.idxs[i];
+//                if (!(name in this.threads) && (!(name in rm_dic) || (name in names_dic))) errors.push(name);
+//              }
+//              if (errors.length>0) {
+//                console.log('ERROR: idx_rm_reorder_exe: ',errors);
+//                console.trace();
+//                console.log(rm_dic, names_dic, names_unique, this.idxs_req);
+//              }
+//            }
             this.idxs_req.clear(); //  = [];
-            if (names_unique.length===0) var idx_top = filterInPlace(pref.test_mode['169']? this.idxs_bulk : this.idxs, null, rm_dic);
-            else var idxs = insert_bulk(names_unique, pref.test_mode['169']? {idxs: this.idxs_bulk, idxs_single:this.idxs, __proto__:this} : this, false, false, rm_dic);
-//            this.idxs_rm_queue = null;
-            if (pref.test_mode['169']) this.idxs_bulk = null;
+            if (names_unique.length===0) var idx_top = filterInPlace(/*pref.test_mode['169']? this.idxs_bulk :*/ this.idxs, null, rm_dic);
+            else var idxs = insert_bulk(names_unique, /*pref.test_mode['169']? {idxs: this.idxs_bulk, idxs_single:this.idxs, __proto__:this} :*/ this, false, false, rm_dic);
+////            this.idxs_rm_queue = null;
+//            if (pref.test_mode['169']) this.idxs_bulk = null;
             if (names_unique.length===0) return [idx_top, null];
-            if (!pref.test_mode['169']) this.idxs = idxs;
+            /*if (!pref.test_mode['169'])*/ this.idxs = idxs;
             if (!pref.test_mode['173']) return [retval_first_idx, names_dic, created_dic];
             var old_clean = this.drawn_idx===true? idxs_old.length : this.drawn_idx;
             var has_posts = this.view==='page' || this.view==='thread';
             for (var i=0;i<old_clean;i++) if (idxs_old[i]!==idxs[i] || has_posts && (idxs[i] in rm_dic)) break;
             return [i, names_dic, created_dic];
-//            if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread')) // this line can't be implemented.
-//              && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
-          },
-//          idx_reorder_exe: function(){
-//            if (pref.test_mode['168']) return;
-//            if (this.idxs_req.length==0) return;
-//            var names_unique = (this.dirty&0x08)? Object.keys(this.idxs_req.reduce(function(a,c){a[c]=null;return a;},{})) : this.idxs_req;
-//            var idxs = insert_bulk(names_unique, pref.test_mode['169']? {idxs: this.idxs_bulk, idxs_single:this.idxs, __proto__:this} : this);
-//            this.idxs_req = [];
-//            if (pref.test_mode['169']) this.idxs_bulk = null;
-//            else this.idxs = idxs;
-//            return retval_first_idx;
 ////            if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread')) // this line can't be implemented.
 ////              && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
-//          },
+          },
           idx_reorder: function(name, new_th, bulk){
             if (this.pref[this.mode].hide_unwatched && !this.threads[name][16].lth.watched_p) return;
-            if (!pref.test_mode['168']) {
-              if (pref.test_mode['169'] && !this.idxs_bulk) this.idxs_bulk = this.idxs.slice();
-              var val_old = this.idxs_req.get(name);
-              if (val_old!==undefined) this.idxs_req.delete(name); // keep order
-              this.idxs_req.set(name, val_old | (new_th? 3:1));
-//              if (this.idxs_req.has(name)) this.idxs_req.delete(name); // keep order
-//              this.idxs_req.set(name, 1);
-//              this.idxs_req[this.idxs_req.length] = name;
-              this.dirty |= 0x02; // !bulk? 0x0a : 0x02;
-              if (!pref.test_mode['169'] /*|| this.idxs_rm_queue*/) return this.idxs.length; // dummy
-            }
-            if (pref.test_mode['168'] || pref.test_mode['169']) {
-//              if (this.idxs_rm_queue && this.idxs_rm_queue.indexOf(name)!=-1) return this.idxs.length; // for safe, this line is not hit probably. // this doewn't work, deleted thread is scanned at inserting other live threads.
-              if (pref.test_mode['169'] && !bulk) var idxs_bulk = this.idxs.slice();
-//              if (this.pref[this.mode].hide_unwatched && !this.threads[name][16].lth.watched) return this.idxs.length;
-//              var idx_old = initial? -1 : idxs.indexOf(name); // causes multiple entries if idx_reorder is called from view_attr_set
-              var idx_old = this.idxs.indexOf(name);
-              if (idx_old!=-1) this.idxs.splice(idx_old,1);
+//            if (!pref.test_mode['168']) {
+//              if (pref.test_mode['169'] && !this.idxs_bulk) this.idxs_bulk = this.idxs.slice();
+            var val_old = this.idxs_req.get(name);
+            if (val_old!==undefined) this.idxs_req.delete(name); // keep order
+            this.idxs_req.set(name, val_old | (new_th? 3:1));
+////              if (this.idxs_req.has(name)) this.idxs_req.delete(name); // keep order
+////              this.idxs_req.set(name, 1);
+////              this.idxs_req[this.idxs_req.length] = name;
+            this.dirty |= 0x02; // !bulk? 0x0a : 0x02;
+//              if (!pref.test_mode['169'] /*|| this.idxs_rm_queue*/) return this.idxs.length; // dummy
+//            }
+//            if (pref.test_mode['168'] || pref.test_mode['169']) {
+////              if (this.idxs_rm_queue && this.idxs_rm_queue.indexOf(name)!=-1) return this.idxs.length; // for safe, this line is not hit probably. // this doewn't work, deleted thread is scanned at inserting other live threads.
+//              if (pref.test_mode['169'] && !bulk) var idxs_bulk = this.idxs.slice();
 ////              if (this.pref[this.mode].hide_unwatched && !this.threads[name][16].lth.watched) return this.idxs.length;
-              var idx_new = insert(name, this);
-              if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread'))
-                && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
-//                && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0;
-////              if ((idx_new !== idx_old || showing_posts) && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0;
-////              else if (showing_posts && this.drawn_idx===true) this.drawn_idx = 0;
-//  //            else if (this.mode==='page' && this.drawn_idx===true) this.drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
-//  //            if (idx_new !== idx_old && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
-            }
-            if (!pref.test_mode['168'] && !bulk && pref.test_mode['169']) {
-              var clg_tmp = {idxs:idxs_bulk, idxs_single:this.idxs, __proto__:this};
-              insert_bulk([name], clg_tmp);
-              if (retval_first_idx!==undefined && retval_first_idx!==idx_new && retval_first_idx!==idx_old && clg_tmp.idxs.indexOf(name)!==idx_new) console.log('ERROR: idx_reorder: bulk:'+retval_first_idx+', single:'+idx_new+', '+idx_old);
-            }
-            return idx_new;
-//            return (idx_new !==idx_old || (this.threads[name] && this.threads[name][9][0]!=this.threads[name][1])); // returns need to redraw.
+////              var idx_old = initial? -1 : idxs.indexOf(name); // causes multiple entries if idx_reorder is called from view_attr_set
+//              var idx_old = this.idxs.indexOf(name);
+//              if (idx_old!=-1) this.idxs.splice(idx_old,1);
+//////              if (this.pref[this.mode].hide_unwatched && !this.threads[name][16].lth.watched) return this.idxs.length;
+//              var idx_new = insert(name, this);
+//              if ((idx_new !== idx_old || (this.view==='page' || this.view==='thread'))
+//                && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old!=-1 && idx_old < this.drawn_idx)) this.drawn_idx = 0;
+////                && (this.drawn_idx===true || idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0;
+//////              if ((idx_new !== idx_old || showing_posts) && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0;
+//////              else if (showing_posts && this.drawn_idx===true) this.drawn_idx = 0;
+////  //            else if (this.mode==='page' && this.drawn_idx===true) this.drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
+////  //            if (idx_new !== idx_old && (idx_new < this.drawn_idx || idx_old < this.drawn_idx)) this.drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
+//            }
+//            if (!pref.test_mode['168'] && !bulk && pref.test_mode['169']) {
+//              var clg_tmp = {idxs:idxs_bulk, idxs_single:this.idxs, __proto__:this};
+//              insert_bulk([name], clg_tmp);
+//              if (retval_first_idx!==undefined && retval_first_idx!==idx_new && retval_first_idx!==idx_old && clg_tmp.idxs.indexOf(name)!==idx_new) console.log('ERROR: idx_reorder: bulk:'+retval_first_idx+', single:'+idx_new+', '+idx_old);
+//            }
+//            return idx_new;
+////            return (idx_new !==idx_old || (this.threads[name] && this.threads[name][9][0]!=this.threads[name][1])); // returns need to redraw.
           },
           idx_remove: function(name){
-            if (pref.test_mode['169'] && !this.idxs_bulk) this.idxs_bulk = this.idxs.slice();
-            if (pref.test_mode['168'] || pref.test_mode['169'] || pref.test_mode['181']) {
-              var idx = this.idxs.indexOf(name);
-              if (idx>=0) this.idxs.splice(idx,1);
-              if (pref.test_mode['168'] || pref.test_mode['181']) return;
-            }
+//            if (pref.test_mode['169'] && !this.idxs_bulk) this.idxs_bulk = this.idxs.slice(); // working code
+//            if (pref.test_mode['168'] || pref.test_mode['169'] || pref.test_mode['181']) {
+//              var idx = this.idxs.indexOf(name);
+//              if (idx>=0) this.idxs.splice(idx,1);
+//              if (pref.test_mode['168'] || pref.test_mode['181']) return;
+//            }
             if (this.idxs_req.has(name)) this.idxs_req.delete(name); // keep order, but redundant.
             this.idxs_req.set(name,0);
             this.dirty |= 0x04;
@@ -33940,8 +33962,10 @@ if (pref.test_mode['19']) { // stability test.
 //          },
           idx_refresh: function(clg){
             var start_pos = this.pref.INST.safety.hide? -1 : 0;
-            if (this.order.ordering%6===5) this.idx_re_sort(start_pos, true); // causes extra redraw, consider how to reduce this....
-            else if (clg===this) if (start_pos) this.show_catalog(start_pos)
+            if (this.order.ordering%6===5) {
+              if (this.dirty&0x06) {this.idx_rm_reorder_exe(); this.dirty&=~0x06;} // this can be consolidated by using insert_sort, but insert_bulk_all is 5x faster than insert_sort, so this serial sorting may be faster than consolidated. // patch for clear_threads from embed_exe, the bug is hit when open other catalog(pref.catalog_board_list_sel!==0)
+              this.idx_re_sort(start_pos, true); // causes extra redraw, consider how to reduce this....
+            } else if (clg===this) if (start_pos) this.show_catalog(start_pos);
           },
           idx_idxMergeAll: 7, // /Creation
 //          idx_insert: insert, // for merge
@@ -33949,225 +33973,6 @@ if (pref.test_mode['19']) { // stability test.
         };
       })());
       
-//      var threads_index = !pref.test_mode['114']? pClg : (function(){ // threads_idx, threads_odl and drawn_idx must be separated. // working code.
-//        function re_sort(){
-//          var odl = [];
-//          for (var i=0;i<threads_idx.length;i++) if (threads_idx[i].substr(0,4)===':DL:') odl[odl.length] = threads_idx[i];
-//          threads_idx=[];
-//          for (var i in threads) insert(i);
-//          for (var i=0;i<odl.length;i++) threads_idx[threads_idx.length] = odl[i];
-//          drawn_idx = 0;
-//          show_catalog();
-//        }
-////      function reorder_threads_idx(names){
-////        for (var i in names) reorder_thread_idx(i);
-////      }
-//////      function reorder_thread_idx(name, skip_check){ // working code.
-////////        for (var i=0;i<threads_idx.length;i++) if (threads_idx[i]==name) {threads_idx.splice(i,1);break;}
-////////        insert_thread_idx(name);
-//////        var i;
-//////        if (!skip_check) {
-//////          i = 0;
-//////          while (i<threads_idx.length && threads_idx[i]!==name) i++;
-//////          if (i<threads_idx.length) threads_idx.splice(i,1);
-//////        } else i = -1;
-//////        return (i!=insert_thread_idx(name) || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
-//////      }
-//
-//////      function raise_threads_idx_odl(db,key){ // works, but blocked by stikies.
-//////        var idx = threads_idx.indexOf(key);
-//////        if (idx!=-1) {
-//////          var kwd_odldb = ':DL:'+db;
-//////          for (var i=idx+1;i<threads_idx.length;i++)
-//////            if (threads_idx[i].indexOf(kwd_odldb)===0) {
-//////              if (i!=idx+1) threads_idx.splice(idx+1,0,threads_idx.splice(i,1)[0]);
-//////              break;
-//////            }
-//////        }
-//////      }
-//////      function raise_threads_idx_odl(db){ // working, but blinks when there are 'watched and first' threads. (stickies can't be sticky)
-//////        for (var i=threads_idx.length-1;i>=0;i--)
-//////          if (threads_idx[i].indexOf(db)===0) {
-//////            if (i<threads_idx.length-2) {
-//////              var kwd_odldb = ':DL:'+db;
-//////              for (var j=i+1;j<threads_idx.length;j++)
-//////                if (threads_idx[j].indexOf(kwd_odldb)===0) {
-//////                  if (j!=i+1) threads_idx.splice(i+1,0,threads_idx.splice(j,1)[0]);
-//////                  break;
-//////                }
-//////            }
-//////            break;
-//////          }
-//////      }
-//        function reorder(name){
-//          var idx_old = threads_idx.indexOf(name);
-//          if (idx_old!=-1) threads_idx.splice(idx_old,1);
-//          var idx_new = insert(name);
-//          if ((idx_new !== idx_old || embed_mode==='page') && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0;
-//          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = 0;
-////          else if (embed_mode==='page' && drawn_idx===true) drawn_idx = idx_new; // BUG??? this doesn't track drawn_y and ref_count.
-////          if (idx_new !== idx_old && (idx_new < drawn_idx || idx_old < drawn_idx)) drawn_idx = 0; // BUG. doesn't redraw if its size is changed.
-//          return (idx_new !==idx_old || (threads[name] && threads[name][9][0]!=threads[name][1])); // returns need to redraw.
-//        }
-//        var threads_odl = {};
-////        var threads_odl_default = { '8': [0, undefined, undefined, undefined, undefined], // disable 'on demand mode' at indexing of 1,2,3
-//        var threads_odl_default = { '8': [0, 0, 0, 0, 0],
-//                                   '19': [0,0,0]};
-//        function get_threads_odl_default(str){
-//          var page = parseInt(str.substr(str.lastIndexOf('/')+2),10);
-//          return (page===0)? {'8': [undefined, undefined, undefined, undefined, undefined], __proto__: threads_odl_default} : // force to top
-//                             {'8': [-page, -page, -page, -page, -page], __proto__: threads_odl_default};  // force to last
-//        }
-//        var start,end;
-//        var kwd_odl = ':DL:';
-//        var check_funcs = {
-//          reply_to_me: function(tgt_th){return (tgt_th[19][0]&0x000c0000) && (tgt_th[19][1]>>16)!=0;},
-//          reply: function(tgt_th){return (tgt_th[19][0]&0x000c0000) && tgt_th[19][1]!=0;},
-//          watch_first: function(tgt_th){return tgt_th[19][0]&0x000c0000;},
-//          watch_last: function(tgt_th){return !(tgt_th[19][0]&0x000c0000);},
-//          sticky_first: function(tgt_th){return tgt_th[20];},
-//          sticky_last: function(tgt_th){return !tgt_th[20];},
-//        }
-//        function get_tgt_th(str){
-//          return (str.indexOf(kwd_odl)===0)? (threads_odl[str] || get_threads_odl_default(str)) :
-//                                             threads[str];
-//        }
-//        function check_sub(myself, check_func){
-//          var ref = start;
-//          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
-//          if (check_func(myself)) end = ref;
-//          else start = ref;
-//        }
-//        var funcs_get_date = {
-//          0: function(tgt_th8){return tgt_th8[0] || tgt_th8[4];},
-//          4: function(tgt_th8){return tgt_th8[4] || tgt_th8[0];},
-//          get 5(){var now = Date.now(); return function(tgt_th8){return (now - tgt_th8[1])/tgt_th8[2];}},
-//          1: function(tgt_th8){return tgt_th8[1];},
-//          2: function(tgt_th8){return tgt_th8[2];},
-//          3: function(tgt_th8){return tgt_th8[3];},
-//        }
-//        function insert(name){
-//          start = 0;
-//          end = threads_idx.length;
-//          var pf = pref.catalog.order;
-//          var myself = get_tgt_th(name);
-//          if (pf.sticky!=='dont_care') check_sub(myself, (pf.sticky==='last')? check_funcs.sticky_last : check_funcs.sticky_first);
-//          if (pf.reply_to_me) check_sub(myself, check_funcs.reply_to_me);
-//          if (pf.reply) check_sub(myself, check_funcs.reply);
-//          if (pf.watch!=='dont_care') check_sub(myself, (pf.watch==='last')? check_funcs.watch_last : check_funcs.watch_first);
-//          var get_date = funcs_get_date[pref.catalog.indexing%6];
-////          var indexing  = pref.catalog.indexing%6;
-////          var indexing2 = pref.catalog.indexing;
-////          var get_date = (indexing===0 || indexing===4)? function(tgt_th){return tgt_th[8][indexing] || tgt_th[8][(indexing===0)?4:0];} :
-////                         (indexing===5)?                 (function(){var now = Date.now(); return function(tgt_th){return (now - tgt_th[8][1])/tgt_th[8][2];}})() :
-////                                                         function(tgt_th){return tgt_th[8][indexing];};
-//          var date = get_date(myself[8]);
-//          var check_func = (pref.catalog.indexing>=5 && pref.catalog.indexing<11)? function(tgt_th){return date>=get_date(tgt_th[8]);} :
-//                                                                                   function(tgt_th){return date<=get_date(tgt_th[8]);};
-//          var ref = start;
-//          while (ref<end && check_func(get_tgt_th(threads_idx[ref]))) ref++;
-//  
-//          if (ref==threads_idx.length) threads_idx[threads_idx.length] = name;
-//          else threads_idx.splice(ref,0,name);
-//  //        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
-//          return ref;
-//        }
-//        function raise_odl(th){
-//          var i = threads_idx.indexOf(th.key);
-//          if (i!=-1) {
-//            var kwd_odldb = ':DL:'+ th.domain + th.board;
-//            while (++i<threads_idx.length) {
-//              if (threads_idx[i].indexOf(kwd_odldb)===0) {
-//                threads_odl[threads_idx[i]] = {'8':[ (th.time_posted || th.time_bumped), th.time_created, th.nof_posts, th.nof_files, (th.time_bumped || th.time_posted) ],
-//                                               __proto__:threads_odl_default};
-//                insert(threads_idx.splice(i,1)[0]);
-//                break;
-//          }}}
-//        }
-//        function delete_odl(keys){
-//          for (var i=0;i<keys.length;i++) delete threads_odl[kwd_odl+keys[i]];
-//        } 
-//        function insert_odl(name){
-//          delete threads_odl[kwd_odl+name];
-//          reorder(kwd_odl+name);
-//        }
-//        return {
-//          idx_insert: insert,
-//          idx_raise_odl: raise_odl,
-//          idx_delete_odl: delete_odl,
-//          idx_insert_odl: insert_odl,
-////          clear: clear, // NEED TO BE IMPLEMENTED to clear 'threads_odl' to prevent memory from leaking.
-//          idx_reorder: reorder,
-//          idx_re_sort: re_sort,
-//        }
-//      })();
-////////      function insert_thread_idx(name){ // working code.
-////////        var indexing = pref.catalog.indexing;
-////////        var ref=0;
-////////        var end = threads_idx.length;
-////////        var dbt = comf.fullname2dbt(name);
-////////        var kwd_odl   = ':DL:';
-////////        var kwd_odldb = kwd_odl+dbt[0]+dbt[1];
-////////        var check_func;
-////////        function skip_odl_th(ref){
-////////          var str = threads_idx[ref];
-////////          if (str.indexOf(kwd_odl)===0) return str.indexOf(kwd_odldb)!==0;
-////////          else return check_func(threads[str]);
-////////        }
-//////////console.log(name+', S: '+threads[name][19][1]+'/'+(threads[name][8][2]-threads[name][19][2])+', '+threads[name][8][2]+', '+threads[name][8][3]);
-////////        if (pref.catalog.order.reply_to_me) {
-////////          check_func = function(tgt_th){return tgt_th[19][0]!==0 && tgt_th[19][1]!=0;};
-////////          while (ref<end && skip_odl_th(ref)) ref++;
-////////          if (threads[name][19][0]!==0 && threads[name][19][1]!=0) {end=ref;ref=0;}
-//////////console.log(name+', M: '+ref+'/'+end+', '+threads[name][19][1]);
-////////        }
-////////        if (pref.catalog.order.reply) {
-////////          var ref2 = ref;
-//////////          while (ref2<end && threads_idx[ref2].substr(0,4)!==':DL:' && threads[threads_idx[ref2]][19][2]!=threads[threads_idx[ref2]][8][2]) ref2++;
-//////////          while (ref2<end && threads_idx[ref2].substr(0,4)!==':DL:' && threads[threads_idx[ref2]][19][2]!=0 && threads[threads_idx[ref2]][19][2]!=threads[threads_idx[ref2]][8][2]) ref2++;
-//////////          if (threads[name][19][2]!=0 && threads[name][19][2]!=threads[name][8][2]) end = ref2;
-////////          check_func = function(tgt_th){return tgt_th[19][0]!==0 && tgt_th[19][2]>0;};
-////////          while (ref2<end && skip_odl_th(ref2)) ref2++;
-////////          if (threads[name][19][0]!==0 && threads[name][19][2]>0) end = ref2;
-////////          else ref = ref2;
-//////////console.log(name+', N: '+ref+'/'+end+', '+(threads[name][8][2]-threads[name][19][2]));
-////////        }
-//////////        if (pref.catalog.order.watch) { // working code.
-//////////          var ref2 = ref;
-//////////          while (ref2<end && threads_idx[ref2].substr(0,4)!==':DL:' && threads[threads_idx[ref2]][19][0]!==0) ref2++;
-//////////          if (threads[name][19][0]!==0) end = ref2;
-////////////          while (ref2<end && threads_idx[ref2].substr(0,4)!==':DL:' && threads[threads_idx[ref2]][19][2]!=0) ref2++;
-////////////          if (threads[name][19][2]!=0) end = ref2;
-//////////          else ref = ref2;
-////////////console.log(name+', R: '+ref+'/'+end);
-//////////        }
-////////        if (pref.catalog.order.watch!=='dont_care') { // working code.
-////////          var polarity = (pref.catalog.order.watch==='last');
-////////          var ref2 = ref;
-////////          check_func = function(tgt_th){return polarity ^ tgt_th[19][0]!==0;};
-////////          while (ref2<end && skip_odl_th(ref2)) ref2++;
-////////          if (polarity ^ threads[name][19][0]!==0) end = ref2;
-////////          else ref = ref2;
-//////////console.log(name+', R: '+ref+'/'+end);
-////////        }
-////////        if (pref.catalog.order.sticky!=='dont_care') {
-////////          var polarity = (pref.catalog.order.sticky==='last');
-////////          var ref2 = ref;
-////////          check_func = function(tgt_th){return polarity ^ tgt_th[20];};
-////////          while (ref2<end && skip_odl_th(ref2)) ref2++;
-////////          if (polarity ^ threads[name][20]) end = ref2;
-////////          else ref = ref2;
-//////////console.log(name+', T: '+ref+'/'+end);
-////////        }
-////////        var date = threads[name][8][indexing] || threads[name][8][(indexing===0)?4:0];
-////////        check_func = function(tgt_th){return date<=(tgt_th[8][indexing] || tgt_th[8][(indexing===0)?4:0]);};
-////////        while (ref<end && skip_odl_th(ref)) ref++;
-////////        if (ref==threads_idx.length) threads_idx[threads_idx.length] = name;
-////////        else threads_idx.splice(ref,0,name);
-//////////console.log(name+', F: '+ref+'/'+end+', '+threads_idx.length);
-//////////        if (ref<=drawn_idx) drawn_idx = 0; // can't track by 'drawn_idx = ref; drawn_y = 0;'. drawn_xxx must be synchronized.
-////////        return ref;
-////////      }
 
       function expand_shrink_thread(name){
         if (threads[name][0].style.width=='') {
@@ -34754,10 +34559,10 @@ if (pref.test_mode['163'] && pref[embed_mode].thumbnail.inline.stopHover && site
                            : (pref.catalog_open_where==='_blank')? name + '_' + Date.now() : pref.catalog_open_where) + (pref.catalog_open_where!=='_self'? '_'+pref.tabID : '');
 //                        : (pref.catalog_open_in_new_tab)? ((pref.catalog_use_named_window)? name : '_blank') : '_self';
 
-        var names = pref['thread'].merge_auto_list? clg.merge_bases.query_merged_keys(name) : [name];
+        var names = pref['thread'].merge_auto? clg.merge_bases.query_merged_keys(name) : [name];
         var time_marked = (pref[embed_mode].mark_new_posts)? names.map(function(name){return clg.get_watch_time_of_a_thread(name,threads[name][8][1], null);}).reduce(function(a,c){return c>a? c : a;}) : 0;
 //        var time_marked = (pref[embed_mode].mark_new_posts)? clg.get_watch_time_of_a_thread(name,threads[name][8][1], null, true) : 0; // working code.
-//        if (time_marked && pref['thread'].merge_auto_list) {
+//        if (time_marked && pref['thread'].merge_auto) {
 //          var merged_others = clg.merge_bases.query_others(name);
 //          if (merged_others) for (var i=0;i<merged_others.length;i++) {
 //            var time_marked_tmp = clg.get_watch_time_of_a_thread(merged_others[i],threads[merged_others[i]][8][1], null, true);
@@ -34787,7 +34592,7 @@ if (pref.test_mode['163'] && pref[embed_mode].thumbnail.inline.stopHover && site
         }
         var pf_aw = pref.auto_watch;
         if (pf_aw.watch) clg.triage_event(name,'WATCH',''); // ,true);
-        if (pf_aw.hide || pf_aw.style) clg.triage_event(name, pf_aw.hide? pf_aw.hide_com : 'NONE', pf_aw.style? pf_aw.style_str : '');
+        if (pf_aw.hide || pf_aw.style) clg.triage_event(name, pf_aw.hide? pf_aw.hide_com : 'ATTR', pf_aw.style? pf_aw.style_str : '');
         if (pf_aw.triage) {
           var triages = pf_aw.triage_str.split(',');
           while (triages.length>0) {
@@ -34923,7 +34728,9 @@ var debug_str2;
 var debug_count = 0;
         if (this.dirty) {
           if (this.dirty&0x06) {
+            var check_perf = ['idx_rm_reorder_exe',performance.now()];
             var retvals_idx = this.idx_rm_reorder_exe(); // (this.dirty&0x02)? this.idx_rm_reorder_exe() : this.idx_remove_exe();
+            if (pref.debug_mode['42']) comf.perf_out(check_perf);
             if (retvals_idx[0]<this.drawn_idx) this.func_track_reset();
             var tgts_from_idx = retvals_idx[1];
             var created_from_idx = this.dirty&0x10? null : retvals_idx[2] && Object.keys(retvals_idx[2]);
@@ -34990,7 +34797,7 @@ if (pref.test_mode['23']) this.drawn_idx = 0;
 //   footer: this.footer.clean_idx
 //   data: tgt_th[16].th
 //   order: this.drawn_idx and this.drawn_y
-// try_all WILL BE REMOVED after implementing order controls properly.
+// try_all WILL BE DEFAULT, bump down occurs usually when threads are sorted by /bumptime.
         if (tgts!==undefined && try_all || this.drawn_idx===0 || this.drawn_idx===true) {
           this.func_track_reset(); // called with drawn_idx===true from 'release_draw'.
           if (mode_merge) try_all = true; // tracking info about merge was cleared by func_track_reset
@@ -35122,8 +34929,9 @@ debug_count++;
 //                  if (this.lazy_draw) if (this.lazy_draw(name, get_ref_height(4)) this.backup_mb_state(i);
                   if (tgt_th[1]) {
                     var update_y = draw_on_demand && try_all && (this.drawn_y<ref_height) && (shown_count>=lazy_next); // try_all should be removed???
-                    merge_tails |= this.func_track_shown(name, update_y, i);
-                    if (update_y) { // check for merge
+                    var retvals_fts = this.func_track_shown(name, update_y, i);
+                    merge_tails |= retvals_fts & 0x02;
+                    if (update_y && !(retvals_fts&0x01)) { // check for merge
                       lazy_next += lazy_step;
                       if (try_all && !pref.test_mode['150']) {
                         this.lazy_avgSizeInv = this.drawn_y>0? shown_count/this.drawn_y : 0;
@@ -35154,7 +34962,10 @@ debug_count++;
 //        if (mode_merge_tails) i = mode_merge_tails -1;
         if (try_all || tgts_count==0 && drawn_idx_old<i) this.drawn_idx = (!draw_on_demand || i==this.idxs.length)? true : (i<i_start)? i_start : i;
         this.footer.clean_idx = i;
-        if (mode_merge) this.func_lazy_draw();
+        if (mode_merge) {
+          if (pref.test_mode['214']) this.footer.draw_merge_consolidated_exe();
+          this.func_lazy_draw();
+        }
         if (this.observer_myself) this.observer_myself.observe(); 
 //        if (common_obj.thread_reader && common_obj.thread_reader.observer_IDinfo) common_obj.thread_reader.observer_IDinfo.observe();
         this.dirty = 0;
@@ -36090,7 +35901,7 @@ if (!pref.test_mode['49'] && posts_active && th) {
           clg.image_resize1_onload_bound = clg.image_resize1_onload.bind(clg);
           clg.image_resize2_onload_bound = clg.image_resize2_onload.bind(clg);
           var tgt_th = clg.threads[name] = {0:pn_result}; // , 22:null};
-          Clg.prototype.insert_thread_format_th_pn.call(clg, tgt_th, {pn:pn_result, __proto__:th}, true);
+          Clg.prototype.insert_thread_format_th_pn.call(clg, tgt_th, {pn:pn_result, key:name, __proto__:th}, true); // key for merged thread, whose key is merge.ths[0].key
 //          Clg.prototype.view_attr_set.call(obj, name, true);
 ////          catalog_attr_set(name,pn.childNodes[0]);
 ////        }
@@ -36652,7 +36463,7 @@ if (!pref.test_mode['160']) site2[site.nickname].catalog_native_prep(pn12_0_4,pn
         if (pClg.pref.filter.kwd.post) {pref4.search_posts_active_once = false; pClg.pref.filter.kwd.posts_active = false; pClg.filter_kwd_active({target:{name:'filter.kwd.post'}});} // patch for posts scan
 //          if (site.whereami==='catalog') site2[site.nickname].clean_up_LS(ths);
           if ((embed_mode==='page' && site2[site.nickname].all_boards && site2[site.nickname].all_boards.indexOf(site.board)!=-1) ||
-              (embed_mode==='thread' && pref.thread.env.auto_update_native)) { // BUG(,but patched), this cause conflicts, because insert_myself doesn't take merge_mode into account.
+              (embed_mode==='thread' && pref.thread.env.auto_update_native)) { // BUG(,but patched), this cause conflicts, because insert_myself doesn't take merge into account.
             var observer = new MutationObserver(insert_myself);
 //            var observer = new MutationObserver(function(){setTimeout(insert_myself,10);}); // wait native script for 4chan, but doesn't work.
 //            observer.observe(triage_parent, {childList: true});
@@ -36673,7 +36484,7 @@ if (!pref.test_mode['160']) site2[site.nickname].catalog_native_prep(pn12_0_4,pn
             if (Array.isArray(tgts) && pref.catalog.refresh.at_switch && tgts.indexOf(key_me)===-1 && tgts.indexOf(key_me2)===-1) pClg.clear_threads(0);
           }
 //          if (pref.catalog_board_list_sel!==0 && pref.catalog.refresh.at_switch) catalog_clear_threads(0);
-          if (pref[embed_mode].merge_auto_list) site2['DEFAULT'].update_posts_merge_bases.auto_merge_list(site.key, pClg);
+          if (!pref.test_mode['212'] && pref[embed_mode].merge_auto) site2['DEFAULT'].update_posts_merge_bases.auto_merge_list(site.key, pClg);
       };
       if (embed_embed) {  // for native catalog
         var pfunc = site2[site.nickname].parse_funcs[site.whereami+'_html'];
@@ -36994,10 +36805,10 @@ if (pref.test_mode['0']) {
         for (var i=0;i<gClg.Clgs.length;i++) rm_items_404_1(domain, board, nos, nos_recovered, gClg.Clgs[i], no_in);
         for (var no in tgts) if (gClg.Remove_thread_refresh(domain + board + no, tgts[no], null, (no in nos_recovered)) && !(no in nos_recovered)) nos_recovered[no] = null;
         for (var no in tgts) liveTag.rm_404_1(domain, board, no, (no in nos_recovered));
-        if (no_in===undefined) {
+        if (pref.common.merge_list_rm404!=='no' && (pref.common.merge_list_rm404!=='dead' || no_in!==undefined)) {
           var str;
-          if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no_in, pref3.proto.merge_list_obj2, pref.proto.merge_list_str, null))!==null) pref_func.settings.pnOrDummy('proto.merge_list_str').value = pref.proto.merge_list_str = str;
-          if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no_in, pref3.proto.merge_lv_obj2,   pref.proto.merge_lv_str,   null))!==null) pref_func.settings.pnOrDummy('proto.merge_lv_str').value   = pref.proto.merge_lv_str   = str;
+          if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no_in, pref3.proto.merge_list_obj2, pref.proto.merge_list_str, null))!==null) pref3.proto.merge_list_obj2._str = str;
+          if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no_in, pref3.proto.merge_lv_obj2,   pref.proto.merge_lv_str,   null))!==null) pref3.proto.merge_lv_obj2._str   = str;
         }
         var keys = Object.keys(nos_recovered); // .map(function(k){nos_recovered[k];}).filter(function(v){return v;});
         for (var j=0;j<keys.length;j++) {
@@ -37015,26 +36826,26 @@ if (pref.test_mode['0']) {
                       : gpf.liveTag.rm_404;
         var pf = clg.pref.filter;
         var str;
-        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.watch_list_obj2, pf.watch_list_str, pf_merged))!==null) {
+        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.watch_list_obj2, pf.watch_list_str, pf_merged, clg))!==null) {
           clg.components.watch_list.value = pf.watch_list_str = str; // must be first to get priority.
           if (clg===pClg && gpf.common.consolidated_watch_list && gpf.common.sync_watch_list) gClg.Sync_watch_save([null, 'PRUNED', str]);
 //          if (pref.common.consolidated_watch_list) gClg.Sync_watch_save(null); // may be issued multitimes, but OK.
         }
-        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.attr_list_obj2, pf.attr_list_str, gpf.liveTag.rm_404))!==null) clg.components.attr_list.value = pf.attr_list_str  = str;
-        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.list_obj2,      pf.list_str,      gpf.liveTag.rm_404))!==null) clg.components.ex_list.value   = pf.list_str       = str;
+        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.attr_list_obj2, pf.attr_list_str, gpf.liveTag.rm_404, clg))!==null) clg.components.attr_list.value = pf.attr_list_str  = str;
+        if ((str = rm_items_404_2(domain, board, nos, nos_recovered, no, pf.list_obj2,      pf.list_str,      gpf.liveTag.rm_404, clg))!==null) clg.components.ex_list.value   = pf.list_str       = str;
       }
-      function rm_items_404_2(domain, board, nos, nos_recovered, no, obj2, str_in, pf){
+      function rm_items_404_2(domain, board, nos, nos_recovered, no, obj2, str_in, pf, clg){
         var func = pf? rm_items_404_delete : rm_items_404_delete_merge;
         var db = domain + board;
         var str = null;
         var obj_r = obj2[':REV'] && obj2[':REV'][db];
         if (obj_r)
-          if (no===undefined) {for (var n in obj_r) if (!(n in nos)) str = func(domain, board, db+n,  nos_recovered, n,  obj2, obj_r, str, str_in, pf);}
-          else if (nos[no]===undefined)             if (no in obj_r) str = func(domain, board, db+no, nos_recovered, no, obj2, obj_r, str, str_in, pf);
-        return str && pref_func.fmt4str2(str);
+          if (no===undefined) {for (var n in obj_r) if (!(n in nos)) str = func(domain, board, db+n,  nos_recovered, n,  obj2, obj_r, str, str_in, pf, clg, true);}
+          else if (nos[no]===undefined)             if (no in obj_r) str = func(domain, board, db+no, nos_recovered, no, obj2, obj_r, str, str_in, pf, clg);
+        return str && pref_func.fmt4str2_2(str);
       }
-      function rm_items_404_delete(domain, board, name, nos_recovered, no, obj2, obj_r, str, str_in, pf){
-        var recovered = (no in nos_recovered);
+      function rm_items_404_delete(domain, board, name, nos_recovered, no, obj2, obj_r, str, str_in, pf, clg, from404){
+        var recovered = (no in nos_recovered) || pref.test_mode['213'] && clg.keepMergedThread(name, from404);
         var lth = (!recovered && pf==='imm')? null : ((lth = liveTag.mems[domain]) && (lth = lth[board]) && lth[no]); // don't use getFromName since watchlist may contain threads which don't exist in liveTag.mems
         var keep = recovered || pf==='no' || pf!=='imm' && (lth && lth.watched && (pf==='watched' || lth.nr)); // can't catch unread posts during offline
         if (keep) {
@@ -37042,7 +36853,7 @@ if (pref.test_mode['0']) {
           var nr = lth && (lth.nrtm +'/'+lth.nr) || '?/?';
           if (!obj2[name].cmd) obj2[name].cmd = {'PRUNED':nr};
           else if (obj2[name].cmd['PRUNED']===undefined) obj2[name].cmd['PRUNED'] = nr;
-          else return str; // keep str value
+          else return str; // keep str value since pruned already
           nos_recovered[no] = name; // overwritten for change view
         } else {
           delete obj2[name];
@@ -37050,9 +36861,14 @@ if (pref.test_mode['0']) {
         }
         if (pref.debug_mode['2']) console.log('rm_items_404_delete: ' + name);
         var key = new RegExp('(^|,)'+name.replace(/\+/,'\\+')+'([\\^@;][^,\n]*)*(,|\n|$)','mg'); // see 'triage_exe'
-        return (str||str_in).replace(key,!keep?',':'$1'+name+'$2;PRUNED:'+nr+'$3');
+        return (str||str_in).replace(key,!keep?'':'$1'+name+'$2;PRUNED:'+nr+'$3');
       }
-      function rm_items_404_delete_merge(domain, board, name, nos_recovered, no, obj2, obj_r, str, str_in, pf){
+      function rm_items_404_delete_merge(domain, board, name, nos_recovered, no, obj2, obj_r, str, str_in, pf, clg, from404){
+        if (no in nos_recovered) return str;
+        else if (pref.test_mode['213'] && gClg.keepMergedThread(name, from404)) { // CAUTION, gClg is used here temporarily.
+          nos_recovered[no] = name;
+          return str;
+        }
         if (pref.debug_mode['2']) console.log('rm_items_404_delete_merge: ' + name);
         return obj2._rm(name,obj_r,no,(str||str_in));
 //        var tgt = obj2[name];
@@ -37062,6 +36878,11 @@ if (pref.test_mode['0']) {
 //        var key = name.replace(/\+/,'\\+')+'([\\^@;:][^,\n]*)*'; // see 'triage_exe' // moved to str2obj2, working code
 //        return str.replace(new RegExp('(^|,)'+key+'([,\n]+\\s*\\+*|$|\\+)','mg'),'$1').replace(new RegExp('\\+\\s*'+key+'(,|\n|$|\\s*\\+)','mg'),'$2');
       }
+      Clg.prototype.keepMergedThread = function(name, from404){
+        var pf = pref.common.merge_list_rm404;
+        // IMPLEMENT pf==='UI' case here
+        return pf!=='imm' && !from404 && this.threads[name] && this.merge_bases.base_arr[name]; // merge_basea.bases can't be used because it is null when it is NOT displayed.
+      };
 //      function rm_items_404_1(domain, board, nos, clg, func){ // working code
 //        var db = domain + board;
 //        var pf = clg.pref.filter;
@@ -37411,11 +37232,11 @@ if (pref.test_mode['0']) {
 //              clg.triage_event(key, e.target.dataset.cmd, e.target.dataset.attr || '', null, e.target);
 //            }
             e.stopPropagation();
-          } else if (pref.test_mode['194'] && (etp = et.tagName==='svg'? et : et.parentNode, etp && etp.tagName==='svg') && etp.classList.contains(pref.cpfx+'embeddedTriage')) {
-            triage.embedded_onclick(e,clg, etp.classList.contains('sticky')? {cmd:'UNSTICKY',attr:''}:null);
-            return stop_prevent(e);
-          } else if (e.target.classList.contains(pref.cpfx+'embeddedTriage')) {
-            triage.embedded_onclick(e,clg);
+//          } else if (pref.test_mode['194'] && (etp = et.tagName==='svg'? et : et.parentNode, etp && etp.tagName==='svg') && etp.classList.contains(pref.cpfx+'embeddedTriage')) {
+//            triage.embedded_onclick(e,clg, etp.classList.contains('sticky')? {cmd:'UNSTICKY',attr:''}:null);
+//            return stop_prevent(e);
+          } else if (et.classList.contains(pref.cpfx+'embeddedTriage')) {
+            triage.embedded_onclick(e,clg, et.classList.contains('sticky')? {cmd:'UNSTICKY',attr:''}:null); // svg can have dataset >chrome55
             return stop_prevent(e);
 ////            var key = gGEH.get_key_recursive(e.target, e.currentTarget);
 ////            Triage.prototype.prep_func_onclick(function(cmd,attr){
@@ -37452,16 +37273,16 @@ if (pref.test_mode['0']) {
             triage.off();
           }
           if (et.tagName==='A') {
-            if (pref.test_mode['147'] && clg.view==='catalog') {
-              var key = gGEH.get_key_recursive(e.target, e.currentTarget);
-              var href = e.target.getAttribute('href');
-              var domain = site2['DEFAULT'].popups_posts.href2domain(href);
-              var dbtp = site2[domain].popups_href2dbtp(href);
-              var tgt = dbtp.slice(0,3).join('');
-              if (key && tgt && dbtp[2] && key!==tgt) clg.triage_event(key, 'MERGEC', tgt);
-              if (!clg.threads[tgt]) scan.scan_ui('mergeClicked', {tgts:[tgt], options:{refresh:clg}});
-              return stop_prevent(e);
-            }
+//            if (pref.test_mode['147'] && clg.view==='catalog') { // DnD UI is far better
+//              var key = gGEH.get_key_recursive(e.target, e.currentTarget);
+//              var href = e.target.getAttribute('href');
+//              var domain = site2['DEFAULT'].popups_posts.href2domain(href);
+//              var dbtp = site2[domain].popups_href2dbtp(href);
+//              var tgt = dbtp.slice(0,3).join('');
+//              if (key && tgt && dbtp[2] && key!==tgt) clg.triage_event(key, 'MERGEC', tgt);
+//              if (!clg.threads[tgt]) scan.scan_ui('mergeClicked', {tgts:[tgt], options:{refresh:clg}});
+//              return stop_prevent(e);
+//            }
             if (pref[clg.mode].inline_post!=='no' && site2['DEFAULT'].popups_link_regex.test(et.textContent)) {
               site2['DEFAULT'].popups_posts.inline_post(e, clg);
               return stop_prevent(e);
