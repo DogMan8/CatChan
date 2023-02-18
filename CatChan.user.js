@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2023.01.22.0
+// @version 2023.01.22.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1929,19 +1929,20 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           tgt[name] = field.substr(idx+1);
         }
         var obj2proto = {
-          _revise: function(name, str_add, str_removed){
-            if (!pref.test_mode['190']) this._reviseObj(name, str_add);
-            return fmt4str2_2(str_removed, str_add && (name+str_add));
+          _revise: function(name, str_add, str_removed, force){
+            if (!pref.test_mode['190']) this._reviseObj(name, str_add, force);
+            return fmt4str2_2(str_removed, (str_add || force) && (name+str_add));
           },
-          _reviseObj: function(name, str){
+          _reviseObj: function(name, str, force){
 //            if (str) str = str.replace(/\s*\/\/.*/mg,'').replace(/\n/g,',').replace(/\s*$/,'').split(/\s*,\s*/)[0]; // for safety
+            var rm = !str && !force;
             var exist = (name in this);
             if (exist) {
-              if (!str) obj3_rm(this[':REV'], name);
+              if (rm) obj3_rm(this[':REV'], name);
               delete this[name]; // force remake for not accumulating
             }
-            if (!str) return;
-            func_org_1(name, str===true?'':str, this);
+            if (rm) return;
+            func_org_1(name, str, this);
             if (!exist) func_rev_1(name,this[':REV']);
           },
         };
@@ -4240,7 +4241,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2023.01.22.0<br>'+
+          'Version 2023.01.22.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -31683,11 +31684,13 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
           if (broadcast===false || ex_list.value.search(key)!=-1 || pref.triage.sync_ex==='all' || broadcast===0 && pref.triage.sync_ex==='bg') {
             var ex_now = this.pref.filter.list_str;
             var ex_str = ex_now.replace(key,'');
-            var ex_add = (cmd==='NONE' || cmd==='UNWATCH' || !tgt_th)? '' : cmd==='TIME'? time_str : true; // true is dummy for _reviseObj to make entry without args
-            if (ex_add || ex_now.length !== ex_str.length) {
-              ex_list.value = this.pref.filter.list_str = this.pref.filter.list_obj2._revise(name, ex_add, ex_str); // = pref_func.fmt4str2(ex_add? ex_str+','+ex_add+'\n' : ex_str);
+            var ex_force = cmd==='KILL'; // force to add entry without ex_add
+            var ex_add = tgt_th && cmd==='TIME'? time_str : '';
+//            var ex_add = (cmd==='NONE' || cmd==='UNWATCH' || !tgt_th)? '' : cmd==='TIME'? time_str : true; // true is dummy for _reviseObj to make entry without args // BUG.
+            if (ex_force || ex_add || ex_now.length !== ex_str.length) {
+              ex_list.value = this.pref.filter.list_str = this.pref.filter.list_obj2._revise(name, ex_add, ex_str, ex_force); // = pref_func.fmt4str2(ex_add? ex_str+','+ex_add+'\n' : ex_str);
               changed.ex = true; // eliminate this flag as much as possible to speed up 'NONE'
-//              if (!pref.test_mode['190']) this.pref.filter.list_obj2._revise(name, ex_add);
+//              if (!pref.test_mode['190']) this.pref.filter.list_obj2._revise(name, ex_add, ex_force);
             }
           }
         }
