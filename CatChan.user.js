@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2023.03.12.0
+// @version 2023.03.26.0
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -847,7 +847,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
                oneshot: {post:true, tn:true, img:true,  webm:true , post_idb:true, tn_idb:true, img_idb:true,  webm_idb:true},
                live:    {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
                deleted: {post:true, tn:true, img:false, webm:false, post_idb:true, tn_idb:true, img_idb:false, webm_idb:false},
-               IDB:     {auto_clean:true, auto_clean_init:true, prune:168, prune_flush:false, nof_tr:10, nof_cl:20, nof_cl_max:80,
+               IDB:     {auto_clean:true, auto_clean_init:true, prune:168, prune_flush:false, nof_tr:10, nof_cl:20, nof_cl_max:80, keep_alive:true,
                          auto_restore:false, auto_restore_watch:false, auto_restore_remove:true,
                          watchdog:120, redirect_404: false, redirect_404_CSP: false}, // check_every:1, },
                kwd: {use:true, str:'', re:false, ci:true, match:0, op:true, post:false, sub:true, name:true, trip:false, com:true, file:false, meta:false, sentence:false, ew:false,   rexps:null},
@@ -4039,7 +4039,8 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               '4,<IC"archive.IDB.prune_flush">Archive to file at pruning<br>'+
               '3,num of transactions: <ITB3"archive.IDB.nof_tr"><br>'+
               '3,num of requests in a transaction: <ITB3"archive.IDB.nof_cl"> - <ITB3"archive.IDB.nof_cl_max"><br>'+
-              '3,watchdog timer: <ITB3"archive.IDB.watchdog">s')+'<br>'+
+              '3,watchdog timer: <ITB3"archive.IDB.watchdog">sec.<br>'+
+              '3,<IC"archive.IDB.keep_alive">Keep connections alive')+'<br>'+
               '3,used / limit: <span name="SHOW_QUOTA"></span><button type="button" name="archive.queryQuota"><img src="' + cnst.icons.refresh + '" style="width:1em;height:1em"></button><br>'+
 //            '3,Manual/Auto<br>'+
 //            '3,<IC"archive.oneshot.post_idb"><IC"archive.live.post_idb">Posts<br>'+
@@ -4261,7 +4262,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2023.03.12.0<br>'+
+          'Version 2023.03.26.0<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -4568,11 +4569,14 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           'settings.*': function(e){
             var pObj = this['..'];
             var pn13_1 = pObj.pn13_1;
+            var pn13 = pObj.pn13_1.parentNode;
+            if (pref.test_mode['219']) cnst.style_l2r(pn13);
 ////            if (pn13_1.innerHTML) pref_func.tooltips.remove_hier(pn13_1);
 //            pObj.files_store();
             var tgt = pObj.htmls[pObj.options[pref.settings.indexing]];
             var html = ((typeof(tgt)==='function')?  tgt.call(pObj.htmls) : tgt) +pObj.html_common;
             pn13_1.innerHTML = '<form name="CatChan_settings">'+pref_func.format_html_str(html)+'</form>';
+            if (pref.test_mode['219']) cnst.style_r2l(pn13);
             pref_func.add_onchange(pn13_1,pObj.onchange_funcs_formatted);
             pObj.apply_pn13_1();
 //            pref_func.tooltips.add_hier(pn13_1);
@@ -5173,11 +5177,11 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
               }
               return ths;
             },
-            'restore3': function(domain, board, no, result, refresh_tgt){
+            'restore3': function(domain, board, no, result, refresh_tgt, parse_only){
               var obj = this['consolidate_IDB_result'](result, domain);
-              if (obj.posts.length>0)
+              return (obj.posts.length===0)? [] :
                 archiver.restore([domain,board,no],{type:typeof(obj.posts[0])==='string'? 'text/xml' : 'application/json'},
-                                 site2[domain].parse_funcs.thread_json.prep_to_archive(obj.posts), obj.tn, obj.posts_deleted, refresh_tgt, true);
+                                 site2[domain].parse_funcs.thread_json.prep_to_archive(obj.posts), obj.tn, obj.posts_deleted, refresh_tgt, true, parse_only);
             },
             'consolidate_IDB_result': function(result, domain){
               var posts = [];
@@ -6766,7 +6770,7 @@ if (!passive) {
 //            liveTag.mems[th.domain][th.board].nr = -1; // mark as dirty. // moved to out to include case of passive.
 //            prep_check_1(th);
             this.set_own_posts(th);
-            while (i>=0 && th.posts[i].time>time_watch) check_1(th.posts[i--], watch, extracted_tags, ext_posts); // extracting tags in op is redundant, because they are ALWAYS extracted.
+            while (i>=0 && (th.posts[i].time>time_watch || th.posts[i].time==time_watch && th.posts[i].no!=lth.lastNo)) check_1(th.posts[i--], watch, extracted_tags, ext_posts); // extracting tags in op is redundant, because they are ALWAYS extracted. // BUG, lastNo is NOT saved in localStorage.
           }
           if (extracted_tags) {
             var tag_init = watch[0]&0x00020000; // patch for retag.
@@ -15144,7 +15148,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
     catalog_json2html3_thumbnail: function(obj, board) {
       return (!obj.ext)? ''
         : (obj.spoiler)? '//s.4cdn.org/image/spoiler-a1.png'
-        : this.protocol+'//i.4cdn.org' + board + obj.tim + 's'  // not 'obj.board' but 'board' is for thread_json.
+        : this.protocol+'//i.4cdn.org' + board + obj.tim + 's'  // not 'obj.board' but 'board' is for thread_json. // probably because of lacking 'wrap_to_parse' in popups_post_entry
           + ((obj.ext==='.jpg' || obj.ext==='.png' || obj.ext==='.gif' || obj.ext==='.webm')? '.jpg' : obj.ext);
     },
     catalog_json2html3_src: function(obj, board) {
@@ -15157,6 +15161,7 @@ if (pref.debug_mode['13'] && th_old.posts[i].pn.parentNode.parentNode!==pnode) c
 //                      : '';
 //    },
     catalog_json2html3_file : function(obj,thumb_url, tn_w, tn_h, pftn) {
+      if (!thumb_url) thumb_url = site2[obj.domain].icon || site2host.icon;
       var f_w, f_h;
       var f = tn_w===150 && tn_h===150? 3/5 // assume thumbnail is calculated to fit to 250x250 as 4chan
             : tn_w===250 && tn_h===250? 1
@@ -17721,7 +17726,7 @@ if (pref.features.domains['RSS']) {
           return filename;
         },
         nof_files: function(th){return th.filename? 1 : 0;},
-        op_img_url: function(th){return th.filename? th.filename+th.ext : site2['RSS'].icon;},
+        op_img_url: function(th){return th.filename? th.filename+th.ext : undefined;},
         get_op_src: function(th, img){return img.src;},
         sticky: function(th){return false;},
         nof_posts: function(th){return 1;},
@@ -17981,7 +17986,7 @@ if (pref.features.domains['RSS']) {
       return (obj.ext)? (obj.filename.indexOf('http')!==0? this.protocol : '') + obj.filename + obj.ext : '';
     },
     catalog_json2html3_thumbnail: function(obj) {
-      return obj.hasOwnProperty('op_img_url') && obj.op_img_url || this.catalog_json2html3_src(obj); // hasOwnProperty is patch.
+      return obj.op_img_url || this.catalog_json2html3_src(obj);
     },
     icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAIAAAD9b0jDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAKZJREFUSEvtlUsOgCAQQ/XiXh01JCjza4eMO4krgUdpm7C3Y6sfF7T8qyfeV39kNmss3QNBx0EZOg3tdA6dhHLoJSiSHKZvRke4zFXKozsWc9C+me4c8lRo4bgIquPWXGUCBxVxIy4NjbmzWD+o2L5QLEo/2CymXmIRVDdpbGah3jrzv38JFJRZeySWgwoTfmjo9VwpvyXTTMJT7v1hnimi/PnDPoGemX4YfR1utvgAAAAASUVORK5CYII=',
     proto: 'dist', // 'slad',
@@ -20275,10 +20280,17 @@ if (!pref.test_mode['209']) {
           s.top = bottom2top(s.bottom,pn) + 'px';
           s.bottom = null;
         }
-        if (s.right) {
-          s.left = right2left(s.right,pn) + 'px';
-          s.right = null;
-        }
+        if (s.right) this.style_r2l(pn);
+      },
+      style_r2l: function(pn){
+        var s = pn.style;
+        s.left = right2left(s.right,pn) + 'px';
+        s.right = null;
+      },
+      style_l2r: function(pn){
+        var s = pn.style;
+        s.right = right2left(s.left,pn) + 'px';
+        s.left = null;
       },
       void_func: function(){},
       div_mousedown: div_mousedown,
@@ -25203,12 +25215,12 @@ if (!pref.test_mode['24']) {
       objectStores = {}; // clear all for safe, I don't know where is db in e.
     }
     function IDBRequest_onerror(e){
-      report_error(e, 'IDB: ERROR: ');
-      for (var key of db_info.keys()) console.log(db_info.get(key));
-      console.log('last_closed: ',last_closed);
+      report_error(e, 'IDBR: ERROR: ');
+      for (var info of db_info.values()) console.log(info);
+//      console.log('last_closed: ',last_closed);
     }
     function IDBRequest_onblocked(e){
-      if (pref.debug_mode['21']) console.log('IDB: BLOCKED: '+e.oldVersion+' -> '+e.newVersion); // , e); 
+      if (pref.debug_mode['21']) console.log('IDBR: BLOCKED: '+e.oldVersion+' -> '+e.newVersion); // , e); 
     }
     function IDBTransaction_onabort(e){
       report_error(e, 'IDBT: ABORT: ');
@@ -25227,7 +25239,7 @@ if (!pref.test_mode['24']) {
 //      if (window.webkitStorageInfo) window.webkitStorageInfo.queryUsageAndQuota(webkitStorageInfo.TEMPORARY, console.log.bind(console));
       if (navigator.webkitTemporaryStorage) navigator.webkitTemporaryStorage.queryUsageAndQuota(console.log.bind(console));
       IDBT_rereq(db, tr, 'IDBT_abort: '+getErrMsg(tr.transaction));
-//      IDB_close(db, null, 'IDBT_abort:'+tr.error.name);
+      db_info.get(db).complete_func();
     }
     function IDBTransaction_onerror(e){
       report_error(e,'IDBT: ERROR: ');
@@ -25235,7 +25247,38 @@ if (!pref.test_mode['24']) {
       var tr = et.transaction;
       var db = et.db || et.transaction && et.transaction.db;
       IDBT_rereq(db, tr, 'IDBT_onerror: '+getErrMsg(tr));
-//      IDB_close(db, null, true);
+      db_info.get(db).complete_func();
+    }
+    function IDB_onerror(e){
+      report_error(e, 'IDB: ERROR: ');
+      var info = db_info.get(e.target);
+      if (info) info.errors++;
+    }
+    function prep_schema_v2(db, oss, rss){
+      var pr_posts = db.createObjectStore('Pruned', {autoIncrement:true});
+      pr_posts.createIndex('pruned','pruned',{unique:false});
+      pr_posts.createIndex('created','created',{unique:false});
+      if (!rss) {
+        pr_posts.createIndex('no','no',{unique:false});
+        pr_posts.createIndex('posted','posted',{unique:false});
+        pr_posts.createIndex('bumped','bumped',{unique:false});
+        pr_posts.createIndex('posts','posts',{unique:false}); // nof_posts
+        pr_posts.createIndex('imgs','imgs',{unique:false}); // nof_images
+      }
+      var pr_imgs = db.createObjectStore('PrunedImages', {autoIncrement:true});
+      pr_imgs.createIndex('pruned','pruned',{unique:false});
+      pr_imgs.createIndex('no','no',{unique:false});
+      oss['Pruned'] = null;
+      oss['PrunedImages'] = null;
+      if (db.versioni==1) delete waiting_open[db.name+'rw']; // entered by 'rw' always.
+      return 0x02;
+    }
+    function prep_schema_v1(db, oss){ // This format is very heavy with >12000 objectStores at IndexedDB.open(), but works with >17000 objectStores.
+      delete waiting_open[db.name+'rw']; // entered by 'rw' always.
+//      pref4.archive.IDB_board_sel_options = null; // WHY???
+      db.createObjectStore('Meta');
+      oss['Meta'] = null;
+      return 0x01;
     }
     var objectStores = {};
     function prep_oss(db, from_upgrade){
@@ -25249,159 +25292,202 @@ if (!pref.test_mode['24']) {
         return prev.oss;
       }
       var oss = {};
-      if (pref.test_mode['220']) objectStores[db.name] = {version:db.version, oss:oss};
+      if (!pref.test_mode['220']) objectStores[db.name] = {version:db.version, oss:oss};
       var oSNs = db.objectStoreNames;
       for (var i=0;i<oSNs.length;i++) oss[oSNs[i]] = null; // This is OK
 //      for (var i=0;i<db.objectStoreNames.length;i++) oss[db.objectStoreNames[i]] = null; // THIS IS REALLY HEAVY AND CAUSES TIMEOUT BY THIS LINE ITSELF WHEN >4000 object stores.
       return oss;
+    }
+    var info_proto = {
+      get d20db(){return ': '+db_info.size+' '+db_name2dbstr(this.db.name)+' v'+this.db.version+', '+this.type;},
+      get d20reqs(){return this.d20db+', '+(this.reqs? this.reqs.length_whole+' req(s), '+this.reqs.debug_coms() : '');},
+      get d20done(){return this.d20db+', total:'+(this.done_sofar+this.done)+', done:'+this.done+'(put:'+this.done_put+'), '+Object.keys(this.req_kinds).map(function(c){return this[c]>1? c+'*'+this[c]:c;},this.req_kinds).join(',');}
+    };
+    function IDB_onversionchange(e){
+      var info = db_info.get(e.target);
+      req_end(info, ' by onversionchange');
     }
     function IDBRequest_onupgradeneeded(e){
       e.target.onsuccess = null; // prevent from being called twice.
       IDBRequest_onsuccess_open(e, true);
     }
     function IDBRequest_onsuccess_open(e, from_upgrade){
+      indicator_rep_connect();
       var db = e.target.result;
+      db.onerror = IDB_onerror;
+      db.onversionchange = IDB_onversionchange;
       version[db.name] = db.version;
-      delete waiting_open[db.name+((from_upgrade)? 'vc' : 'rw')];
+      delete waiting_open[db.name+(from_upgrade? 'vc' : 'rw')];
 //      var reqs = (from_upgrade)? reqs_vc[db.name] : reqs_rw[db.name];
       var reqs = from_upgrade && reqs_vc[db.name] || reqs_rw[db.name];
-      if (pref.debug_mode['20']) {
-        var count = 1;
-        var debug_reqs = reqs && reqs.debug_query() || null;
-//        var debug_coms = reqs && reqs.ary.slice(0,10).map(function(v){return v.kind;});
-        console.log('IDB: opened: '+(db_info.size+1)+' '+db_name2dbstr(db.name)+' v'+db.version+', '+(debug_reqs && debug_reqs.length)+' req(s), '+e.type+', '+(debug_reqs && debug_reqs.coms));
-      }
 //      if (db_info.has(db)) console.log('IDB: ERROR: the same db was returned.', db_info.get(db));
       var oss = prep_oss(db, from_upgrade);
-      var info = {type:e.type, tr_count:1, reqs:reqs, pass:0, wdg:null, crawler:1, oss:oss, tr_info:new Map(), req_kinds:{}, coms:debug_reqs && debug_reqs.coms, done:0, done_put:0}; // tr_count.set(db, 1); // tr_count.set(db, (tr_count.get(db)||0)+1); // returns the same db sometimes.
+      var schema = (('Pruned' in oss)? 0x02 : 0) | (('Meta' in oss) || pref.test_mode['224']? 0x01 : 0);
+      var info = {db:db, reqs:reqs, from_upgrade:from_upgrade, errors:0, close_requested:false, // for keep alive
+                  type:e.type, /*tr_count:1, reqs:reqs,*/ crawler:1, sequence:0, oss:oss, schema:schema, req_kinds:{},
+                  done:0, wdg:null, done_sofar:0, // for watchdog
+                  done_put:0, // Entries for debug only.
+                  show_invoked:false,    __proto__:info_proto}; // Entries for keep_alive
       db_info.set(db, info);
-      if (reqs) {
+      if (pref.debug_mode['20']) console.log('IDB: opened'+info.d20reqs);
+      if (!reqs) {req_end_keep_alive(info); return;}
+      reqs.info = info; // caution: reference loop
 //        var oSNs = db.objectStoreNames;
 //        var oss = info.oss;
 //        for (var i=0;i<oSNs.length;i++) oss[oSNs[i]] = null; // This is OK.
 ////        for (var i=0;i<db.objectStoreNames.length;i++) oss[db.objectStoreNames[i]] = null; // THIS IS REALLY HEAVY AND CAUSES TIMEOUT BY THIS LINE ITSELF WHEN >4000 object stores.
-        if (from_upgrade) {
-          var reqs_executed = [];
-          var tr = e.target.transaction;
-          tr_inc(db);
-          tr_set(tr, function(){IDBRequest_close({target:{db:db}});}, reqs_executed, db); // transaction of mode:'versionchange'
-          if (db.version==1) { // patch for the first creation. // This format is very heavy with >12000 objectStores, but works with >17000 objectStores.
-            delete waiting_open[db.name+'rw']; // entered by 'rw' always.
-            pref4.archive.IDB_board_sel_options = null;
-            db.createObjectStore('Meta'); // dummy write
-            return req_end(db, from_upgrade);
-          }
-          var num_downgraded = 0;
-          while (true) {
-            indicator_update();
-            var req = reqs.shift();
-            info.pass++;
-            if (!req) break;
-            if (pref.debug_mode['20']) info.done++;
-            if (pref.debug_mode['22'] && req.kind!=='put') console.log('req_upgrade: '+req.no+', '+req.kind+', '+req.key+', '+reqs.debug_query().length);
-            reqs_executed[reqs_executed.length] = req;
-            info.req_kinds[req.kind] = null;
-            var contains = (req.no in oss);
-            if (req.kind==='put') {
-              if (!contains) {
-                make_1(db, req, IDBRequest_close);
-                oss[req.no] = null;
-                if (pref.debug_mode['22']) console.log('req_upgrade: '+req.no+', '+req.kind+', '+req.key+', '+reqs.debug_query().length);
-              } else {
-                add_req(reqs_rw, db.name, req); // downgrade
-                if (pref.debug_mode['22']) num_downgraded++;
-              }
+      var loop_func = function complete_func(){req_1(info, complete_func);}
+      info.complete_func = loop_func;
+      info.entry_func = function(){ // spawn crawler
+        if (pref.debug_mode['20'] && this.show_invoked) {console.log('IDB:started'+this.d20reqs); this.show_invoked = false;}
+        this.crawler++; // reserving a crawler must be synchronous
+        setTimeout(this.complete_func, 1000); // setTimeout to make a cluster, or all reqests become put_1.
+      };
+      if (from_upgrade) {
+        var loop_reqs = new ReqFifo(null, true);
+        var tr = e.target.transaction;
+        tr_set(tr, loop_func, loop_reqs); // transaction of mode:'versionchange'
+//        tr_inc(db);
+//        tr_set(tr, function(){IDBRequest_close(null,db);}, reqs_executed); // transaction of mode:'versionchange'
+        if (!schema || (pref.test_mode['221'] && !(schema&0x02))) info.schema |= (pref.test_mode['221'] && !(schema&0x02))? prep_schema_v2(db, oss) : prep_schema_v1(db, oss); // initialize
+//        var num_downgraded = 0;
+        var req;
+        while (req = reqs.shift()) {
+          indicator_update();
+          info.done++;
+          loop_reqs.push(req);
+          info.req_kinds[req.kind] = (info.req_kinds[req.kind]||0)+1;
+          var contains = (req.no in oss);
+          if (pref.debug_mode['22']) console.log('req_upgrade: '+req.no+', '+req.kind+(req.kind===(contains?'put':'delete_th')? '(ignored)':'')+', '+req.key+', '+reqs.debug_lenstr);
+          if (req.kind==='put') {
+            if (!contains) {
+              make_1(db, req);
+              oss[req.no] = null;
+//            } else {
+//              add_req(reqs_rw, db.name, req); // downgrade
+//              if (pref.debug_mode['22']) num_downgraded++;
+            }
 //              else put_1(db,req, IDBRequest_close);
-            } else if (req.kind==='delete_th') {
-              if (contains) {
-                delete_th_1(db, req, oss);
-                delete oss[req.no];
-              }
+          } else if (req.kind==='delete_th') {
+            if (contains) {
+              delete_th_1(db, req, oss);
+              delete oss[req.no];
             }
           }
-          if (pref.debug_mode['22'] && num_downgraded) console.log('req_upgrade: downgraded: '+num_downgraded);
-          req_end(db, from_upgrade);
-        } else {
-          var loop_func = function complete_func(){req_1(db,reqs,from_upgrade,complete_func);}
-          info.complete_func = loop_func;
-          req_1(db, reqs, from_upgrade, loop_func);
+        }
+//        tr.commit(); // is needed here for test_mode['66'], but chrome76+
+//        if (pref.debug_mode['22'] && num_downgraded) console.log('req_upgrade: downgraded: '+num_downgraded);
+//        req_end(db, from_upgrade);
+        reqs.info = null; // cut reference loop, don't accept any following requests
+        info.reqs = loop_reqs; // switch queue
+//        loop_reqs.info = info; // redundant, not used, just for symmetricity
+      } else loop_func();
 //          while (info.crawler<pref.archive.IDB.nof_tr && !reqs.isEmpty) { // not sensitive when reqs are added after this.
 //            info.crawler++;
 //            req_1(db, reqs, from_upgrade, loop_func);
 //          }
-        }
-      } else req_end(db, from_upgrade);
     }
-    function req_1(db, reqs, from_upgrade, complete_func){ // multi transaction can be accepted, but not debugged.
-      var info = db_info.get(db);
-      if (!info) return; // closed by watchdog
+    function req_1(info, complete_func){
+      var db = info.db;
+      var reqs = info.reqs;
+      if (!db_info.has(db)) return; // closed by watchdog
+      info.crawler--;
       var oss = info.oss;
       indicator_update();
-      var req = (waiting_open[db.name+'vc']!==undefined)? null : reqs.shift();
-      info.pass++;
-      if (req) {
-        if (pref.debug_mode['20']) info.done++;
-        if (pref.debug_mode['22'] && req.kind!=='put_m') console.log(db_name2dbstr(db.name,req.no)+', '+req.kind+', '+req.key+', '+reqs.debug_query().length);
+      var req;
+      while (info.crawler<pref.archive.IDB.nof_tr && (req = waiting_open[db.name+'vc']!==undefined? null : reqs.shift())) {
+        info.done++;
+        info.req_kinds[req.kind] = (info.req_kinds[req.kind]||0)+1;
+        if (pref.debug_mode['22'] && req.kind!=='put_m' && req.kind!=='delete_th') console.log(db_name2dbstr(db.name,req.no)+', '+req.kind+', '+req.key+', '+ reqs.debug_lenstr);
         var contains = (req.no in oss);
         if (req.kind==='get_all_m') {
+//          var reqs_current = req.reqs.filter(v=>v.no in oss); // works, but objectStore lists may have duplicated entries. is this safe?
+//          if (reqs_current.length!==0) get_all(db, reqs_current, complete_func, info);
+//          else complete_func();
           var reqs_current = [];
           var nos = {};
-          for (var i=0;i<req.reqs.length;i++) if (req.reqs[i].no in oss) {
-            reqs_current[reqs_current.length] = req.reqs[i];
-            nos[req.reqs[i].no] = null;
+          var req_reqs = req.reqs;
+          for (var i=0;i<req_reqs.length;i++) if (req_reqs[i].no in oss) {
+            reqs_current[reqs_current.length] = req_reqs[i];
+            nos[req_reqs[i].no] = null;
           }
-          if (reqs_current.length!==0) get_all(db,{nos:Object.keys(nos), reqs:reqs_current}, complete_func);
-          else complete_func();
-//        } else if (req.kind==='get_all') {
-//          if (contains) get_all(db,{nos:[req.no], reqs:[req]}, complete_func);
-//          else complete_func();
+          if (reqs_current.length>0) {get_all(db, reqs_current, Object.keys(nos), complete_func, info); info.crawler++;}
+        } else if (req.kind==='get_all') {
+          if (contains) {
+            var compf = req.oncomplete==='sequence'? function(){info.sequence++;complete_func();} : complete_func;
+            get_all(db, [req], [req.no], compf, info);
+            info.crawler++;
+          }
         } else if (req.kind==='list_os') {
           var domainboard = db_name2db(db.name);
-          req.obj(domainboard[0], domainboard[1], Object.keys(oss).filter(function(v){return v!=='Meta';}));
-          complete_func();
+          req.obj(domainboard[0], domainboard[1], Object.keys(oss).filter(function(v){return v!=='Meta' && v!=='Pruned' && v!=='PrunedImages' || pref.test_mode['223'];}));
         } else if (req.kind==='put_m') {
           var reqs_current = [];
           var nos = {};
-          for (var i=0;i<req.reqs.length;i++)
-            if (!(req.reqs[i].no in oss)) add_req(reqs_vc, db.name, req.reqs[i]); // upgrade
+          var req_reqs = req.reqs;
+          for (var i=0;i<req_reqs.length;i++)
+            if (!(req_reqs[i].no in oss)) add_req(reqs_vc, db.name, req_reqs[i]); // upgrade
             else {
-              reqs_current[reqs_current.length] = req.reqs[i];
-              nos[req.reqs[i].no] = null;
+              reqs_current[reqs_current.length] = req_reqs[i];
+              nos[req_reqs[i].no] = null;
             }
-          if (pref.debug_mode['22']) console.log(db_name2dbstr(db.name)+(reqs_current[0] && reqs_current[0].no || 'skipped')+'('+Object.keys(nos).length+')'+', '+req.kind+'('+reqs_current.length+'), '+req.key+', '+reqs.debug_query().length);
-          if (reqs_current.length>1) {
-            req.reqs = reqs_current;
-            req.nos = Object.keys(nos);
-            put_1(db,req, complete_func);
-          } else if (reqs_current.length==1) put_1(db,reqs_current[0], complete_func);
-          else complete_func();
+          if (pref.debug_mode['22']) console.log(db_name2dbstr(db.name)+(reqs_current[0] && reqs_current[0].no || 'skipped')+'('+Object.keys(nos).length+')'+', '+req.kind+'('+reqs_current.length+'), '+ reqs.debug_lenstr);
+          if (reqs_current.length>0) {
+            req.reqs = reqs_current; // replace for re-try
+            put_1(db, req, Object.keys(nos), complete_func, info);
+            info.crawler++;
+          }
+//          if (reqs_current.length>1) {
+//            req.reqs = reqs_current;
+//            req.nos = Object.keys(nos);
+//            put_1(db,req, complete_func);
+//          } else if (reqs_current.length==1) put_1(db,reqs_current[0], complete_func);
         } else if (req.kind==='put') {
-          if (!contains) {add_req(reqs_vc, db.name, req);complete_func();} // upgrade
-          else put_1(db,req, complete_func);
+          if (!contains) add_req(reqs_vc, db.name, req); // upgrade
+          else {put_1(db, req, [req.no], complete_func, info); info.crawler++;}
 //        } else if (req.kind==='put_if') {
 //          if (contains) put_1(db,req, complete_func);
 //          else complete_func();
-        } else if (req.kind==='delete') {
-          if (contains) delete_1(db,req, complete_func);
-          else complete_func();
-        } else if (req.kind==='clean_up' || req.kind==='clean_m') {
-          if (!times_pruned[db.name]) times_pruned[db.name] = {list:[], write:null};
-          var list = times_pruned[db.name].list;
-          var list_len_old = list.length;
-          var nos = {Meta:null, __proto__:req.obj};
-          for (var i=0;i<list.length;i++) nos[list[i].no] = null;
-          if (req.kind==='clean_up') {
-            var date = Date.now();
-            var names = db.objectStoreNames;
-            for (var i=0;i<names.length;i++) if (nos[names[i]]!==null) list[list.length] = {no:names[i], pruned_time:date};
-          } else {
-            for (var i=0;i<req.reqs.length;i++)
-              if (req.reqs[i].no in oss) if (nos[req.reqs[i].no]!==null) list[list.length] = {no:req.reqs[i].no, pruned_time:req.reqs[i].obj};
+        } else if (req.kind==='retire_v1') {
+          if (contains) {
+            put_1(db, req, req.oss, complete_func, info, retire_v1_oncomplete.bind(null, db, req.no, complete_func));
+            info.crawler++;
           }
-          if (times_pruned[db.name].write===null) {
-            times_pruned[db.name].write = false;
-            clean_up(db, req, complete_func);
-          } else clean_up_end_proc(db, null, complete_func, list.length!==list_len_old);
+        } else if (req.kind==='delete') {
+          if (contains) {delete_1(db,req, complete_func); info.crawler++;}
+        } else if (req.kind==='clean_up' || req.kind==='clean_m') {
+          var nos = {Pruned:null, PrunedImages:null, Meta:null, __proto__:req.obj};
+          if (info.schema&0x02) {
+            var tgts = [];
+            if (req.kind==='clean_up') {for (var no in oss) if (!(no in nos))
+              if (oss[no]===null) {tgts[tgts.length] = no; oss[no] = 'pruning';}
+            } else for (var i=0;i<req.reqs.length;i++) {
+              var no = req.reqs[i].no;
+              if (oss[no]===null) {tgts[tgts.length] = no; oss[no] = 'pruning';}
+            }
+            if (tgts.length>0) {
+              if (!pref.test_mode['222']) for (var i=0;i<tgts.length;i++) nos[tgts[i]] = null; // adding entries to nos for avoiding v1 pruning.
+              prune_v1(db, tgts, info, reqs);
+            }
+          }
+          if (info.schema&0x01) {
+            if (!times_pruned[db.name]) times_pruned[db.name] = {list:[], write:null};
+            var list = times_pruned[db.name].list;
+            var list_len_old = list.length;
+            for (var i=0;i<list.length;i++) nos[list[i].no] = null;
+            if (req.kind==='clean_up') {
+              var date = Date.now();
+              for (var no in oss) if (!(no in nos)) list[list.length] = {no:no, pruned_time:date};
+            } else {
+              for (var i=0;i<req.reqs.length;i++)
+                if (req.reqs[i].no in oss) if (!(req.reqs[i].no in nos)) list[list.length] = {no:req.reqs[i].no, pruned_time:req.reqs[i].obj};
+            }
+            info.crawler++; // must be preceded to synchronous functions, clean_up and clean_up_end_proc
+            if (times_pruned[db.name].write===null) {
+              times_pruned[db.name].write = false;
+              clean_up(db, req, complete_func, oss, info);
+            } else clean_up_end_proc(db, null, complete_func, list.length!==list_len_old, info);
+          }
 //        } else if (req.kind==='check_clean') { // working code.
 //          if (!times_pruned[db.name]) times_pruned[db.name] = [];
 //          if (contains) times_pruned[db.name][times_pruned[db.name].length] = {no:req.no, pruned_time:req.obj};
@@ -25429,26 +25515,74 @@ if (!pref.test_mode['24']) {
 ////            clean_up(db, {tgts:Array.prototype.slice.call(db.objectStoreNames), __proto__:req}, complete_func);
 ////          } else complete_func();
 //////          for (var i=0;i<db.objectStoreNames.length;i++) clean_1(db, {no:db.objectStoreNames[i], __proto__:req});
-        } else complete_func();
-        if (info.crawler<pref.archive.IDB.nof_tr && !reqs.isEmpty) {
-          info.crawler++;
-          req_1(db, reqs, from_upgrade, complete_func);
         }
-      } else if (--info.crawler===0) req_end(db, from_upgrade);
+//        if (info.crawler<pref.archive.IDB.nof_tr && !reqs.isEmpty) {
+//          info.crawler++;
+//          complete_func();
+//        }
+      }
+      if (info.crawler===0 && info.sequence===0) req_end_keep_alive(info);
     }
-    function req_end(db, from_upgrade){
-      IDBRequest_close({target:{db:db}});
-      var req_parent = from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw;
-      if (req_parent[db.name] && req_parent[db.name].isEmpty) delete req_parent[db.name];
-//      delete (from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw)[db.name]; // BUG, might be remade.
+    function req_end_keep_alive(info){
+      var db_name = info.db.name;
+      var keep_alive = !(!pref.archive.IDB.keep_alive || info.close_requested || info.errors>0 || connection_pool[db_name] && connection_pool[db_name]!==info
+                         || !info.from_upgrade && reqs_vc[db_name] && !reqs_vc[db_name].isEmpty);
+      if (keep_alive) {
+        connection_pool[db_name] = info;
+        if (reqs_re[db_name]) reqs_re2rw(db_name);
+        if (pref.debug_mode['20']) {console.log('IDB:  ended'+info.d20done); info.show_invoked = true;}
+        info.done_sofar += info.done;
+        info.done = info.done_put = 0;
+        info.req_kinds = {};
+        if (info.from_upgrade) {
+          info.from_upgrade = false;
+          var reqs = reqs_rw[db_name] || (reqs_rw[db_name] = new ReqFifo(db_name, true));
+          info.reqs = reqs;
+          reqs.info = info; // open queue and wait
+          if (!reqs.isEmpty) info.entry_func();
+        }
+        indicator_update(); // stop watchdog in this
+      } else req_end(info);
+    }
+    function close_request_for_keep_alive(info){
+      if (info.crawler===0 && info.sequence===0) req_end(info);
+      else info.close_requested = true;
+    }
+    function req_end(info, force){
+      var db = info.db;
+      var from_upgrade = info.from_upgrade;
+      if (connection_pool[db.name]===info) delete connection_pool[db.name]; // open_db refers connection_pool, this must be preceded.
+      IDB_close(db, info, force); // IDBRequest_close(db);
+      if (info.reqs) info.reqs.info = null; // cut reference loop, don't accept any following requests
+      var req_parent = from_upgrade? reqs_vc : reqs_rw;
+//      var req_parent = from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw; // why??
+      if (req_parent[db.name] && req_parent[db.name].isEmpty) delete req_parent[db.name]; // delete for being invoked open request by next queueing
       if (reqs_re[db.name]) reqs_re2rw(db.name);
-//      if ((!from_upgrade)? reqs_vc[db.name] : reqs_rw[db.name]) open_db(db.name, (!from_upgrade)? db.version+1 : undefined);
-//      if (req_parent===reqs_vc) {
-      if (from_upgrade) {
-        if (reqs_rw[db.name] && !reqs_rw[db.name].isEmpty) open_db(db.name);
-      } else if (reqs_vc[db.name] && !reqs_vc[db.name].isEmpty) open_db(db.name, true);
-      if (Object.keys(reqs_rw).length===0 && Object.keys(reqs_vc).length===0 && Object.keys(reqs_re).length===0) watchdog.stop();
+      var next = !!force ^ from_upgrade? reqs_rw : reqs_vc;
+      if (next[db.name] && !next[db.name].isEmpty) open_db(db.name, next===reqs_vc); // open next queue or retry myself if forced
+      indicator_update(); // stop watchdog in this
     }
+//    function req_end(info, keep_alive){ // working, but cant' stop watchdog simply because of inconsistency of order between reqs_re2rw, watchdog.stop and handling of connection_pool.
+//      var db = info.db;
+//      var from_upgrade = info.from_upgrade;
+//      if (!keep_alive) {
+//        if (connection_pool[db.name]===info) delete connection_pool[db.name]; // open_db refers connection_pool, this must be preceded.
+//        IDB_close(db, info); // IDBRequest_close(db);
+//      }
+//      var req_parent = from_upgrade? reqs_vc : reqs_rw;
+////      var req_parent = from_upgrade && reqs_vc[db.name] && reqs_vc || reqs_rw; // why??
+//      if (!keep_alive || from_upgrade) {
+//        info.reqs.info = null; // cut reference loop, don't accept any following requests
+//        if (req_parent[db.name] && req_parent[db.name].isEmpty) delete req_parent[db.name]; // delete for being invoked open request by next queueing
+//      }
+//      if (reqs_re[db.name]) reqs_re2rw(db.name);
+//      var next = from_upgrade? reqs_rw : reqs_vc;
+//      if (!keep_alive && next[db.name] && !next[db.name].isEmpty) open_db(db.name, !from_upgrade);
+////      if (from_upgrade) {
+////        if (reqs_rw[db.name] && !reqs_rw[db.name].isEmpty) open_db(db.name);
+////      } else if (reqs_vc[db.name] && !reqs_vc[db.name].isEmpty) open_db(db.name, true);
+//      if (get_status().total===0) watchdog.stop();
+//    }
     function reqs_re2rw(db_name){
       if (reqs_rw[db_name]) reqs_rw[db_name].push_all(reqs_re[db_name]);
       else reqs_rw[db_name] = reqs_re[db_name];
@@ -25464,27 +25598,31 @@ if (!pref.test_mode['24']) {
 //          IDBRequest_close({target:{db:db}}); // cause ERROR, probably bug in browser, oncomplete is fired too early at createObjectStore and deleteObjectStore.
 //        }
 //      })(tr.oncomplete));
-      if (pref.debug_mode['23']) console.log('IDB: delete_th: '+db_name2dbstr(db.name,req.no)+', '+Object.keys(oss).length-1);
+      if (pref.debug_mode['23']) console.log('IDB: delete_th: '+db_name2dbstr(db.name,req.no)+', '+(Object.keys(oss).length-1));
     }
-    function make_1(db,req, complete_func){
-      tr_inc(db);
-      var tr = db.createObjectStore(req.no).transaction;
-      tr_set(tr, (function(func_prev){ // tr belongs to db, transaction.oncomplete is called ONE TIME, so cascade oncomplete funcs.
-        return function(e){
-if (!pref.test_mode['66']) {
-          put_1(db,req, complete_func);
-} else {
-          add_req(reqs_rw, db.name, req); // downgrade // DOESN'T WORK WHY???  // cause ERROR, probably bug in browser, oncomplete is fired too early at createObjectStore and deleteObjectStore.
-          complete_func({target:{db:db}});
-}
-          if (func_prev) func_prev(e);
-        }
-      })(tr.oncomplete));
+    function make_1(db,req){
+      db.createObjectStore(req.no);
     }
-    function put_1(db,reqs_in, complete_func){
-      var reqs = reqs_in.reqs || [reqs_in];
+//    function make_1(db,req, complete_func){ // working code
+//      tr_inc(db);
+//      var tr = db.createObjectStore(req.no).transaction;
+//      tr.oncomplete = (function(func_prev){ // tr belongs to db, transaction.oncomplete is called ONE TIME, so cascade oncomplete funcs.
+////      tr_set(tr, (function(func_prev){ // tr belongs to db, transaction.oncomplete is called ONE TIME, so cascade oncomplete funcs.
+//        return function(e){
+//if (!pref.test_mode['66']) {
+//          put_1(db,req, complete_func);
+//} else {
+//          add_req(reqs_rw, db.name, req); // downgrade // DOESN'T WORK WHY???  // cause ERROR, probably bug in browser, oncomplete is fired too early at createObjectStore and deleteObjectStore.
+//          complete_func({target:{db:db}});
+//}
+//          if (func_prev) func_prev(e);
+//        }
+//      })(tr.oncomplete);
+//    }
+    function put_1(db, req_in, oss, complete_func, info, complete_func_without_error){
+      var reqs = req_in.reqs || [req_in];
       try {
-        var IDBT = tr_set(db.transaction(reqs_in.nos || reqs_in.no, 'readwrite', reqs_in), complete_func, reqs_in, db);
+        var IDBT = tr_set(db.transaction(oss, 'readwrite'), complete_func, req_in);
         for (var i=0;i<reqs.length;i++) {
           var req = reqs[i];
           if (pref.test_mode['82'] && req.obj instanceof Blob) {
@@ -25499,21 +25637,25 @@ if (!pref.test_mode['66']) {
               req.obj = String.fromCharCode.apply(null,codes);
             }
           }
-          if (pref.debug_mode['23']) console.log('put_'+((reqs_in.nos)?'m: ':'1: ')+db_name2dbstr(db.name,req.no)+', '+req.key+((req.key==='posts')? ':'+req.obj.length:'')+((reqs_in.nos)? ' '+(i+1)+'/'+reqs_in.nos.length+'/'+reqs_in.reqs.length:''));
-          var IDBR = IDBT.objectStore(req.no).put((req.key.indexOf('posts')===0)? archiver.stringify_posts(req.obj) : req.obj, // posts and posts_deleted
+          if (pref.debug_mode['23']) console.log(req_in.kind+': '+db_name2dbstr(db.name,req.no)+', '+req.key+(req.key==='posts'? ':'+req.obj.length:'')+' '+(i+1)+'/'+oss.length+'/'+reqs.length);
+          var IDBR = IDBT.objectStore(req.no).put((req.key==='posts' || req.key==='posts_deleted')? archiver.stringify_posts(req.obj) : req.obj, // posts and posts_deleted
                                                   (req.key!=='posts')? req.key : req.key+'_'+req.obj[0].no);
           IDBR.onerror   = IDBRequest_onerror;
-//          IDBR.onsuccess = clear_wdg_get_db; // IDBRequest_onsuccess;
+//          if (req.sucFunc) IDBR.onsuccess = req.sucFunc; // clear_wdg_get_db; // IDBRequest_onsuccess;
         }
-        if (pref.debug_mode['20']) db_info.get(db).done_put += reqs.length;
+        if (pref.debug_mode['20']) info.done_put += reqs.length;
+        if (complete_func_without_error) IDBT.oncomplete = complete_func_without_error;
       } catch (e){
 //        if (pref.debug_mode['20'])
-        console.log('IDB: fail to put: '+e.name+': ' + JSON.stringify(req,['no','key','kind','obj']), e, db_info.get(db));
+        console.log('IDB: fail to put: '+e.name+': ' + JSON.stringify(req,['no','key','kind','obj']), req, e, info);
         if (e.name==='InvalidStateError') { // retry when latter requests catch up with a prior request which creates new objectStore.
-          add_req(reqs_re, db.name, req); // retry
+          add_req(reqs_re, db.name, req_in); // retry
           if (pref.debug_mode['20']) console.log('IDB: re-scheduled:');
+        } else if (!complete_func_without_error && reqs.length>1) {
+          reqs.splice(i,1);
+          add_req(reqs_re, db.name, req_in); // retry requests other than failed one.
         }
-        complete_func({target:{db:db}});
+        info.errors++;
       }
     }
 //    function IDBRequest_onsuccess(e){
@@ -25523,44 +25665,89 @@ if (!pref.test_mode['66']) {
 //      if (info && --info.nof_reqs===0) info.func(e);
 //    }
     function delete_1(db,req, complete_func){
-      tr_set(db.transaction(req.no,'readwrite'), complete_func).objectStore(req.no).delete(req.key); // .onsuccess = IDBRequest_close;
+      tr_set(db.transaction(req.no,'readwrite'), complete_func, req).objectStore(req.no).delete(req.key); // .onsuccess = IDBRequest_close;
     }
-    function tr_set(tr, complete_func, req, db){
+    function tr_set(tr, complete_func, req){
       tr.oncomplete = (req)? IDBTransaction_oncomplete : complete_func;
       tr.onabort    = IDBTransaction_onabort;
       tr.onerror    = IDBTransaction_onerror;
-      if (req) db_info.get(db).tr_info.set(tr,{req:req, func:complete_func}); //, nof_reqs:req.reqs && req.reqs.length || 1});
+      if (req) tr_info.set(tr,{req:req, func:complete_func}); //, nof_reqs:req.reqs && req.reqs.length || 1});
       return tr;
     }
     function IDBTransaction_oncomplete(e){
-      var info = db_info.get(e.target.db);
-      if (info) {
-        var func = info.tr_info.get(e.target).func;
-        info.tr_info.delete(e.target);
-        if (func) func(e);
-      }
+      var tr = e.target;
+      var func = tr_info.get(tr).func;
+      tr_info.delete(tr);
+      if (func) func(e);
     }
-    function clean_up(db,req, complete_func){
-      var contains = db.objectStoreNames.contains('Meta');
-      if (contains) tr_set(db.transaction('Meta','readwrite'), complete_func).objectStore('Meta').get('pruned_time').onsuccess = clean_1_onsuccess;
+    function prune_v1(db, nos, info, queue){
+      if (pref.debug_mode['45']) console.log('prune_v1: '+db_name2dbstr(db.name,nos));
+//      if (!queue.sub) queue.spawn_sub();
+      var proto = {key:null, obj:prune_v1_onsuccess, kind:'get_all', oncomplete:'sequence', queue:'low', onsuccess:'w/RTI'};
+//      var proto = {key:null, obj:prune_v1_onsuccess.bind(null, db, info), kind:'get_all', oncomplete:'sequence', queue:'low'}; // BUG, don't assign requester's value instead of executer's one
+      for (var i=0;i<nos.length;i++) queue.push({no:nos[i], __proto__:proto}); // must be serialized not to use much memory.
+//      for (var i=nos.length-1;i>=0;i--) queue.unshift({no:nos[i], __proto__:proto}); // must be serialized not to use much memory.
+//      for (var i=0;i<nos.length;i++) queue[queue.push_raw? 'push_raw' : 'push']({no:nos[i], __proto__:proto}); // must be serialized not to use much memory.
+    }
+    function prune_v1_onsuccess(info, domain, board, no_in, result){
+      var db = info.db; // e.target.transaction.db;
+//      var info = db_info.get(db); // get executer's value instead of requester's one
+//      info.crawler--; // Release reserved crawler
+      var no = parseInt(no_in,10);
+      if (pref.debug_mode['45']) console.log('retire_v1: '+domain+board+no);
+      try {
+        var th = archiver.event_funcs['restore3'](domain, board, no, result, null, true);
+      } catch(e){
+        console.log('ERROR: at parsing data from IDB for pruning: '+domain+board+no);
+      }
+      var posts = {};
+      var imgs = {};
+      for (var key in result) (key.indexOf('posts')===0? posts : imgs)[key] = result[key];
+      var ptime = Date.now();
+      var reqs = []; // must be in a transaction to protect data
+      if (Object.keys(posts).length>0) reqs[0] = {no:'Pruned', kind:'put',
+        obj:{pruned:ptime, no:no, created:th.time_created, posted:th.time_posted, bumped:th.time_bumped, posts:th.nof_posts, imgs:th.nof_files, data:posts}};
+      if (Object.keys(imgs).length>0) reqs[reqs.length] = {no:'PrunedImages', kind:'put', obj:{pruned:ptime, no:no, data:imgs}};
+      if (reqs.length>0) {
+        var req = {no:no, kind:'retire_v1', reqs:reqs, oss:reqs.map(v=>v.no), queue:'high'}; // must be queue-able for re-req.
+        add_req(reqs_rw, db.name, req);
+//        if (pref.debug_mode['45'] && !db_info.get(db)) console.log('prune_v1_onsuccess: Hit the case', info);
+//        info.done++;
+//        put_1(db, req, req.oss, complete_func, retire_v1_oncomplete.bind(null, db, req.no, complete_func));
+//        info.crawler++;
+      }
+      info.sequence--;
+      info.crawler++;
+      info.complete_func();
+    }
+    function retire_v1_oncomplete(db, no, complete_func){
+      var dbt = db_name2db(db.name);
+      if (pref.debug_mode['45']) console.log('retire_v1_oncomplete: '+dbt[0]+dbt[1]+no);
+      if (!pref.test_mode['222']) add_req(reqs_vc, db.name, {no:no, kind:'delete_th'}); // acc(dbt[0], dbt[1], no, null, null, 'delete_th');
+      complete_func();
+    }
+    function clean_up(db,req, complete_func, oss, info){
+      if ('Meta' in oss) tr_set(db.transaction('Meta','readonly'), complete_func).objectStore('Meta').get('pruned_time').onsuccess = clean_1_onsuccess.bind(null, oss, info);
       else {
         times_pruned[db.name].write = true;
-        clean_up_end_proc(db,req, complete_func, true);
+        clean_up_end_proc(db,req, complete_func, true, info);
       }
     }
-    function clean_1_onsuccess(e, prune){
+    function clean_1_onsuccess(oss, info, e){
       var db = e.target.transaction.db;
       var src = e.target.result;
-      if (src) {
-        var info = db_info.get(db);
-        var oss = info && info.oss || {};
-        src = src.filter(function(v){return oss[v.no]===null;});
-        var src_obj = {};
-        for (var i=0;i<src.length;i++) {if (src_obj[src[i].no]!==undefined) src.splice(src_obj[src[i--].no],1); src_obj[src[i].no] = i;}
-        times_pruned[db.name].list = src.concat(times_pruned[db.name].list.filter(function(v){return src_obj[v.no]===undefined;}));
-      }
+      var dic = {};
+      if (src) times_pruned[db.name].list = src.concat(times_pruned[db.name].list).filter(v=>(v.no in oss) && !dic[v.no] && (dic[v.no]=true));
+//      if (src) {
+//        var info = db_info.get(db);
+//        var oss = info && info.oss || {};
+//        src = src.filter(function(v){return oss[v.no]===null;});
+//        var src_obj = {};
+//        for (var i=0;i<src.length;i++) {if (src_obj[src[i].no]!==undefined) src.splice(src_obj[src[i--].no],1); else src_obj[src[i].no] = i;}
+//        times_pruned[db.name].list = src.concat(times_pruned[db.name].list.filter(function(v){return src_obj[v.no]===undefined;}));
+//      }
       times_pruned[db.name].write = true;
-      clean_up_end_proc(db, null, null, true); // 'complete_func' will be called by transaction.oncomplete.
+      clean_up_end_proc(db, null, null, true, info); // 'complete_func' will be called by transaction.oncomplete.
     }
 //    function clean_up(db,req, complete_func){ // working code.
 //      req.complete_func = function(e, tr){
@@ -25614,7 +25801,7 @@ if (!pref.test_mode['66']) {
 //////                                                                 e.target.source.name, null, null, 'delete_th');
 //////      }
 //////    }
-    function clean_up_end_proc(db,req, complete_func, put_to_IDB){
+    function clean_up_end_proc(db,req, complete_func, put_to_IDB, info){
       var tgts = times_pruned[db.name].list;
 //      if (sort) tgts.sort(function(a,b){return a.pruned_time - b.pruned_time;}); // sort is in-place
       var time_prune = Date.now() - pref.archive.IDB.prune * 3600000;
@@ -25627,38 +25814,44 @@ if (!pref.test_mode['66']) {
       }
 //      while (i<tgts.length && tgts[i].pruned_time < time_prune) add_req(reqs_vc, db.name, {no:tgts[i++].no, key:null, obj:null, kind:'delete_th'}, true); // acc(site.nickname, board, tgts[i++].no, null, null, 'delete_th');
       if (i>0) tgts.splice(0,i);
-      if (times_pruned[db.name].write && (put_to_IDB || i!==0)) add_req(reqs_rw, db.name, {no:'Meta', key:'pruned_time', obj:tgts, kind:'put'});
+      if (times_pruned[db.name].write && (put_to_IDB || i!==0)) {
+        if (pref.test_mode['221'] && tgts.length===0) {add_req(reqs_vc, db.name, {no:'Meta', kind:'delete_th'}); info.schema &= ~0x01;}
+        else add_req(reqs_rw, db.name, {no:'Meta', key:'pruned_time', obj:tgts, kind:'put'});
+      }
       if (complete_func) complete_func();
     }
     function flush_and_prune(domain, board, no, result){
       var filename = 'CatChan_archive_pruned_'+domain+'-'+board.slice(1,-1)+'-'+no+'.tar';
       var file_id = 'pruned_'+domain+board+no+Date.now();
       archiver.event_funcs['export_thread'](domain, board, no, result, file_id, filename);
-      acc(domain, board, no, null, null, 'delete_th');
+      add_req(reqs_vc, db2db_name(domain, board), {no:no, kind:'delete_th'});
+//      acc(domain, board, no, null, null, 'delete_th');
     }
-    function get_all(db,reqs_in, complete_func){
+    function get_all(db, reqs, oss, complete_func, info){
+      if (pref.debug_mode['45']) console.log('get_all: '+db_name2dbstr(db.name,reqs[0].no));
 //      var req = tr_set(db.transaction(req.no,'readonly'), complete_func).objectStore(req.no).getAll(req.key).onsuccess = req.obj;
-      var IDBT = tr_set(db.transaction(reqs_in.nos,'readonly'), complete_func);
-      for (var i=0;i<reqs_in.reqs.length;i++) {
-        var req = reqs_in.reqs[i];
+      var IDBT = tr_set(db.transaction(oss,'readonly'), complete_func);
+      for (var i=0;i<reqs.length;i++) {
+        var req = reqs[i];
         if (pref.debug_mode['23']) console.log('get_all: '+db_name2dbstr(db.name,req.no)+', '+req.key);
         var IDBR = IDBT.objectStore(req.no).openCursor((req.key==='posts')? IDBKeyRange.bound('posts', 'postt', false, true) : undefined);
         IDBR.onsuccess = get_all_onsuccess;
         req.result = {};
-        req_dictionary.set(IDBR,req);
+        IDBR_dictionary.set(IDBR, {req:req, info:info});
       }
     }
-    var req_dictionary = new Map();
-    function clear_wdg_get_db(e){
-      var db = e.target.transaction.db;
-      var info = db_info.get(db);
-      if (info) info.pass++; // may be stopped by watchdog.
-      return db;
-    }
+    var IDBR_dictionary = new Map();
+//    function clear_wdg_get_db(e){ // working code
+//      var db = e.target.transaction.db;
+//      var info = db_info.get(db);
+//      if (info) info.done++; // may be stopped by watchdog.
+//      return db;
+//    }
     function get_all_onsuccess(e){
-      var db = clear_wdg_get_db(e);
+//      var db = clear_wdg_get_db(e);
       var IDBR = e.target;
-      var req = req_dictionary.get(IDBR);
+      var req_obj = IDBR_dictionary.get(IDBR);
+      var req = req_obj.req;
       var cursor = e.target.result;
       if (cursor) {
         req.result[cursor.key] = (cursor.key.indexOf && cursor.key.indexOf('posts')===0)? (cursor.value[0]==='<'? cursor.value : JSON.parse(cursor.value)) : // CAUTION: NOT SYMMETRIC, return strings for xml
@@ -25666,54 +25859,60 @@ if (!pref.test_mode['66']) {
                                  (cursor.value instanceof ArrayBuffer)? comf.arraybuffer2blob(cursor.key, cursor.value) : cursor.value;
         cursor.continue();
       } else {
-        req_dictionary.delete(IDBR);
+        IDBR_dictionary.delete(IDBR);
         var domainboard = db_name2db(e.target.transaction.db.name);
-        var no = e.target.source.name;
-        setTimeout((function(req,domainboard,no){return function(){req.obj(domainboard[0], domainboard[1], no, req.result);};})(req,domainboard,no),0);
+//        var no = e.target.source.name;
+        setTimeout((function(req,domainboard){
+          return req.onsuccess==='w/RTI'? function(){req.obj(req_obj.info, domainboard[0], domainboard[1], req.no, req.result);} // patch
+                                        : function(){req.obj(              domainboard[0], domainboard[1], req.no, req.result);};})(req,domainboard),0);
         if (pref.debug_mode['29']) {
           var sum = 0;
           for (var i in req.result) sum += (i.indexOf('posts')===0)? JSON.stringify(req.result[i]).length*2 : req.result[i] && req.result[i].size;
-          console.log('IDB: '+domainboard.join('')+no+': '+Object.keys(req.result).length+' files, '+sum.toLocaleString()+' bytes.');
+          console.log('IDB: '+domainboard.join('')+req.no+': '+Object.keys(req.result).length+' files, '+sum.toLocaleString()+' bytes.');
         }
       }
     }
-    function IDBRequest_close(e){
-      var db = e.target.source && e.target.source.transaction.db || e.target.db || e.target.result;
-      var info = db_info.get(db);
-      if (!info) return; // closed by WATCHDOG.
-      if (info.tr_count!==1) info.tr_count -= 1; //      if (tc===1) {db.close();tr_count.delete(db);}
-      else IDB_close(db, info);
-    }
+//    function IDBRequest_close(e, db_in){ // working code
+//      var db = db_in || e.target.source && e.target.source.transaction.db || e.target.db || e.target.result;
+//      var info = db_info.get(db);
+//      if (!info) return; // closed by WATCHDOG.
+//      if (info.tr_count!==1) info.tr_count -= 1; //      if (tc===1) {db.close();tr_count.delete(db);}
+//      else IDB_close(db, info);
+//    }
     function IDBT_rereq(db, tr, message){
-      var info = db_info.get(db);
-      if (info && tr.mode!=='readonly') {
-        var req = info.tr_info.has(tr) && info.tr_info.get(tr).req; // may be 'versionchange'
+      if (tr.mode!=='readonly') {
+        var req = tr_info.has(tr) && tr_info.get(tr).req; // may be 'versionchange'
         var vc = tr.mode==='versionchange';
-        if (req) if (vc) {for (var i=0;i<req.length;i++) add_req(reqs_vc, db.name, req[i]);}
+        if (req) if (vc) {while (!req.isEmpty) add_req(reqs_vc, db.name, req.shift());}
+//        if (req) if (vc) {for (var i=0;i<req.length;i++) add_req(reqs_vc, db.name, req[i]);}
                  else add_req((req.kind==='delete_th')? reqs_vc : reqs_re, db.name, req);
       }
-      console.log(message+': '+tr.mode+': close'+(!req? '':' and re-req: '+(vc? info.coms : req.no+', '+req.kind+', '+req.key)));
+      console.log(message+': '+tr.mode+': close'+(!req? '':' and re-req: '+(vc? db_info.get(db).coms : req.no+', '+req.kind+', '+req.key)), req);
     }
     function IDB_close(db, info, force){
-      if (!info) info = db_info.get(db);
-      if (force && info) for (var i of info.tr_info.keys()) IDBT_rereq(db, i, force);
-      db_info.delete(db);
-      var case_of_test_mode78 = !force && info.req_kinds['delete_th']!==undefined && Object.keys(info.req_kinds).length===1 || db.version==1;
+      if (!db_info.delete(db)) {
+        if (pref.debug_mode['27']) console.log('IDB: closed already'+info.d20db);
+        return;
+      }
+      if (force) for (var tr of tr_info.keys()) if (tr.db===db) IDBT_rereq(db, tr, force);
+      var case_of_test_mode78 = !force && (info.req_kinds['delete_th']!==undefined && Object.keys(info.req_kinds).length===1
+//                                           || pref.test_mode['66'] && info.from_upgrade // empty upgrade transactions seem not to be committed promptly.(chrome50) Probably this ia a bug of browser, so transaction.commit() is required but it needs chrome76+.
+                                          ) || db.version==1;
       if (pref.debug_mode['26'] && case_of_test_mode78) console.log('Hit the case of test_mode[78]');
 //      if (Object.keys(info.req_kinds).length===0 && db.version===1) console.log('test: v1');
 //      else
       if (!case_of_test_mode78 || pref.test_mode['78']) db.close();
-      else setTimeout(function(){db.close();},0);
-      if (pref.debug_mode['20']) console.log('IDB: closed: '+db_info.size+' '+db_name2dbstr(db.name)+' v'+db.version+', '+((info)? info.type+', done:'+info.done+', done_put:'+info.done_put+', '+info.coms : ''));
-      if (info) info.db = db;
-      last_closed = info;
-      indicator_update();
+      else setTimeout(function(){db.close();},100); // pref.test_mode['66']? 100 : 0); // 20ms is NOT enough for upgrade transaction even if idle.
+      if (pref.debug_mode['20']) console.log('IDB: closed'+(force||'')+info.d20done);
+//      last_closed = info;
     }
-    var last_closed = null; // for debug
+    var connection_pool = {}; // test keep alive
+//    var last_closed = null; // for debug
     var db_info = new Map();
-    function tr_inc(db){
-      db_info.get(db).tr_count += 1;
-    }
+    var tr_info = new Map();
+//    function tr_inc(db){
+//      db_info.get(db).tr_count += 1;
+//    }
     var times_pruned = {};
     var version = {};
     var waiting_open = {}; // exclusive request,(closing a transaction without any acceess may cause an IDB ABORT ERROR)
@@ -25756,10 +25955,12 @@ if (!pref.test_mode['66']) {
     }
     function open_db(db_name, ver, from_watchdog){
       var key = db_name+((ver)? 'vc' : 'rw');
+      if (pref.archive.IDB.keep_alive && ver && connection_pool[db_name]) close_request_for_keep_alive(connection_pool[db_name]);
       if (waiting_open[key]!==undefined && (!from_watchdog || ++waiting_open[key]<db_info.size)) {
-        if (pref.debug_mode['27']) if (from_watchdog) console.log('IDB: WATCHDOG: '+key+', '+waiting_open[key]);
+        if (pref.debug_mode['27']) if (from_watchdog) console.log('IDB: WDG: open_db: '+key+', '+waiting_open[key]);
         return;
       }
+      if (!ver && waiting_open[db_name+'vc']!==undefined) return;
       waiting_open[key] = 0;
       var req = window.indexedDB.open(db_name, ver && version[db_name]+1 || undefined); // version[db_name]+1 is NaN at initial.
       req.onerror = IDBRequest_onerror;
@@ -25775,27 +25976,30 @@ if (!pref.test_mode['66']) {
       }
     }
     function add_req(reqs, db_name, req, call){
-      indicator_req_count++;
       if (!indicator && indicator_parent) {
-        indicator = indicator_parent.shift('limegreen', 'w', 'IDB', 0);
+        indicator = indicator_parent.shift('limegreen', 'w', 'IDB', null);
         indicator.report({start:Date.now(), prog_str:'Opening'});
       } else indicator_update();
-      if (!reqs[db_name]) {
+      var queue = reqs[db_name];
+      if (!queue) {
         reqs[db_name] = new ReqFifo(db_name, reqs!==reqs_vc, req);
         if (call) open_db(db_name, reqs===reqs_vc);
       } else {
-        var spawn = reqs===reqs_rw && reqs[db_name].isEmpty;
-        reqs[db_name].push(req);
-        if (spawn) {
-          for (var i of db_info.keys()) {
-            var info = db_info.get(i);
-            if (info.crawler<pref.archive.IDB.nof_tr && i.name===db_name && info.type==='success') {
-              info.crawler++;
-              setTimeout(info.complete_func, 100);
-              break;
-            }
-          }
-        }
+        var keep_alive = pref.archive.IDB.keep_alive;
+        queue.push(req);
+        var info = queue.info || keep_alive && reqs===reqs_vc && reqs_rw[db_name] && reqs_rw[db_name].info; // kick crawler of reqs_rw to close and invoke reqs_vc
+        if (info && (info.crawler>0 || keep_alive) && info.crawler<pref.archive.IDB.nof_tr) info.entry_func(); // spawn crawler
+//        var spawn = reqs===reqs_rw && reqs[db_name].isEmpty; // working code, but Bug(ambiguity)
+//        if (spawn) {
+//          for (var i of db_info.keys()) {
+//            var info = db_info.get(i);
+//            if (info.crawler<pref.archive.IDB.nof_tr && i.name===db_name && info.type==='success') {
+//              info.crawler++;
+//              setTimeout(info.complete_func, 100);
+//              break;
+//            }
+//          }
+//        }
       }
       watchdog.start(pref.archive.IDB.watchdog*1000);
     }
@@ -25804,161 +26008,214 @@ if (!pref.test_mode['66']) {
       this.ary_ro = [];
 //      this.count = 0;
       this.allow_multi = allow_multi;
-      if (!this.reqs[db_name]) this.reqs[db_name] = {};
-      this.reqs = this.reqs[db_name]; // shared
-      this.cls = {}; // req clusters
+      this.reqs = db_name? (this.reqs[db_name] || (this.reqs[db_name] = {})) : {}; // shared when db_name is given
+      this.cls = {}; // req cluster heads
       if (init_val) this.push(init_val);
-      this.cl = null;
-      this.cl_idx = 0;
+//      this.cl = null;
+//      this.cl_idx = 0;
+//      this.us = false;
+      this.db_name = db_name;
+      this.info = null;
     };
     ReqFifo.prototype = {
+//      spawn_sub: function(){
+//        return this.sub = {ary:[], ary_ro:[], cls:{}, sub:null, __proto__:this};
+//      },
+////      UnshiftToLatest: function(req){
+////        return this.info? this.unshift(req) : add_req(reqs_rw, this.db_name, req, null, true);
+////      },
       shift: function(){
+//        if (this.sub && !this.sub.isEmpty) return this.sub.shift();
+        if (this.ary_ro.length!==0) return this.ary_ro.shift();
         var max = (this.allow_multi)? pref.archive.IDB.nof_cl_max : 1;
         var i=0;
-        while (i<this.ary_ro.length && i<max && this.ary_ro[i].kind==='get_all') i++;
-        if (i!=0) return {kind:'get_all_m', reqs:this.ary_ro.splice(0,i)};
-        else if (this.ary_ro.length!==0) return this.ary_ro.shift();
+//        while (i<this.ary_ro.length && i<max && this.ary_ro[i].kind==='get_all') i++; // working code
+//        if (i!=0) return {kind:'get_all_m', reqs:this.ary_ro.splice(0,i)};
+//        else if (this.ary_ro.length!==0) return this.ary_ro.shift();
 //        if (this.ary_ro.length>0) return this.ary_ro.shift();
         if (this.ary.length===0 && !this.cl) return null;
-if (!pref.test_mode['79']) {
+//if (!pref.test_mode['79']) { // working code
         var retval = [];
-  if (!pref.test_mode['81']) {
+//  if (!pref.test_mode['81']) { // working code
         var ref_no;
+        var count_to_cl_min = pref.archive.IDB.nof_cl;
         while (retval.length<max) {
           var req = this.ary[i];
           if (!req || req.kind!=='put') break;
           if (ref_no!==undefined && (!req.no || ref_no!==req.no)) break;
           if (req.cl) {
             if (req.idx===undefined) {
-              this.ary[i] = {kind:'put', cl:[req].concat(req.cl), idx:0, no:req.no};
-              req.cl = null;
-              req = this.ary[i];
-              this.cls[req.no] = req;
+              this.ary[i] = this.cls[req.no] = {cl:[req].concat(req.cl), idx:1, __proto__:req};
+              req.cl = null; // cut link not to cause error if it is re-requested.
+            } else {
+//            if (req.idx===undefined) { // working code
+//              this.ary[i] = {kind:'put', cl:[req].concat(req.cl), idx:0, no:req.no};
+//              req.cl = null;
+//              req = this.ary[i];
+//              this.cls[req.no] = req;
+//            }
+              if (req.idx>=req.cl.length-1) {
+                this.cls[req.no] = null;
+                i++;
+              }
+              req = req.cl[req.idx++]; // all reqs are 'put'. // re-assignment of req must be after using req.idx and req.cl not to lost references to them.
             }
-            if (req.idx>=req.cl.length-1) {
-              this.cls[req.no] = null;
-              i++;
-            }
-            req = req.cl[req.idx++]; // all reqs are 'put'.
+//            if (req.idx===undefined) req.idx = 0; // Bug, keeping cl causes error if it is re-requested.
+//            else {
+//              if (req.idx>=req.cl.length-1) {
+//                this.cls[req.no] = null;
+//                i++;
+//              }
+//              req = req.cl[req.idx++]; // all reqs are 'put'. // re-assignment of req must be after using req.idx and req.cl not to lost references to them.
+//            }
           } else {
-            this.cls[req.no] = null;
+            if (this.cls[req.no]) this.cls[req.no] = null;
             i++;
           }
           retval[retval.length] = req;
           delete this.reqs[req.no + req.key]; // shared, so must use delete.
-          if (retval.length===pref.archive.IDB.nof_cl-1) ref_no = req.no;
+          if (--count_to_cl_min===0) ref_no = req.no;
         }
         if (this.ary[i] && this.ary[i].cl && this.ary[i].idx<this.ary[i].cl.length) { // round robin
           var cl = this.ary.splice(i,1)[0];
           this.ary[this.ary.length] = cl;
         }
-  } else {
-        while (retval.length<max) { // working code.
-          var req;
-          if (this.cl===null) {
-            req = this.ary[i];
-            if (!req || req.kind!=='put') break;
-            i++;
-            if (req.cl) {
-              this.cls[req.no] = null;
-              this.cl = req.cl;
-              this.cl_idx = 0;
-              req.cl = null; // for retry.
-            }
-          } else {
-            req = this.cl[this.cl_idx++]; // all reqs are 'put'.
-            if (this.cl_idx>=this.cl.length) this.cl = null;
-          }
-          retval[retval.length] = req;
-          delete this.reqs[req.no + req.key]; // shared, so must use delete.
-        }
-  }
+//  } else {
+//        while (retval.length<max) { // working code.
+//          var req;
+//          if (this.cl===null) {
+//            req = this.ary[i];
+//            if (!req || req.kind!=='put') break;
+//            i++;
+//            if (req.cl) {
+//              this.cls[req.no] = null;
+//              this.cl = req.cl;
+//              this.cl_idx = 0;
+//              req.cl = null; // for retry.
+//            }
+//          } else {
+//            req = this.cl[this.cl_idx++]; // all reqs are 'put'.
+//            if (this.cl_idx>=this.cl.length) this.cl = null;
+//          }
+//          retval[retval.length] = req;
+//          delete this.reqs[req.no + req.key]; // shared, so must use delete.
+//        }
+//  }
         if (i>0) this.ary.splice(0,i);
         if (i===0 && this.ary[0] && this.ary[0].kind==='check_clean') this.cls['check_clean'] = null;
         return (retval.length>1)? {kind:'put_m', reqs:retval} : (retval.length>0)? retval[0] : this.ary.shift();
-} else {
-        while (i<max) { // working code // not debugged enough
-          var req = this.ary[i];
-          if (!req) break;
-          if (req.cl) {
-            this.ary = this.ary.slice(0,i+1).concat(req.cl,this.ary.slice(i+1));
-            req.cl = null; // for retry.
-          }
-          if (req.kind==='put') {
-            this.cls[req.no] = null;
-            delete this.cls[req.no + req.key]; // shared, so must use delete.
-            i++;
-          } else break;
-        }
-////        while (i<max && this.ary[i] && this.ary[i].kind==='put') {delete this.cls[this.ary[i].no + this.ary[i].key]; i++;} // working code.
-////        this.count += i;
-        return (i>1)? {kind:'put_m', reqs:this.ary.splice(0,i)} :
-                      this.ary.shift();
-}
+//} else {
+//        while (i<max) { // working code // not debugged enough
+//          var req = this.ary[i];
+//          if (!req) break;
+//          if (req.cl) {
+//            this.ary = this.ary.slice(0,i+1).concat(req.cl,this.ary.slice(i+1));
+//            req.cl = null; // for retry.
+//          }
+//          if (req.kind==='put') {
+//            this.cls[req.no] = null;
+//            delete this.cls[req.no + req.key]; // shared, so must use delete.
+//            i++;
+//          } else break;
+//        }
+//////        while (i<max && this.ary[i] && this.ary[i].kind==='put') {delete this.cls[this.ary[i].no + this.ary[i].key]; i++;} // working code.
+//////        this.count += i;
+//        return (i>1)? {kind:'put_m', reqs:this.ary.splice(0,i)} :
+//                      this.ary.shift();
+//}
       },
+//      push_raw: function(req){ // raw request for lowest priority
+//        this.ary[this.ary.length] = req;
+//      },
+//      unshift: function(req){ // patch
+//        this.us = true;
+//        this.push(req);
+//        this.us = false;
+//      },
       push: function(req){
-        if (req.kind==='get_all' || req.kind==='list_os') {
-          this.ary_ro[this.ary_ro.length] = req;
+        indicator_req_count++;
+        if (req.kind==='list_os') {this.ary_ro.unshift(req); return;}
+        if (req.queue) {
+          if (req.queue==='low') {this.ary[this.ary.length] = req; return;}
+          if (req.queue==='high') {this.ary_ro[this.ary_ro.length] = req; req.queue = 'low'; return;} // overwrite priority for retry.
+        }
+        if (req.kind==='get_all') {
+          var last = this.ary_ro[this.ary_ro.length-1];
+          if (last && last.kind==='get_all_m' && last.reqs.length<pref.archive.IDB.nof_cl_max) last.reqs[last.reqs.length] = req;
+          else this.ary_ro[this.ary_ro.length] = {kind:'get_all_m', reqs:[req]};
           return;
         }
+//        if (req.kind==='get_all' || req.kind==='list_os') { // working code
+//          this.ary_ro[this.ary_ro.length] = req;
+//          return;
+//        }
         if (req.kind==='put') {
           var key = req.no + req.key;
           var req_old = this.reqs[key];
-        }
-        if (req_old) req_old.obj = (req.key==='posts')? req_old.obj.concat(req.obj) : req.obj;
-        else if (key) {
-          if (req.key==='posts' || req.key==='pruned_time' || req.key==='posts_deleted') this.reqs[key] = req;
-//          var idx = this.reqs[req.no] - count; // maybe NaN // not debugged.
-//          if (idx>1 && idx!==this.ary.length) {
-//            this.ary.splice(idx,req);
-//            this.reqs[req.no] = count + idx +1;
-//          } else {
-//            this.ary[this.ary.length] = req;
-//            this.reqs[req.no] = count+this.ary.length;
-          var req_cl = this.cls[req.no];
-          if (req_cl) { // 'reqs' is used by 'put_m'.
-            if (req_cl.cl) req_cl.cl[req_cl.cl.length] = req;
-            else req_cl.cl = [req];
-          } else {
-            this.ary[this.ary.length] = req;
-            this.cls[req.no] = req;
+          if (req_old) req_old.obj = (req.key==='posts')? (typeof(req_old)==='string'? req_old.obj + req.obj : req_old.obj.concat(req.obj)) : req.obj; // xml is stored as string
+//          if (req_old) req_old.obj = (req.key==='posts')? req_old.obj.concat(req.obj)) : req.obj;
+          else {
+            if (req.key==='posts' || req.key==='pruned_time' || req.key==='posts_deleted') this.reqs[key] = req;
+//            var idx = this.reqs[req.no] - count; // maybe NaN // not debugged.
+//            if (idx>1 && idx!==this.ary.length) {
+//              this.ary.splice(idx,req);
+//              this.reqs[req.no] = count + idx +1;
+//            } else {
+//              this.ary[this.ary.length] = req;
+//              this.reqs[req.no] = count+this.ary.length;
+            var head = this.cls[req.no];
+            if (head) { // 'reqs' is used by 'put_m'.
+              if (head.cl) head.cl[head.cl.length] = req;
+              else head.cl = [req];
+            } else {
+              this.ary[this.ary.length] = req;
+              this.cls[req.no] = req;
+            }
           }
         } else if (req.kind==='check_clean') {
           var key = null + req.key;
-          var req_old = this.cls[key];
-          if (req_old) req_old.reqs[req_old.reqs.length] = req;
-          else {
-            req = {kind:'clean_m', reqs:[req], no:null};
-            this.cls[key] = req;
-            this.ary[this.ary.length] = req;
-          }
+          var head = this.cls[key];
+          if (head) head.reqs[head.reqs.length] = req;
+          else this.ary[this.ary.length] = this.cls[key] = {kind:'clean_m', reqs:[req], no:null};
         } else this.ary[this.ary.length] = req;
       },
       push_all: function(reqs){
         while (!reqs.isEmpty) this.push(reqs.shift());
       },
-//      get length(){return this.ary.length - this.idx;},
-//      get length(){return this.ary.length + this.ary_ro.length;},
-//      get length(){return this.ary.length + this.ary_ro.length + (this.cl && this.cl.length-this.cl || 0);}, // approx.
-      get length(){return this.ary.length + this.ary_ro.length;},
+      get length(){return this.ary.length + this.ary_ro.length /*+ (this.sub? this.sub.length : 0)*/;},
       get length_whole(){
         var sum = 0;
-        for (var i=0;i<this.ary.length;i++) sum += (this.ary[i].cl)? this.ary[i].cl.length-(this.ary[i].idx||0) : 1;
-        return sum + this.ary_ro.length;
+        for (var j=0;j<2;j++) {
+          var ary = j? this.ary : this.ary_ro;
+          for (var i=0;i<ary.length;i++) {
+            var r = ary[i];
+            sum += r.reqs? r.reqs.length : r.cl? r.cl.length-(r.idx||-1) : 1;
+          }
+        }
+//        for (var i=0;i<this.ary.length;i++) sum += (this.ary[i].cl)? this.ary[i].cl.length-(this.ary[i].idx||-1) : 1;
+////        for (var i=0;i<this.ary.length;i++) sum += (this.ary[i].cl)? this.ary[i].cl.length-(this.ary[i].idx||0) : 1;
+//        for (var i=0;i<this.ary_ro.length;i++) sum += (this.ary_ro[i].kind==='get_all_m')? this.ary_ro[i].reqs.length : 1;
+        return sum /*+ (this.sub? this.sub.length_whole : 0)*/;
       },
-      get isEmpty(){return this.ary.length===0 && !this.cl && this.ary_ro.length===0;},
+      get isEmpty(){return this.ary.length===0 && !this.cl && this.ary_ro.length===0 /*&& (!this.sub || this.sub.isEmpty)*/;},
       reqs: {},
-      debug_query: function(){
-        var whole_array = Array.prototype.concat.apply(this.ary_ro, this.ary.map(function(v){return (v.cl)? ((!pref.test_mode['81'])? v.cl.slice(v.idx || 0) : [v].concat(v.cl)) : v;}));
+      get array_whole(){
+        var ary = Array.prototype.concat.apply(this.ary_ro, this.ary.map(v=> v.cl? [v].concat(v.cl).slice(v.idx+1||0) : v));
+        return /*this.sub? ary.concat(this.sub.array_whole) :*/ ary;
+      },
+      get ary_ro_len(){return this.ary_ro.length /*+(this.sub? this.sub.ary_ro.length:0)*/;},
+      get ary_len(){return this.ary.length /*+(this.sub? this.sub.ary.length:0)*/;},
+      debug_coms: function(){
+        var whole_array = this.array_whole;
+//        var whole_array = Array.prototype.concat.apply(this.ary_ro, this.ary.map(function(v){return (v.cl)? ((!pref.test_mode['81'])? v.cl.slice(v.idx || 0) : [v].concat(v.cl)) : v;}));
         var coms = [];
         var count = 1;
         var i=0;
         while (coms.length<20 && i++<whole_array.length) {
-          if (whole_array[i] && whole_array[i-1].kind===whole_array[i].kind) count++;
-          else {
+          if (!whole_array[i] || whole_array[i-1].kind!==whole_array[i].kind) {
             coms[coms.length] = whole_array[i-1].kind+((count!=1)? '*'+count:'');
             count = 1;
-          }
+          } else count++;
         }
         if (i<whole_array.length) coms[coms.length-1] += '...';
 //        var coms = whole_array.map((function(){ // working code.
@@ -25974,73 +26231,87 @@ if (!pref.test_mode['79']) {
 //            }
 //          }
 //        })()).filter(function(v){return v;});
-        return {coms:coms, length:this.ary_ro.length+'/'+this.ary.length+'/'+whole_array.length};
-      }
+        return coms; // :coms, length:this.ary_ro_len+'/'+this.ary_len+'/'+whole_array.length};
+      },
+      get debug_lenstr(){return this.ary_ro_len+'/'+this.ary_len+'/'+this.length_whole;}
     };
     var indicator_parent = null;
     var indicator = null;
     var indicator_req_count = 0;
-    var indicator_update = function(){};
+    var indicator_connect = null;
     var indicator_update = DelayBuffer.prototype.delayed_do.bind(new DelayBuffer(function(){
       if (!indicator) return;
       var stats = get_status();
       indicator.report({prog_str:stats.str});
-      if (stats.total===0) {
+      if (stats.total===0) { // *2 for db_info and reqs_rw
         indicator.report({end:Date.now()});
         indicator = null;
         indicator_req_count = 0;
+        indicator_connect = null;
+        watchdog.stop();
       }
-    },100));
+    },250));
     function get_status(){
       var nof_crawlers = 0;
-      for (var db of db_info.keys()) nof_crawlers += db_info.get(db).crawler;
-      var sums = [0, 0, 0, 0, 0, 0, Object.keys(reqs_vc).length, Object.keys(reqs_rw).length, Object.keys(reqs_re).length, nof_crawlers, db_info.size, Object.keys(waiting_open).length];
-      var tgts = [reqs_vc,reqs_rw,reqs_re];
+      var nof_sequences = 0;
+      for (var info of db_info.values()) {
+        nof_crawlers += info.crawler;
+        nof_sequences += Math.abs(info.sequence);
+      }
+      var nof_pooled = Object.keys(connection_pool).length;
+      var nof_pooled_fifo = 0;
+      var sums = [0, 0, 0,  0, 0, 0,  0, 0, 0,  nof_sequences, nof_crawlers, nof_pooled, db_info.size, Object.keys(waiting_open).length];
+      var queues = [reqs_vc,reqs_rw,reqs_re];
       for (var i=0;i<3;i++) {
-        if (sums[i+6]) for (var j in tgts[i]) {
-          sums[i+3] += tgts[i][j].length;
-          sums[i]   += tgts[i][j].length_whole;
+        var queue = queues[i];
+        var len = Object.keys(queue).length;
+        sums[i+6] = len;
+        if (len) for (var j in queue) {
+          sums[i+3] += queue[j].length;
+          sums[i]   += queue[j].length_whole;
+          if (connection_pool[j]) nof_pooled_fifo++;
         }
       }
-      return {sums:sums, total:sums.reduce(function(a,b){return a+b;}), str:sums.join('/')+'/'+indicator_req_count};
+      return {total:sums.reduce((a,b)=>a+b) - (pref.archive.IDB.keep_alive? nof_pooled_fifo + (nof_pooled===sums[12]? nof_pooled*2 : 0) : 0),
+              str:sums.slice(0,9).join('/')+', '+sums.slice(9).join('/')+'/'+indicator_req_count};
+    }
+    function indicator_rep_connect(){
+      if (indicator && indicator_connect===null) {
+        indicator_connect = Date.now();
+        indicator.report({connect:indicator_connect});
+      }
     }
     var watchdog = new Watchdog(function (){
       var stats = get_status();
-      if (pref.debug_mode['27']) console.log('IDB: '+stats.str);
-      var inactivated = {};
-      for (var db of db_info.keys()) {
-        var info = db_info.get(db);
+      if (pref.debug_mode['27']) console.log('IDB: WDG: '+stats.str);
+      var done = {};
+      var activated = [];
+      for (var [db,info] of db_info.entries()) {
         if (pref.debug_mode['27']) console.log(info);
-        if (info.wdg!==info.pass) {
-          info.wdg = info.pass;
-//        if (tgt.req && (!tgt.wdg || tgt.wdg!==tgt.req)) tgt.wdg = tgt.req;
-//        if (!tgt.wdg || tgt.wdg!==tgt.req) tgt.wdg = tgt.req; // BUG. lock when tgt.req===unefined or tgt.req===null. // This was patched in 'req_1'
-          inactivated[db.name] = null;
-        } else {
-          indicator_report();
-          IDB_close(db, info, 'IDB: WDG');
+        var info_total = info.done + info.done_sofar;
+        if (info.wdg!==info_total) info.wdg = info_total;
+        else {
+          activated.push(db.name);
+          req_end(info, ' by WDG'); // retry open_db in this
+//          IDB_close(db, info, ' by WDG');
         }
+        done[db.name] = null;
       }
-      for (var i in reqs_vc) if (inactivated[i]!==null && !reqs_vc[i].isEmpty) open_db(i,true, true);
-      for (var i in reqs_rw) if (inactivated[i]!==null && (!reqs_vc[i] || reqs_vc[i].isEmpty) && !reqs_rw[i].isEmpty) open_db(i, undefined, true);
-      for (var i in reqs_re) if (inactivated[i]!==null && (!reqs_vc[i] || reqs_vc[i].isEmpty) && (!reqs_rw[i] || reqs_rw[i].isEmpty) && !reqs_re[i].isEmpty) {
+      for (var i in reqs_vc) if (done[i]!==null && !reqs_vc[i].isEmpty) open_db(i,true, true);
+      for (var i in reqs_rw) if (done[i]!==null && (!reqs_vc[i] || reqs_vc[i].isEmpty) && !reqs_rw[i].isEmpty) open_db(i, undefined, true);
+      for (var i in reqs_re) if (done[i]!==null && (!reqs_vc[i] || reqs_vc[i].isEmpty) && (!reqs_rw[i] || reqs_rw[i].isEmpty) && !reqs_re[i].isEmpty) {
         reqs_re2rw(i);
         open_db(i, undefined, true);
       }
       for (var db_name_key in waiting_open) {
         var db_name = db_name_key.replace(/(rw|vc)$/,'');
-        if (inactivated[db_name]!==null && !reqs_vc[db_name] && !reqs_rw[db_name]) {
-          indicator_report();
+        if (done[db_name]!==null && !reqs_vc[db_name] && !reqs_rw[db_name]) {
+          activated.push(db_name);
           open_db(db_name, db_name_key.search(/vc$/)!=-1, true);
         }
       }
       if (stats.total!==0) watchdog.start(pref.archive.IDB.watchdog*1000);
-      function indicator_report(){
-        if (stats.str) {
-          indicator.report({err:'WDG: '+stats.str});
-          stats.str = '';
-        }
-      }
+      if (activated.length>0) indicator.report({err:'WDG: '+stats.str+', activated: '+activated+', @'+(new Date().toLocaleTimeString())});
     }, 60000);
     return {
       req: acc, // write: function(domain, board, no, key, data,     cmd)
@@ -26271,8 +26542,8 @@ if (!pref.test_mode['79']) {
       }
     }
     var archive_no = 0;
-    function restore(dbt_auto, file, th_obj, archive, posts_deleted, refresh_tgt, from_IDB){
-      var dbt = (pref.archive.format==='auto')? dbt_auto : [site0.domains[pref.archive.domain], '/'+pref.archive.board.replace(/\//g,'')+'/'];
+    function restore(dbt_auto, file, th_obj, archive, posts_deleted, refresh_tgt, from_IDB, parse_only){
+      var dbt = (parse_only || pref.archive.format==='auto')? dbt_auto : [site0.domains[pref.archive.domain], '/'+pref.archive.board.replace(/\//g,'')+'/'];
       if (pref.test_mode['80']) dbt[1] = dbt[1].slice(0,-1) + ((from_IDB)? '_IDB/' : '_File/');
       if (pref.archive.fix_inconsistency && th_obj.posts && dbt[0]!=='meguca') {
         if (th_obj.posts[0].no!=dbt[2]) { // lain/drg/4654
@@ -26285,7 +26556,7 @@ if (!pref.test_mode['79']) {
           console.log('Archiver: Fixed: filename was lost: '+dbt.join('')+'#'+th_obj.posts[i].no);
         }
       }
-      if (!url_funcs_wrapped && window.URL) {
+      if (!parse_only && !url_funcs_wrapped && window.URL) {
         url_funcs_wrap();
         url_funcs_wrapped = true;
       }
@@ -26296,6 +26567,7 @@ if (!pref.test_mode['79']) {
       var ths = site2[dbt[0]].wrap_to_parse.get(th_obj, dbt[0], dbt[1], type_parse, parse_options);
       for (var i=0;i<ths.length;i++) ths[i].key = ths[i].key.slice(0,ths[i].key.lastIndexOf('/')+1) + ths[i].posts[0].no;
       if (ths.length===1) dbt[2] = ths[0].posts[0].no;
+      if (parse_only) return ths[0];
       cataLog.scan_boards_keyword_callback2(dbt[0]+','+dbt[1]+','+ (archive_no++)+','+type_parse,
                                             {date:Date.now(), status:200, response:th_obj},
                                             ['archive_restore', {refresh:refresh_tgt || pClg, __proto__:cataLog.scan_boards_keyword_callback2_default_args}], ths);
@@ -26310,7 +26582,7 @@ if (!pref.test_mode['79']) {
       if (req==='ARC' || req==='ARC1') {
         lth.archived |= (req==='ARC')? 6 : 1;
 //        lth.archived |= (req==='ARC')? 6 : 5;
-        add_list(lth.domain, lth.board, lth.no, req==='ARC1');
+        set_list(lth.domain, lth.board, lth.no, [0,0], req==='ARC');
         if (!from_check_op) if (site2[lth.domain].prohibitThreadScan) archiver.store_archive({}, lth.th, lth, lth.ta.posts, 0);
                             else scan.list_nup.add_scan(lth);
       } else if (req==='UNARC') {
@@ -26368,10 +26640,11 @@ if (!pref.test_mode['79']) {
       }
     })();
     var ls_key_archive = pref.script_prefix + '.archived';
-    var list_all_obj = {};
-    if (localStorage) load_list();
+    var ls_key_archive_updates = ls_key_archive+'_updates';
+    var list_all_obj = localStorage && JSON.parse(localStorage[ls_key_archive] || null) || {}; // global
+    var list_all_obj_local = {}; // local updates
     if (pref.debug_mode['28']) console.log('list_all_obj: ',list_all_obj);
-    var list_all_obj_downloading = {};
+    var list_all_obj_downloading = {}; // local_downloading
 //    function list_all(){ // working code
 //      if (pref.debug_mode['28']) console.log('list_all_obj_downloading: ',list_all_obj_downloading);
 //      for (var d in liveTag.mems) {
@@ -26405,11 +26678,33 @@ if (!pref.test_mode['79']) {
       }
       return null;
     }
-    function load_list(e){
-      if (!e || e.key===ls_key_archive) list_all_obj = JSON.parse(e && e.newValue || localStorage[ls_key_archive] || '{}');
+    function overwrite_list_with_updates(e){
+      if (e.key===ls_key_archive_updates) overwrite_list_1(list_all_obj, JSON.parse(e.newValue));
     }
+    function overwrite_list_1(dst, updates){ // for simultaneous archiving in the same domain using multiple tabs
+      var dst_d;
+      var dst_db;
+      for (var d in updates) {
+        var u_d = updates[d];
+        if (dst_d = dst[d]) {
+          for (var b in u_d) {
+            var u_db = u_d[b];
+            if (dst_db = dst_d[b]) {
+              for (var t in u_db) if (u_db[t]===false) delete dst_db[t]; // false means stop archiving.
+                                  else dst_db[t] = u_db[t];
+            } else dst_d[b] = u_db;
+          }
+        } else dst[d] = u_d;
+      }
+    }
+//    function load_list(e){
+//      if (!e || e.key===ls_key_archive) list_all_obj = JSON.parse(e && e.newValue || localStorage[ls_key_archive] || '{}'); // working code, but collide with other boards.
+//    }
     function save_list(){
       if (pref3.archive.working && localStorage) {
+        if (Object.keys(list_all_obj_local).length>0) localStorage[ls_key_archive_updates] = JSON.stringify(list_all_obj_local);
+        overwrite_list_1(list_all_obj, list_all_obj_local);
+        list_all_obj_local = {};
         if (pref.debug_mode['28']) console.log('list_all_obj_downloading: ',list_all_obj_downloading);
         var domain;
         var board;
@@ -26419,10 +26714,13 @@ if (!pref.test_mode['79']) {
             var lth = lbd && lbd[k];
             if (lbd && !lth) lbd.AR_syncreq = 1;
             if (!lth || !lth.archived /*&& !lth.posts_saved*/) return v;
+            var v_num = typeof(v)==='number';
+            var v_time = v_num? v : v[0]; // accept both format
+            var v_no = v_num? 0 : v[1];
             var time_downloading = list_all_obj_downloading[domain+board+k] || 0;
             var time_editing     = lth.ed_t && (pref.archive.editing_timeout? bug_patch_for_meguca_editing_timeout(lth) // may return null
                                                                             : lth.ed_t[lth.ed_t.length-1].time - 1) || 0; // rewinds to oldest editing post and retry after reload.
-            return /*var time_checked =*/ Math.min(time_downloading, time_editing) || v;
+            return /*var time_checked =*/ [Math.min(time_downloading, time_editing) || v_time, v_no];
 //            return lth.archived? time_checked : -time_checked;
           }
           if (k) if (k[0]==='/') board = k; else domain = k;
@@ -26436,20 +26734,25 @@ if (!pref.test_mode['79']) {
         if (pref.debug_mode['28']) console.log('list_all_obj: ',list_all_obj);
       }
     }
-    function add_list(domain, board, no, init){
-      var l_dm = list_all_obj[domain] || (list_all_obj[domain] = {}); // ||= can be used chrome85+
+    function set_list(domain, board, no, val, keep){
+      var l_dm = list_all_obj_local[domain] || (list_all_obj_local[domain] = {}); // ||= can be used chrome85+
       var l_bd = l_dm[board] || (l_dm[board] = {});
-      if (!l_bd[no] || init) l_bd[no] = 0;
+      if (no===null) return l_bd;
+      var tmp;
+      if (keep && (l_bd[no]!==undefined || (tmp=list_all_obj[domain]) && (tmp=tmp[board]) && tmp[no]!==undefined)) return;
+      l_bd[no] = val;
     }
-    window.addEventListener('storage', load_list, false);
+    window.addEventListener('storage', overwrite_list_with_updates, false);
     window.addEventListener('beforeunload', save_list, false);
     return {
       clean_list_all: function(domain, board, nos){
+        var l_bd = set_list(domain, board, null);
         var bd = list_all_obj[domain][board];
-        for (var no in bd) if (!(no in nos)) delete bd[no];
+        for (var no in bd) if (!(no in nos)) l_bd[no] = false; // delete bd[no];
       },
       clean_list: function(domain,board,no){
-        if (list_all_obj[domain] && list_all_obj[domain][board]) delete list_all_obj[domain][board][no]; // Since 4chan has 'delayed pruning', final archiving should be done here.
+        set_list(domain,board,no,false);
+//        if (list_all_obj[domain] && list_all_obj[domain][board]) delete list_all_obj[domain][board][no]; // Since 4chan has 'delayed pruning', final archiving should be done here.
       },
       check_op: function(th,lth){
         var kwd = pref.archive.kwd;
@@ -26461,7 +26764,9 @@ if (!pref.test_mode['79']) {
       check_archived_time: function(th, time_unit, init){ // time_check_old is undefined at rescan_dp, inherited value must be returned at !init.
         var val = init && pref.archive.list && pref_func.merge_obj5(th.key,pref.archive.list_obj2,null); // find all expresion
         if (val && val.time) return val.time/time_unit || 0; // val may be {} if targets are specified by board or domain like 'lain' in list picker
-        return (pref.archive.list_inherit || !init || val) && list_all_obj[th.domain] && list_all_obj[th.domain][th.board] && list_all_obj[th.domain][th.board][th.no] || (val? 0 : false); // 0 for start archiving, false is NOT.
+        var tmp;
+        return ((tmp=list_all_obj_local[th.domain]) && (tmp=tmp[th.board]) && (tmp=tmp[th.no]))!==undefined? tmp // local may has false as valid value for stopping archiving.
+          : (pref.archive.list_inherit || !init || val) && ((tmp=list_all_obj[th.domain]) && (tmp=tmp[th.board]) && tmp[th.no]) || (val? 0 : false); // 0 for start archiving, false is NOT.
       },
 //      check_archived_time: function(key, domain, board, no, time_unit){
 //        if (pref.archive.list) {
@@ -26536,15 +26841,27 @@ if (!pref.test_mode['79']) {
           if (pref.features.IDB && (lth.archived && pref.archive.live.post_idb || pf_d==='full_IDB')) {
             if (!lth.ta && pf_d==='full_IDB') IDB.req(th.domain, th.board, th.no, 'posts', this.restore_posts_from_IDB.bind(this, value, {posts:th.posts, __proto__:th}, lth), 'get_all'); // lth must be bound prior to access, or lth may be deleted. 
             var time_checked;
-            if (lth.ta) time_checked = lth.ta.posts[lth.ta.posts.length-1].time;
-            else {
-              time_checked = list_all_obj[th.domain] && list_all_obj[th.domain][th.board] && list_all_obj[th.domain][th.board][th.no];
+            if (lth.ta) {
+              var lastPost = lth.ta.posts[lth.ta.posts.length-1];
+              time_checked = lastPost.time;
+              var lastPostNo = lastPost.no;
+            } else {
+              var tmp;
+              time_checked = (tmp=list_all_obj_local[th.domain]) && (tmp=tmp[th.board]) && tmp[th.no]
+                          || (tmp=list_all_obj      [th.domain]) && (tmp=tmp[th.board]) && tmp[th.no];
+//              time_checked = list_all_obj[th.domain] && list_all_obj[th.domain][th.board] && list_all_obj[th.domain][th.board][th.no];
+              if (Array.isArray(time_checked)) {
+                lastPostNo = time_checked[1];
+                time_checked = time_checked[0]; // caution: overwrite src value, must be after reading [1]
+              }
               if (time_checked<0) time_checked = - time_checked;
             }
             var posts_saved;
-            if (time_checked && (!lth.ta || lth.ta.posts.length===lth.ta.nof_posts || th.posts.length < th.nof_posts)) {
+            if (time_checked && (!lth.ta || lth.ta.posts.length===lth.ta.nof_posts)) {
+//            if (time_checked && (!lth.ta || lth.ta.posts.length===lth.ta.nof_posts || th.posts.length < th.nof_posts)) { // save all posts in thread.json at initial retrieval by th.posts.length===th.nof_posts, this is quire redundant but works well and conceals bug of lacking lastNo.
               var i=th.posts.length;
               while (i>0 && th.posts[i-1].time>time_checked) i--;
+              if (lastPostNo) while (i>0 && th.posts[i-1].time==time_checked && th.posts[i-1].no!=lastPostNo) i--;
               posts_saved = th.posts.slice(i);
             } else posts_saved = th.posts;
             if (editing_finished) posts_saved = editing_finished.concat(posts_saved);
@@ -26658,7 +26975,7 @@ if (!pref.test_mode['79']) {
         return (post_deleted)? othpd : null; // return only if it's changed.
       },
       store_deleted_posts_to_IDB: function(th, othpd){
-        IDB.req(th.domain, th.board, th.no, 'posts_deleted', othpd.slice(), (othpd.length>0)? 'put' : 'delete');
+        IDB.req(th.domain, th.board, th.no, 'posts_deleted', othpd.slice(), (othpd.length>0)? 'put' : 'delete'); // .slice() IS NEEDED!!!. othpd may be done 'splice' when posts in catalog and thread are inconsistent, so sometimes it becomes zero length put(put []) and causes error at stringifying which refers posts[0].xmld. See stringify_posts.
       },
       store_posts: store_posts,
       stringify_posts: stringify_posts,
@@ -26669,7 +26986,15 @@ if (!pref.test_mode['79']) {
         var deletedPosts = this.check_deleted_posts(value, th, lth, lth.ta);
         var posts_saved = this.store_th_to_mem(value, th,lth, pf_store, editing_finished); // MUST BE AFTER 'check_deleted_posts', because it uses lth.ta for old version of posts and this revises them.
         if (lth.archived && !no_archive) this.store_archive(value, th, lth, posts_new, time_check_old, editing_finished, deletedPosts, posts_saved); // posts_saved is a patch, full_IDB function should be merged into store_archive
-        else if (posts_saved && posts_saved.length>0) list_all_obj[lth.domain][lth.board][lth.no] = - posts_saved[posts_saved.length-1].time;
+        else if (posts_saved && posts_saved.length>0) {
+          var lastSavedPost = posts_saved[posts_saved.length-1];
+          set_list(lth.domain, lth.board, lth.no, [-lastSavedPost.time, lastSavedPost.no]);
+        }
+//        else if (posts_saved && posts_saved.length>0) {
+//          var tmp;
+//          if ((tmp=list_all_obj[lth.domain]) && (tmp=tmp[lth.board])) tmp[lth.no] = - posts_saved[posts_saved.length-1].time;
+////        else if (posts_saved && posts_saved.length>0) list_all_obj[lth.domain][lth.board][lth.no] = - posts_saved[posts_saved.length-1].time; // cuase error from popup
+//        }
       },
       store_archive: function(value, th, lth, posts_new, time_check_old, editing_finished, deletedPosts, posts_saved){ // posts_saved is a patch
           var time_unit = th.parse_funcs.time_unit;
@@ -26677,8 +27002,9 @@ if (!pref.test_mode['79']) {
 //          time_check_old /= time_unit;
 //          if (time_checked<time_check_old) time_checked = time_check_old;
 ////          var time_checked = time_check_old/time_unit || this.check_archived_time(th.key, th.domain, th.board, th.no, time_unit) || 0; // BUG, because time_check_old brings pref.filter.time_str
-          var time_lastPost = th.posts[th.posts.length-1].time;
-          if (!(lth.archived&0x01) /*&& (lth.archived&0x04)*/) if (time_lastPost<=time_checked || th.time_posted<=time_checked*time_unit) if (!editing_finished) {
+          if (Array.isArray(time_checked)) time_checked = time_checked[0]; // patch for transition...
+          var lastPost = th.posts[th.posts.length-1];
+          if (!(lth.archived&0x01) /*&& (lth.archived&0x04)*/) if (lastPost.time<=time_checked || th.time_posted<=time_checked*time_unit) if (!editing_finished) {
             lth.archived &= 0x02;
             return;
           }
@@ -26738,7 +27064,8 @@ if (!pref.test_mode['79']) {
           if (post && (deletedPosts || posts_all) && (!reqs || reqs.length===0 || th.domain!==site.nickname) && pref.archive.tar) flush_req();
           lth.archived &= 0x02;
           this.update_archived_time(th.key);
-          list_all_obj[lth.domain][lth.board][lth.no] = time_lastPost;
+          set_list(lth.domain, lth.board, lth.no, [lastPost.time, lastPost.no]);
+//          list_all_obj[lth.domain][lth.board][lth.no] = time_lastPost;
       },
       store_rescan: function(lth){
         scan.list_nup.add_scan(lth);
@@ -27732,10 +28059,12 @@ if (!pref.test_mode['51']) { // 1-3 times faster than generator.
             var html = 'Initiator: '+stat.initiator+'&emsp;'+
                        ((cancel_button)? '<button type="button" name="'+name+'">Cancel</button>' : '')+ '<br>' +
                        ((stat.start)? 'Start: '+ new Date(stat.start).toLocaleTimeString()+'<br>' : '')+
+                       ((stat.connect)? 'Connect: '+ new Date(stat.connect).toLocaleTimeString()+'<br>' : '')+
                        ((stat.prog_str)? 'Progress: '+ stat.prog_str+'<br>' : '')+
-                       'Priority: '+ stat.priority+'<br>'+
+                       (stat.priority!==null? 'Priority: '+ stat.priority+'<br>':'')+
                        ((stat.start && !stat.end && stat.prog)? 'Crawler: '+ stat.prog.crawler+'<br>' : '')+
-                       (stat.errs? '<span style="color:red">Errors: '+ stat.errs.length +': '+
+                       (stat.errs? '<span style="color:red">Errors: '+ stat.errs.reduce((a,c,i)=>a+(stat.errs_counts[i]||1),0) +': '+
+//                       (stat.errs? '<span style="color:red">Errors: '+ stat.errs.reduce((a,c)=>a+c) +': '+
                          stat.errs.map((v,i)=>(stat.errs_counts[i]? stat.errs_counts[i]+'*':'')+v).join(',<br>')+'</span><br>' : '')+
 //                       ((stat.errs)? '<span style="color:red">Errors: '+ stat.errs +': '+ stat.err_str.slice(2) +'</span><br>' : '')+
                        ((stat.abort_str)? '<span style="color:red">Abort: '+ stat.abort_str+'</span><br>' : '')+
@@ -31519,6 +31848,7 @@ if (dbt[0]==='meguca1' && dbt[3]==='catalog_json') { // PATCH FOR MEGUCA
         var d = comf.fullname2domain(name);
         var passiveWatch = site2[d] && site2[d].passiveWatch;
         return pref.test_mode['217'] && gClg.UnsyncedTriages[name] && gClg.UnsyncedTriages[name][4]
+                                                                   && (Debug.log('Time from UnsyncedTriage: '+gClg.UnsyncedTriages[name][4]), gClg.UnsyncedTriages[name][4])
           || tgt_th && (passiveWatch? tgt_th[8][2] : (tgt_th[8][4] || tgt_th[8][0]))
           || tgt_th2 && (passiveWatch? tgt_th2[8][2] : (tgt_th2[8][4] || tgt_th2[8][0]));
 //        return tgt_th && (pref.test_mode['167']? tgt_th[8][2] : (tgt_th[8][4] || tgt_th[8][0]));
