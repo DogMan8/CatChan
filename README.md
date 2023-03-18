@@ -47,6 +47,7 @@ Chrome43 has a bug around DesktopNotification. If you encounter this bug, use ca
 <br>
 
 <h1>History</h1><br>
+v2023.03.26.0: Cleaned up.<br>
 v2023.03.12.0: Added basic support for archiving RSS.<br>
 v2023.01.22.1: Fixed bugs.(degrade)<br>
 v2023.01.22.0: Fixed bugs.(degrade)<br>
