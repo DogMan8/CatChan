@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name CatChan
-// @version 2023.03.26.0
+// @version 2023.03.26.1
 // @description Cross domain catalog for imageboards
 // @include http*://*krautchan.net/*
 // @include http*://boards.4chan.org/*
@@ -1002,7 +1002,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           if (loose || dst[i]!==undefined && (dst[i]!==null || pref && pref.test_mode['117'])) {
             if (strict && typeof(src[i])!==typeof(dst[i])) continue;
             if (test_new_func? dst[i]!==null && src[i]!==null && typeof(dst[i])==='object' && typeof(src[i])==='object'
-                : typeof(src[i])==='object' && !Array.isArray(src[i])) pref_overwrite(dst[i],src[i],strict,loose, test_new_func); // CAUTION. SKIP NULL IMPLICITLY. SHOULD THIS BE FIXED?
+                : typeof(src[i])==='object' && !Array.isArray(src[i])) {if (dst!==undefined) pref_overwrite(dst[i],src[i],strict,loose, test_new_func);} // CAUTION. SKIP NULL IMPLICITLY. SHOULD THIS BE FIXED?
 //            else dst[i] = src[i];
             else if (dst[i]!==src[i] || !dst.hasOwnProperty(i) && (Object.getPrototypeOf(dst)||{})[i]!==(Object.getPrototypeOf(src)||{})[i]) dst[i] = src[i]; // for i15 case, see Debug.diff // utilize prototype
 //            else if (dst[i]!==src[i]) dst[i] = src[i]; // utilize prototype
@@ -4262,7 +4262,7 @@ if (window.name==='post_tgt' && window.location.href.indexOf('localhost')!=-1) r
           this.features_domains();},
         'About': function(){
         return 'CatChan<br>'+
-          'Version 2023.03.26.0<br>'+
+          'Version 2023.03.26.1<br>'+
           '<a href="https://github.com/DogMan8/CatChan">GitHub</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/master/CatChan.user.js">Get stable release</a><br>'+
           '<a href="https://github.com/DogMan8/CatChan/raw/develop/CatChan.user.js">Get BETA release</a><br>'+
@@ -26724,7 +26724,8 @@ if (!pref.test_mode['24']) {
 //            return lth.archived? time_checked : -time_checked;
           }
           if (k) if (k[0]==='/') board = k; else domain = k;
-          return Object.keys(v).length>0? v : undefined; // delete entries slowly and recursively
+          return v!==null && typeof(v)==='object' && Object.keys(v).length===0? undefined : v; // delete entries slowly and recursively
+//          return Object.keys(v).length>0? v : undefined; // delete entries slowly and recursively
         });
         if (!str) delete localStorage[ls_key_archive];
         else localStorage[ls_key_archive] = str;
